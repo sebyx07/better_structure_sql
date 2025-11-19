@@ -1,34 +1,44 @@
 # BetterStructureSql 🚀
 
-Clean, maintainable PostgreSQL schema dumps for Rails without pg_dump noise.
+Clean, maintainable database schema dumps for Rails (PostgreSQL, MySQL, SQLite) without external tool dependencies.
 
 ## Why BetterStructureSql? 🤔
 
-Rails' `pg_dump` creates noisy `structure.sql` files with version-specific comments, inconsistent formatting, and cluster metadata that pollutes git diffs.
+Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structure.sql` files with version-specific comments, inconsistent formatting, and metadata that pollutes git diffs.
 
 **BetterStructureSql** uses pure Ruby introspection to generate clean schema files:
 
 - ✅ **Clean diffs** - Only actual schema changes in version control
-- ✅ **No pg_dump** - Pure Ruby database introspection
+- ✅ **No external tools** - Pure Ruby database introspection (no pg_dump/mysqldump/sqlite3 CLI)
+- ✅ **Multi-database** - PostgreSQL, MySQL, SQLite support with adapter pattern
 - ✅ **Deterministic** - Same input = identical output
 - ✅ **Complete** - Tables, indexes, foreign keys, views, triggers, functions, extensions
 - ✅ **Schema versioning** - Store and retrieve schema versions with metadata
 - ✅ **Rails integration** - Drop-in replacement for `rake db:schema:dump`
 
+## Supported Databases
+
+- **PostgreSQL** (12+) - Full feature support (extensions, materialized views, functions, triggers, custom types)
+- **MySQL** (8.0+) - 80% feature parity (stored procedures, triggers, views, indexes)
+- **SQLite** (3.35+) - 60% feature parity (lightweight schemas, triggers, views)
+
+See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/README.md#feature-compatibility-matrix) for detailed comparison.
+
 ## Features
 
 ### Core Features
-- **Pure Ruby implementation** - No external pg_dump dependencies
+- **Pure Ruby implementation** - No external tool dependencies (pg_dump, mysqldump, sqlite3 CLI)
+- **Multi-database adapter pattern** - Auto-detects database type from ActiveRecord connection
 - **Clean structure.sql** - Only essential schema information
-- **Complete PostgreSQL support**:
+- **Complete database support**:
   - Tables with all column types and defaults
   - Primary keys, foreign keys, and constraints
   - Indexes (including partial, unique, and expression indexes)
-  - Views (including materialized views)
-  - Functions and triggers
-  - PostgreSQL extensions
-  - Sequences
-  - Custom types and enums
+  - Views (and materialized views for PostgreSQL)
+  - Functions/stored procedures and triggers (database-dependent)
+  - Extensions (PostgreSQL)
+  - Sequences (PostgreSQL)
+  - Custom types and enums (PostgreSQL, MySQL SET/ENUM)
 
 ### Multi-File Schema Output (Optional)
 - **Massive schema support** - Handle tens of thousands of tables effortlessly
@@ -40,11 +50,12 @@ Rails' `pg_dump` creates noisy `structure.sql` files with version-specific comme
 
 ### Schema Versioning (Optional)
 - Store schema versions in database with metadata
-- Track PostgreSQL version, format type (SQL/Ruby), creation timestamp
+- Track database type and version, format type (SQL/Ruby), creation timestamp
 - ZIP archive storage for multi-file schemas
 - Configurable retention policy (keep last N versions)
 - Browse and download versions via web UI (mountable Rails engine)
 - Works with both `structure.sql` and `schema.rb`
+- Works across all database types (PostgreSQL, MySQL, SQLite)
 - Restore from any stored version
 
 ### Web UI Engine
@@ -71,6 +82,11 @@ Rails' `pg_dump` creates noisy `structure.sql` files with version-specific comme
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
+
+# Add the database adapter gem you're using:
+gem 'pg'         # For PostgreSQL
+gem 'mysql2'     # For MySQL
+gem 'sqlite3'    # For SQLite
 ```
 
 ```bash
@@ -79,7 +95,7 @@ rails generate better_structure_sql:install
 rails db:schema:dump_better
 ```
 
-Your `db/structure.sql` is now clean and maintainable!
+Your `db/structure.sql` is now clean and maintainable across any database!
 
 ## Docker Development Environment 🐳
 
@@ -96,6 +112,7 @@ See [DOCKER.md](DOCKER.md) for complete Docker documentation.
 
 ## Documentation 📚
 
+### General Documentation
 - [Installation](docs/installation.md) - Setup and configuration
 - [Configuration](docs/configuration.md) - All configuration options
 - [Usage](docs/usage.md) - Rake tasks and examples
@@ -105,6 +122,11 @@ See [DOCKER.md](DOCKER.md) for complete Docker documentation.
 - [Docker Development](DOCKER.md) - Complete Docker environment guide
 - [Testing](docs/testing.md) - RSpec testing guide
 - [MVP Phases](docs/mvp/) - Implementation roadmap
+
+### Multi-Database Support
+- [Multi-Database Architecture](docs/features/multi-database-adapter-support/README.md) - Overview and feature matrix
+- [Database Adapters Architecture](docs/features/multi-database-adapter-support/architecture.md) - Technical deep dive
+- [Implementation Phases](docs/features/multi-database-adapter-support/plan/) - Phased rollout plan
 
 ## Example Output
 
@@ -245,8 +267,11 @@ db/schema/
 ## Requirements
 
 - Rails 7.0+
-- PostgreSQL 12+
 - Ruby 2.7+
+- Database adapter gem:
+  - `pg` (>= 1.0) for PostgreSQL 12+
+  - `mysql2` (>= 0.5) for MySQL 8.0+
+  - `sqlite3` (>= 1.4) for SQLite 3.35+
 
 ## Migration Guides
 
