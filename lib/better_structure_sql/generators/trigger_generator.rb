@@ -5,8 +5,16 @@ module BetterStructureSql
     class TriggerGenerator < Base
       def generate(trigger)
         # PostgreSQL's pg_get_triggerdef returns complete CREATE TRIGGER statement
+        # MySQL SHOW CREATE TRIGGER also returns complete statement
         if trigger[:definition]
           definition = trigger[:definition].strip
+
+          # Strip DEFINER clause for MySQL triggers for portability
+          if definition.include?('CREATE DEFINER')
+            definition = definition.gsub(/CREATE DEFINER=`[^`]+`@`[^`]+`/, 'CREATE')
+          end
+
+          # Ensure ends with semicolon for structure.sql
           definition += ';' unless definition.end_with?(';')
           return definition
         end

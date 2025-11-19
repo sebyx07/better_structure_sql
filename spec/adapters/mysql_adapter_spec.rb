@@ -103,12 +103,25 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   end
 
   describe '#fetch_functions' do
-    it 'returns empty array (procedures managed via migrations)' do
-      # MySQL stored procedures and functions are intentionally skipped
-      # They should be defined in migrations, not dumped to structure.sql
+    it 'fetches stored procedures using SHOW CREATE' do
+      query_result = [
+        ['test_proc', 'PROCEDURE']
+      ]
+
+      create_result = [
+        ['test_proc', 'STRICT_TRANS_TABLES', "CREATE DEFINER=`root`@`%` PROCEDURE `test_proc`(IN x INT)\nBEGIN\n  SELECT x;\nEND"]
+      ]
+
+      allow(connection).to receive(:execute).and_return(query_result)
+      allow(connection).to receive(:execute).with(/SHOW CREATE PROCEDURE/).and_return(create_result)
+
       functions = adapter.fetch_functions(connection)
 
-      expect(functions).to eq([])
+      expect(functions.length).to eq(1)
+      expect(functions.first[:name]).to eq('test_proc')
+      expect(functions.first[:definition]).to include('CREATE')
+      expect(functions.first[:definition]).to include('PROCEDURE')
+      # Note: DEFINER is in the raw definition; FunctionGenerator strips it during dump
     end
   end
 
@@ -119,12 +132,28 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   end
 
   describe '#fetch_triggers' do
-    it 'returns empty array (triggers managed via migrations)' do
-      # MySQL triggers are intentionally skipped
-      # They should be defined in migrations, not dumped to structure.sql
+    it 'fetches triggers using SHOW CREATE' do
+      query_result = [
+        ['test_trigger', 'INSERT', 'users', 'AFTER']
+      ]
+
+      create_result = [
+        ['test_trigger', 'STRICT_TRANS_TABLES', "CREATE DEFINER=`root`@`%` TRIGGER `test_trigger` AFTER INSERT ON `users` FOR EACH ROW BEGIN\n  INSERT INTO audit_log VALUES (NEW.id);\nEND"]
+      ]
+
+      allow(connection).to receive(:execute).and_return(query_result)
+      allow(connection).to receive(:execute).with(/SHOW CREATE TRIGGER/).and_return(create_result)
+
       triggers = adapter.fetch_triggers(connection)
 
-      expect(triggers).to eq([])
+      expect(triggers.length).to eq(1)
+      expect(triggers.first[:name]).to eq('test_trigger')
+      expect(triggers.first[:table]).to eq('users')
+      expect(triggers.first[:event]).to eq('INSERT')
+      expect(triggers.first[:timing]).to eq('AFTER')
+      expect(triggers.first[:definition]).to include('CREATE')
+      expect(triggers.first[:definition]).to include('TRIGGER')
+      # Note: DEFINER is in the raw definition; TriggerGenerator strips it during dump
     end
   end
 

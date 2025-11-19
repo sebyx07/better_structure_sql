@@ -141,13 +141,38 @@ module BetterStructureSql
         []
       end
 
-      def fetch_functions(_connection)
-        # MySQL stored procedures and functions are typically managed via migrations
-        # in Rails apps, not dumped to structure.sql. This avoids DELIMITER issues
-        # and permission problems with DEFINER clauses.
-        #
-        # If you need to dump procedures, define them in a migration file instead.
-        []
+      def fetch_functions(connection)
+        query = <<~SQL.squish
+          SELECT
+            ROUTINE_NAME,
+            ROUTINE_TYPE
+          FROM information_schema.ROUTINES
+          WHERE ROUTINE_SCHEMA = DATABASE()
+            AND ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
+          ORDER BY ROUTINE_NAME
+        SQL
+
+        connection.execute(query).map do |row|
+          routine_name = row[0]
+          routine_type = row[1]
+
+          # Get complete CREATE statement using SHOW CREATE
+          create_query = if routine_type == 'PROCEDURE'
+                           "SHOW CREATE PROCEDURE `#{routine_name}`"
+                         else
+                           "SHOW CREATE FUNCTION `#{routine_name}`"
+                         end
+
+          create_result = connection.execute(create_query).first
+          # SHOW CREATE returns: [procedure_name, sql_mode, create_statement, ...]
+          create_statement = create_result[2] if create_result
+
+          {
+            schema: 'public',
+            name: routine_name,
+            definition: create_statement
+          }
+        end
       end
 
       def fetch_sequences(_connection)
@@ -155,13 +180,34 @@ module BetterStructureSql
         []
       end
 
-      def fetch_triggers(_connection)
-        # MySQL triggers are typically managed via migrations in Rails apps,
-        # not dumped to structure.sql. This is consistent with Rails' default behavior
-        # and avoids complexity with trigger definitions.
-        #
-        # If you need to dump triggers, define them in a migration file instead.
-        []
+      def fetch_triggers(connection)
+        query = <<~SQL.squish
+          SELECT
+            TRIGGER_NAME,
+            EVENT_MANIPULATION,
+            EVENT_OBJECT_TABLE,
+            ACTION_TIMING
+          FROM information_schema.TRIGGERS
+          WHERE TRIGGER_SCHEMA = DATABASE()
+          ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME
+        SQL
+
+        connection.execute(query).map do |row|
+          trigger_name = row[0]
+
+          # Get complete CREATE statement using SHOW CREATE
+          create_result = connection.execute("SHOW CREATE TRIGGER `#{trigger_name}`").first
+          # SHOW CREATE TRIGGER returns: [trigger_name, sql_mode, create_statement, ...]
+          create_statement = create_result[2] if create_result
+
+          {
+            table: row[2],
+            name: trigger_name,
+            event: row[1],     # INSERT, UPDATE, DELETE
+            timing: row[3],    # BEFORE, AFTER
+            definition: create_statement
+          }
+        end
       end
 
       # Capability methods - MySQL feature support

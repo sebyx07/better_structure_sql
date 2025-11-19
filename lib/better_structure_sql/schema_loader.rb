@@ -111,9 +111,13 @@ module BetterStructureSql
 
     def execute_mysql_statements(connection, sql)
       # Split SQL into individual statements for MySQL
-      # MySQL can't execute multiple statements in one call via ActiveRecord
+      # MySQL can't execute multiple statements in one call via ActiveRecord normally.
+      # For procedures/triggers with BEGIN/END blocks, we need special handling.
+
+      # Split into statements, respecting BEGIN/END blocks
       statements = []
       current_statement = +'' # Unfreeze string with unary plus
+      in_block = false # Track if we're inside a BEGIN/END block
 
       sql.each_line do |line|
         # Skip standalone comment lines
@@ -123,8 +127,25 @@ module BetterStructureSql
 
         current_statement << line
 
-        # Check if statement is complete (ends with semicolon)
-        if line.strip.end_with?(';')
+        # Track BEGIN/END blocks (procedures and triggers)
+        # MySQL procedures: CREATE PROCEDURE name(...) BEGIN ... END;
+        # MySQL triggers: CREATE TRIGGER ... FOR EACH ROW BEGIN ... END;
+        stripped_line = line.strip.upcase
+
+        # Detect start of block: "BEGIN" on its own line or "FOR EACH ROW BEGIN"
+        if stripped_line == 'BEGIN' || stripped_line.end_with?(' BEGIN')
+          in_block = true
+        end
+
+        # Detect end of block: "END" or "END;"
+        if stripped_line == 'END;' || stripped_line == 'END'
+          in_block = false
+        end
+
+        # Statement is complete when:
+        # 1. Line ends with semicolon, AND
+        # 2. We just closed a block (ended with END or END;), OR we're not in a block
+        if line.strip.end_with?(';') && !in_block
           statements << current_statement.strip
           current_statement = +'' # Unfreeze new string
         end
@@ -133,12 +154,20 @@ module BetterStructureSql
       # Add any remaining statement
       statements << current_statement.strip unless current_statement.strip.empty?
 
-      # Execute each statement
-      statements.each do |statement|
+      # Execute each statement using raw connection
+      statements.each_with_index do |statement, index|
         next if statement.empty?
         next if statement.start_with?('--') # Skip standalone comments
 
-        connection.execute(statement)
+        begin
+          # Use ActiveRecord connection execute which works for procedures/triggers
+          connection.execute(statement)
+        rescue StandardError => e
+          # Log helpful error with statement number
+          Rails.logger.error "Failed to execute MySQL statement #{index + 1}/#{statements.length}: #{e.message}"
+          Rails.logger.error "Statement: #{statement[0..200]}"
+          raise
+        end
       end
     end
   end
