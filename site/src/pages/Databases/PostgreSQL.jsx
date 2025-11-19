@@ -21,10 +21,14 @@ function PostgreSQL() {
             <div className="alert alert-warning">
               <i className="bi bi-download me-2" />
               <strong>Getting Started:</strong>{' '}
-              <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
-              {' '}• PostgreSQL 12+ required •{' '}
+              <Link to="/install" className="alert-link">Install Guide</Link>
+              {' '}•{' '}
+              <a href="https://rubygems.org/gems/better_structure_sql" className="alert-link" target="_blank" rel="noopener noreferrer">
+                RubyGems
+              </a>
+              {' '}•{' '}
               <a href="https://www.postgresql.org/download/" className="alert-link" target="_blank" rel="noopener noreferrer">
-                Install PostgreSQL
+                Install PostgreSQL 12+
               </a>
             </div>
 

@@ -21,10 +21,14 @@ function SQLite() {
             <div className="alert alert-warning">
               <i className="bi bi-download me-2" />
               <strong>Getting Started:</strong>{' '}
-              <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
-              {' '}• SQLite 3.35+ required •{' '}
+              <Link to="/install" className="alert-link">Install Guide</Link>
+              {' '}•{' '}
+              <a href="https://rubygems.org/gems/better_structure_sql" className="alert-link" target="_blank" rel="noopener noreferrer">
+                RubyGems
+              </a>
+              {' '}•{' '}
               <a href="https://www.sqlite.org/download.html" className="alert-link" target="_blank" rel="noopener noreferrer">
-                Install SQLite
+                Install SQLite 3.35+
               </a>
             </div>
 
