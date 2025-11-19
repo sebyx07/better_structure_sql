@@ -151,8 +151,11 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
       it 'streams correct content' do
         get :raw, params: { id: version.id }
         # Response body should be an enumerator for streaming
-        expect(response.body).to be_a(String)
-        expect(response.body.bytesize).to eq(3_000_000)
+        expect(response.body).to be_a(Enumerator)
+        # Collect chunks and verify total size
+        chunks = response.body.to_a
+        total_size = chunks.sum(&:bytesize)
+        expect(total_size).to eq(3_000_000)
       end
     end
 

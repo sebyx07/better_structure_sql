@@ -4,6 +4,7 @@ AllCops:
   Exclude:
     - 'vendor/**/*'
     - 'node_modules/**/*'
+    - '**/db/schema.rb'
 
 plugins:
   - rubocop-rspec
@@ -11,7 +12,7 @@ plugins:
   - rubocop-performance
 
 Layout/LineLength:
-  Max: 180
+  Enabled: false
 
 Metrics/ClassLength:
   Enabled: false
@@ -59,6 +60,12 @@ Rails/ApplicationRecord:
   Enabled: false
 
 Rails/SquishedSQLHeredocs:
+  Enabled: false
+
+Rails/HasManyOrHasOneDependent:
+  Enabled: false
+
+Rails/InverseOf:
   Enabled: false
 
 Naming/PredicateMethod:

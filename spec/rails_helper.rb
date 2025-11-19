@@ -8,6 +8,7 @@ require 'rails'
 require 'action_controller/railtie'
 require 'active_record/railtie'
 require 'rspec/rails'
+require 'rails-controller-testing'
 
 # Minimal Rails app for testing
 module Dummy
@@ -19,6 +20,8 @@ module Dummy
     config.active_record.check_schema_cache_dump_version = false
     config.root = File.expand_path('../..', __dir__)
     config.paths.add 'config/database', with: 'config/database.yml'
+    # Add engine views path
+    config.paths['app/views'].unshift File.expand_path('../app/views', __dir__)
   end
 end
 
@@ -31,6 +34,11 @@ ActiveRecord::Base.establish_connection(:test)
 
 # Load engine
 require_relative '../lib/better_structure_sql/engine'
+
+# Load engine controllers, models, and routes
+Dir[File.expand_path('../app/controllers/**/*.rb', __dir__)].sort.each { |f| require f }
+Dir[File.expand_path('../app/models/**/*.rb', __dir__)].sort.each { |f| require f }
+require_relative '../config/routes'
 
 # Create schema_versions table
 ActiveRecord::Schema.define do

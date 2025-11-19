@@ -20,7 +20,7 @@ RSpec.describe BetterStructureSql::Generators::ExtensionGenerator do
         extension = { name: 'uuid-ossp', version: '1.1', schema: 'extensions' }
         result = generator.generate(extension)
 
-        expect(result).to eq('CREATE EXTENSION IF NOT EXISTS uuid-ossp WITH SCHEMA extensions;')
+        expect(result).to eq('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;')
       end
     end
 

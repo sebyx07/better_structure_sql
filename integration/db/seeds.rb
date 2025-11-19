@@ -5,9 +5,7 @@
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
 puts 'Cleaning up existing data...'
-if ActiveRecord::Base.connection.table_exists?('events')
-  ActiveRecord::Base.connection.execute('TRUNCATE TABLE events, sessions, order_items, orders, product_price_history, posts, products, categories, users RESTART IDENTITY CASCADE')
-end
+ActiveRecord::Base.connection.execute('TRUNCATE TABLE events, sessions, order_items, orders, product_price_history, posts, products, categories, users RESTART IDENTITY CASCADE') if ActiveRecord::Base.connection.table_exists?('events')
 
 puts 'Creating sample users...'
 users = []

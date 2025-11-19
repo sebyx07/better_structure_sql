@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency 'database_cleaner-active_record', '~> 2.1'
   spec.add_development_dependency 'factory_bot_rails', '~> 6.2'
+  spec.add_development_dependency 'rails-controller-testing', '~> 1.0'
   spec.add_development_dependency 'rspec', '~> 3.12'
   spec.add_development_dependency 'rspec-rails', '~> 6.0'
   spec.add_development_dependency 'rubocop', '~> 1.50'
