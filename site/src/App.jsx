@@ -4,8 +4,9 @@ import Home from './pages/Home';
 import Installation from './pages/GettingStarted/Installation';
 import Configuration from './pages/GettingStarted/Configuration';
 import QuickStart from './pages/GettingStarted/QuickStart';
-import Examples from './pages/Examples';
 import PostgreSQL from './pages/Databases/PostgreSQL';
+import MySQL from './pages/Databases/MySQL';
+import SQLite from './pages/Databases/SQLite';
 
 function App() {
   return (
@@ -15,8 +16,9 @@ function App() {
         <Route path="/install" element={<Installation />} />
         <Route path="/configuration" element={<Configuration />} />
         <Route path="/quick-start" element={<QuickStart />} />
-        <Route path="/examples" element={<Examples />} />
         <Route path="/databases/postgresql" element={<PostgreSQL />} />
+        <Route path="/databases/mysql" element={<MySQL />} />
+        <Route path="/databases/sqlite" element={<SQLite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

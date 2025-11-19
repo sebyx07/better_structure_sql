@@ -93,14 +93,6 @@ function Header() {
               </ul>
             </li>
             <li className="nav-item">
-              <Link
-                className={`nav-link ${isActive('/examples') ? 'active' : ''}`}
-                to="/examples"
-              >
-                Examples
-              </Link>
-            </li>
-            <li className="nav-item">
               <a
                 className="nav-link"
                 href="https://github.com/sebyx07/better_structure_sql"
