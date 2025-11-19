@@ -56,6 +56,33 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.uuid_generate_v8()
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  timestamp timestamptz;
+  microseconds int;
+BEGIN
+  timestamp := clock_timestamp();
+  microseconds := (cast(extract(microseconds from timestamp)::int -
+    (floor(extract(milliseconds from timestamp))::int * 1000) as double precision) * 4.096)::int;
+
+  RETURN encode(
+    set_byte(
+      set_byte(
+        overlay(uuid_send(gen_random_uuid())
+          placing substring(int8send(floor(extract(epoch from timestamp) * 1000)::bigint) from 3)
+          from 1 for 6
+        ),
+        6, (b'1000' || (microseconds >> 8)::bit(4))::bit(8)::int
+      ),
+      7, microseconds::bit(8)::int
+    ),
+    'hex')::uuid;
+END
+$function$;
+
 CREATE OR REPLACE FUNCTION public.validate_email(email_text text)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -134,6 +161,19 @@ CREATE TABLE categories (
   created_at timestamp NOT NULL,
   updated_at timestamp NOT NULL,
   PRIMARY KEY (id)
+);
+
+CREATE TABLE events (
+  id uuid NOT NULL DEFAULT uuid_generate_v8(),
+  user_id bigint,
+  event_type varchar NOT NULL,
+  event_name varchar NOT NULL,
+  event_data jsonb DEFAULT '{}'::jsonb,
+  ip_address inet,
+  user_agent varchar,
+  occurred_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  CONSTRAINT check_event_type_not_empty CHECK (((length((event_type)::text) > 0) AND (length((event_name)::text) > 0)))
 );
 
 CREATE TABLE order_items (
@@ -219,6 +259,19 @@ CREATE TABLE schema_migrations (
   PRIMARY KEY (version)
 );
 
+CREATE TABLE sessions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id bigint NOT NULL,
+  token varchar NOT NULL,
+  ip_address inet,
+  user_agent varchar,
+  expires_at timestamp NOT NULL,
+  last_accessed_at timestamp,
+  created_at timestamp NOT NULL,
+  updated_at timestamp NOT NULL,
+  PRIMARY KEY (id)
+);
+
 CREATE TABLE users (
   id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
   email varchar NOT NULL,
@@ -235,6 +288,12 @@ CREATE INDEX index_categories_on_lower_name ON public.categories USING btree (lo
 CREATE INDEX index_categories_on_parent_id ON public.categories USING btree (parent_id);
 CREATE INDEX index_categories_on_position ON public.categories USING btree ("position");
 CREATE UNIQUE INDEX index_categories_on_slug ON public.categories USING btree (slug);
+CREATE INDEX index_events_on_event_data ON public.events USING gin (event_data);
+CREATE INDEX index_events_on_event_name ON public.events USING btree (event_name);
+CREATE INDEX index_events_on_event_type ON public.events USING btree (event_type);
+CREATE INDEX index_events_on_occurred_at ON public.events USING brin (occurred_at);
+CREATE INDEX index_events_on_user_id ON public.events USING btree (user_id);
+CREATE INDEX index_events_on_user_id_and_occurred_at ON public.events USING btree (user_id, occurred_at);
 CREATE INDEX index_order_items_on_order_id ON public.order_items USING btree (order_id);
 CREATE UNIQUE INDEX index_order_items_on_order_id_and_product_id ON public.order_items USING btree (order_id, product_id);
 CREATE INDEX index_order_items_on_product_id ON public.order_items USING btree (product_id);
@@ -266,18 +325,23 @@ CREATE INDEX index_products_on_price ON public.products USING btree (price);
 CREATE UNIQUE INDEX index_products_on_sku ON public.products USING btree (sku);
 CREATE INDEX index_products_on_specifications ON public.products USING gin (specifications);
 CREATE INDEX index_products_on_tags ON public.products USING gin (tags);
+CREATE INDEX index_sessions_on_expires_at ON public.sessions USING btree (expires_at);
+CREATE UNIQUE INDEX index_sessions_on_token ON public.sessions USING btree (token);
+CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
 CREATE UNIQUE INDEX index_users_on_email ON public.users USING btree (email);
 CREATE INDEX index_users_on_lower_email ON public.users USING btree (lower((email)::text));
 CREATE INDEX index_users_on_uuid ON public.users USING btree (uuid);
 
 -- Foreign Keys
 ALTER TABLE categories ADD CONSTRAINT fk_rails_82f48f7407 FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE CASCADE;
+ALTER TABLE events ADD CONSTRAINT fk_rails_0cb5590091 FOREIGN KEY (user_id) REFERENCES users (id);
 ALTER TABLE order_items ADD CONSTRAINT fk_rails_e3cb28f071 FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE;
 ALTER TABLE order_items ADD CONSTRAINT fk_rails_f1a29ddd47 FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT;
 ALTER TABLE orders ADD CONSTRAINT fk_rails_f868b47f6a FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT;
 ALTER TABLE posts ADD CONSTRAINT fk_rails_5b5ddfd518 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
 ALTER TABLE product_price_history ADD CONSTRAINT fk_rails_b70a9e116e FOREIGN KEY (product_id) REFERENCES products (id);
 ALTER TABLE products ADD CONSTRAINT fk_rails_fb915499a4 FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT;
+ALTER TABLE sessions ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES users (id);
 
 -- Views
 
@@ -339,8 +403,10 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20250101000006'),
 ('20250101000007'),
 ('20250101000008'),
-('20250101000009')
+('20250101000009'),
+('20250101000010')
 ON CONFLICT DO NOTHING;INSERT INTO "schema_migrations" (version) VALUES
+('20250101000010'),
 ('20250101000009'),
 ('20250101000008'),
 ('20250101000007'),
