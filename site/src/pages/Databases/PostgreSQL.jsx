@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function PostgreSQL() {
@@ -15,6 +16,16 @@ function PostgreSQL() {
               <i className="bi bi-info-circle me-2" />
               PostgreSQL has the most comprehensive feature support in BetterStructureSql with 100% coverage
               of extensions, custom types, functions, triggers, materialized views, and partitioned tables.
+            </div>
+
+            <div className="alert alert-warning">
+              <i className="bi bi-download me-2" />
+              <strong>Getting Started:</strong>{' '}
+              <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
+              {' '}• PostgreSQL 12+ required •{' '}
+              <a href="https://www.postgresql.org/download/" className="alert-link" target="_blank" rel="noopener noreferrer">
+                Install PostgreSQL
+              </a>
             </div>
 
       {/* UUID v8 for Better Primary Keys */}

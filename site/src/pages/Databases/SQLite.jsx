@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function SQLite() {
@@ -15,6 +16,16 @@ function SQLite() {
               <i className="bi bi-info-circle me-2" />
               SQLite support includes triggers, views, CHECK constraints, and PRAGMA settings.
               Coming soon: comprehensive tutorials for SQLite-specific features!
+            </div>
+
+            <div className="alert alert-warning">
+              <i className="bi bi-download me-2" />
+              <strong>Getting Started:</strong>{' '}
+              <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
+              {' '}• SQLite 3.35+ required •{' '}
+              <a href="https://www.sqlite.org/download.html" className="alert-link" target="_blank" rel="noopener noreferrer">
+                Install SQLite
+              </a>
             </div>
 
             <section className="mb-5">

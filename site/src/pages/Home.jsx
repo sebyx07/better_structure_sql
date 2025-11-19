@@ -38,18 +38,18 @@ function Home() {
 
           {/* Database Badges */}
           <div className="mt-5 d-flex gap-3 justify-content-center flex-wrap">
-            <span className="badge bg-success fs-6">
+            <Link to="/databases/postgresql" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
               PostgreSQL 12+
-            </span>
-            <span className="badge bg-success fs-6">
+            </Link>
+            <Link to="/databases/mysql" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
               MySQL 8.0+
-            </span>
-            <span className="badge bg-success fs-6">
+            </Link>
+            <Link to="/databases/sqlite" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
               SQLite 3.35+
-            </span>
+            </Link>
           </div>
         </div>
       </section>

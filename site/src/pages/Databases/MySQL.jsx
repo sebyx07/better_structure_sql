@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function MySQL() {
@@ -15,6 +16,16 @@ function MySQL() {
               <i className="bi bi-info-circle me-2" />
               MySQL support includes stored procedures, triggers, views, and indexes.
               Coming soon: comprehensive tutorials for MySQL-specific features!
+            </div>
+
+            <div className="alert alert-warning">
+              <i className="bi bi-download me-2" />
+              <strong>Getting Started:</strong>{' '}
+              <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
+              {' '}• MySQL 8.0+ required •{' '}
+              <a href="https://dev.mysql.com/downloads/mysql/" className="alert-link" target="_blank" rel="noopener noreferrer">
+                Install MySQL
+              </a>
             </div>
 
             <section className="mb-5">
