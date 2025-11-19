@@ -71,6 +71,19 @@ rails db:schema:dump_better
 
 Your `db/structure.sql` is now clean and maintainable!
 
+## Docker Development Environment 🐳
+
+Get started with a fully configured development environment in seconds:
+
+```bash
+# Start PostgreSQL + Rails integration app
+docker compose up
+
+# Visit http://localhost:3000
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker documentation.
+
 ## Documentation 📚
 
 - [Installation](docs/installation.md) - Setup and configuration
@@ -78,7 +91,7 @@ Your `db/structure.sql` is now clean and maintainable!
 - [Usage](docs/usage.md) - Rake tasks and examples
 - [Schema Versions](docs/schema_versions.md) - Version storage feature
 - [Web UI Engine](docs/features/dev-environment-docker-web-ui/README.md) - Browse versions via web interface
-- [Docker Development](docs/features/dev-environment-docker-web-ui/README.md) - Local development environment
+- [Docker Development](DOCKER.md) - Complete Docker environment guide
 - [Testing](docs/testing.md) - RSpec testing guide
 - [MVP Phases](docs/mvp/) - Implementation roadmap
 

@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+log/
+*.log
+
+# Test files
+spec/
+test/
+
+# CI/CD
+.github/
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ruby
+*.gem
+.bundle
+
+# Integration app temporary files
+integration/tmp/
+integration/log/
+integration/storage/
+integration/.bundle
+integration/node_modules/
+integration/public/packs
+integration/public/assets

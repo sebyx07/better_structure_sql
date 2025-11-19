@@ -1,0 +1,23 @@
+# PostgreSQL database configuration
+# For other databases, see config/database_*.yml variants
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DATABASE_HOST") { "localhost" } %>
+  username: <%= ENV.fetch("DATABASE_USERNAME") { "postgres" } %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") { "postgres" } %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME") { "better_structure_sql_development" } %>
+
+test:
+  <<: *default
+  database: better_structure_sql_test
+
+production:
+  <<: *default
+  database: better_structure_sql_production
+  username: better_structure_sql
+  password: <%= ENV["BETTER_STRUCTURE_SQL_DATABASE_PASSWORD"] %>

@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: better_structure_sql_development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: .
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails server -b 0.0.0.0"
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: better_structure_sql_development
+      RAILS_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  bundle_cache:
+
+networks:
+  app-network:
+    driver: bridge

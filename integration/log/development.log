@@ -1,0 +1,292 @@
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (35.8ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (81.2ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (9.4ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY) /*application='Integration'*/[0m
+  [1m[35m (5.2ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Integration'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Create (0.8ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2025-11-19 02:33:57.484344', '2025-11-19 02:33:57.484348') RETURNING "key" /*application='Integration'*/[0m
+Migrating to CreateBetterStructureSqlSchemaVersions (20250101000001)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[35m (7.9ms)[0m  [1m[35mCREATE TABLE "better_structure_sql_schema_versions" ("id" bigserial primary key, "content" text NOT NULL, "pg_version" character varying NOT NULL, "format_type" character varying NOT NULL, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Integration'*/[0m
+  [1m[35m (2.5ms)[0m  [1m[35mCREATE INDEX "index_better_structure_sql_schema_versions_on_created_at" ON "better_structure_sql_schema_versions" ("created_at") /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.3ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20250101000001') RETURNING "version" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.6ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+Migrating to CreateUsers (20250101000002)
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[35mSQL (8.4ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "pgcrypto" /*application='Integration'*/[0m
+  [1m[35mSQL (1.8ms)[0m  [1m[35mCREATE EXTENSION IF NOT EXISTS "uuid-ossp" /*application='Integration'*/[0m
+  [1m[35m (5.3ms)[0m  [1m[35mCREATE TABLE "users" ("id" bigserial primary key, "email" character varying NOT NULL, "encrypted_password" character varying, "uuid" uuid DEFAULT uuid_generate_v4(), "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL) /*application='Integration'*/[0m
+  [1m[35m (1.8ms)[0m  [1m[35mCREATE UNIQUE INDEX "index_users_on_email" ON "users" ("email") /*application='Integration'*/[0m
+  [1m[35m (2.3ms)[0m  [1m[35mCREATE INDEX "index_users_on_uuid" ON "users" ("uuid") /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.2ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20250101000002') RETURNING "version" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (1.5ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+Migrating to CreatePosts (20250101000003)
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[35m (8.9ms)[0m  [1m[35mCREATE TABLE "posts" ("id" bigserial primary key, "user_id" bigint NOT NULL, "title" character varying NOT NULL, "body" text, "published_at" timestamp(6), "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL, CONSTRAINT "fk_rails_5b5ddfd518"
+FOREIGN KEY ("user_id")
+  REFERENCES "users" ("id")
+ ON DELETE CASCADE) /*application='Integration'*/[0m
+  [1m[35m (1.9ms)[0m  [1m[35mCREATE INDEX "index_posts_on_user_id" ON "posts" ("user_id") /*application='Integration'*/[0m
+  [1m[35m (1.9ms)[0m  [1m[35mCREATE INDEX "index_posts_on_published_at" ON "posts" ("published_at") WHERE published_at IS NOT NULL /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Create (0.2ms)[0m  [1m[32mINSERT INTO "schema_migrations" ("version") VALUES ('20250101000003') RETURNING "version" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.6ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mUser Load (1.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'alice@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mUser Exists? (0.2ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."email" = 'alice@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Create (1.2ms)[0m  [1m[32mINSERT INTO "users" ("email", "encrypted_password", "created_at", "updated_at") VALUES ('alice@example.com', 'password123', '2025-11-19 02:33:59.506997', '2025-11-19 02:33:59.506997') RETURNING "id", "uuid" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (1.1ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mUser Load (0.3ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'bob@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mUser Exists? (1.9ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."email" = 'bob@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Create (0.2ms)[0m  [1m[32mINSERT INTO "users" ("email", "encrypted_password", "created_at", "updated_at") VALUES ('bob@example.com', 'password123', '2025-11-19 02:33:59.521294', '2025-11-19 02:33:59.521294') RETURNING "id", "uuid" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.4ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mUser Load (0.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'charlie@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mUser Exists? (1.5ms)[0m  [1m[34mSELECT 1 AS one FROM "users" WHERE "users"."email" = 'charlie@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Create (0.2ms)[0m  [1m[32mINSERT INTO "users" ("email", "encrypted_password", "created_at", "updated_at") VALUES ('charlie@example.com', 'password123', '2025-11-19 02:33:59.528383', '2025-11-19 02:33:59.528383') RETURNING "id", "uuid" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.4ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mPost Load (1.0ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Getting Started with Rails' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mPost Create (0.8ms)[0m  [1m[32mINSERT INTO "posts" ("user_id", "title", "body", "published_at", "created_at", "updated_at") VALUES (1, 'Getting Started with Rails', 'Rails is a web application framework running on the Ruby programming language.', '2025-11-17 02:33:59.546866', '2025-11-19 02:33:59.547676', '2025-11-19 02:33:59.547676') RETURNING "id" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.5ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Understanding PostgreSQL' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mPost Create (1.5ms)[0m  [1m[32mINSERT INTO "posts" ("user_id", "title", "body", "published_at", "created_at", "updated_at") VALUES (1, 'Understanding PostgreSQL', 'PostgreSQL is a powerful, open source object-relational database system.', '2025-11-18 02:33:59.552640', '2025-11-19 02:33:59.552776', '2025-11-19 02:33:59.552776') RETURNING "id" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.6ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Docker for Development' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mPost Create (1.7ms)[0m  [1m[32mINSERT INTO "posts" ("user_id", "title", "body", "published_at", "created_at", "updated_at") VALUES (2, 'Docker for Development', 'Docker helps developers build, share, and run applications in containers.', '2025-11-16 02:33:59.558353', '2025-11-19 02:33:59.558484', '2025-11-19 02:33:59.558484') RETURNING "id" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.5ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Draft Post' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mPost Create (2.0ms)[0m  [1m[32mINSERT INTO "posts" ("user_id", "title", "body", "published_at", "created_at", "updated_at") VALUES (2, 'Draft Post', 'This is a draft post that hasn''t been published yet.', NULL, '2025-11-19 02:33:59.594606', '2025-11-19 02:33:59.594606') RETURNING "id" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.5ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 3 AND "posts"."title" = 'Ruby Best Practices' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mBEGIN /*application='Integration'*/[0m
+  [1m[36mPost Create (1.5ms)[0m  [1m[32mINSERT INTO "posts" ("user_id", "title", "body", "published_at", "created_at", "updated_at") VALUES (3, 'Ruby Best Practices', 'Writing clean, maintainable Ruby code requires following best practices.', '2025-11-14 02:33:59.601705', '2025-11-19 02:33:59.601863', '2025-11-19 02:33:59.601863') RETURNING "id" /*application='Integration'*/[0m
+  [1m[36mTRANSACTION (0.4ms)[0m  [1m[35mCOMMIT /*application='Integration'*/[0m
+  [1m[36mUser Count (0.4ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.2ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (31.7ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (26.2ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.3ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (2.0ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.2ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mUser Load (1.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'alice@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.3ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'bob@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.3ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'charlie@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (1.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Getting Started with Rails' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Understanding PostgreSQL' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Docker for Development' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Draft Post' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 3 AND "posts"."title" = 'Ruby Best Practices' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Count (0.3ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.2ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (32.1ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (27.9ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO "$user", public /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mUser Load (1.1ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'alice@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'bob@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'charlie@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.9ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Getting Started with Rails' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Understanding PostgreSQL' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Docker for Development' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Draft Post' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 3 AND "posts"."title" = 'Ruby Best Practices' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Count (0.3ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.2ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:35:55 +0000
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  
+NameError (uninitialized constant BetterStructureSql::Engine):
+  
+config/routes.rb:16:in `block in <top (required)>'
+config/routes.rb:1:in `<top (required)>'
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:36:00 +0000
+Processing by HomeController#index as */*
+  [1m[36mBetterStructureSql::SchemaVersion Count (27.9ms)[0m  [1m[34mSELECT COUNT(*) FROM "better_structure_sql_schema_versions" /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:5:in `index'
+  [1m[36mBetterStructureSql::SchemaVersion Load (1.2ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" ORDER BY "better_structure_sql_schema_versions"."created_at" DESC LIMIT 1 /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:6:in `index'
+  Rendering layout layouts/application.html.erb
+  Rendering home/index.html.erb within layouts/application
+  [1m[36mBetterStructureSql::SchemaVersion Load (0.2ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" /* loading for inspect */ LIMIT 11 /*action='index',application='Integration',controller='home'*/[0m
+  Rendered home/index.html.erb within layouts/application (Duration: 2.2ms | GC: 0.0ms)
+  Rendered layout layouts/application.html.erb (Duration: 2.4ms | GC: 0.0ms)
+Completed 500 Internal Server Error in 63ms (ActiveRecord: 42.7ms (3 queries, 0 cached) | GC: 0.7ms)
+
+
+  [1m[36mCACHE BetterStructureSql::SchemaVersion Load (0.0ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" /* loading for inspect */ LIMIT 11[0m
+  [1m[36mCACHE BetterStructureSql::SchemaVersion Load (0.0ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" /* loading for inspect */ LIMIT 11[0m
+  
+ActionView::Template::Error (undefined method `created_at' for #<ActiveRecord::Relation []>)
+Caused by: NoMethodError (undefined method `created_at' for #<ActiveRecord::Relation []>)
+
+Information for: ActionView::Template::Error (undefined method `created_at' for #<ActiveRecord::Relation []>):
+     9:     <% if @latest_version %>
+    10:       <p style="font-size: 16px; margin: 5px 0;">
+    11:         <strong>Latest Version:</strong> <%= @latest_version.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
+    12:       </p>
+    13:       <p style="font-size: 16px; margin: 5px 0;">
+    14:         <strong>PostgreSQL Version:</strong> <%= @latest_version.pg_version %>
+    15:       </p>
+  
+app/views/home/index.html.erb:12
+
+Information for cause: NoMethodError (undefined method `created_at' for #<ActiveRecord::Relation []>):
+  
+app/views/home/index.html.erb:12
+  [1m[36mCACHE BetterStructureSql::SchemaVersion Load (0.0ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" /* loading for inspect */ LIMIT 11[0m
+  [1m[36mCACHE BetterStructureSql::SchemaVersion Load (0.0ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" /* loading for inspect */ LIMIT 11[0m
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:36:34 +0000
+Processing by HomeController#index as */*
+  [1m[36mBetterStructureSql::SchemaVersion Count (0.5ms)[0m  [1m[34mSELECT COUNT(*) FROM "better_structure_sql_schema_versions" /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:5:in `index'
+  [1m[36mBetterStructureSql::SchemaVersion Load (0.3ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" ORDER BY "better_structure_sql_schema_versions"."created_at" DESC LIMIT 1 /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:6:in `index'
+  Rendering layout layouts/application.html.erb
+  Rendering home/index.html.erb within layouts/application
+  Rendered home/index.html.erb within layouts/application (Duration: 0.6ms | GC: 0.0ms)
+  Rendered layout layouts/application.html.erb (Duration: 3.1ms | GC: 0.3ms)
+Completed 200 OK in 9ms (Views: 4.5ms | ActiveRecord: 0.7ms (2 queries, 0 cached) | GC: 0.7ms)
+
+
+  [1m[36mUser Count (32.0ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.9ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:36:56 +0000
+Processing by HomeController#index as */*
+  [1m[36mBetterStructureSql::SchemaVersion Count (0.5ms)[0m  [1m[34mSELECT COUNT(*) FROM "better_structure_sql_schema_versions" /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:5:in `index'
+  [1m[36mBetterStructureSql::SchemaVersion Load (0.3ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" ORDER BY "better_structure_sql_schema_versions"."created_at" DESC LIMIT 1 /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:6:in `index'
+  Rendering layout layouts/application.html.erb
+  Rendering home/index.html.erb within layouts/application
+  Rendered home/index.html.erb within layouts/application (Duration: 0.1ms | GC: 0.0ms)
+  Rendered layout layouts/application.html.erb (Duration: 0.8ms | GC: 0.0ms)
+Completed 200 OK in 4ms (Views: 1.1ms | ActiveRecord: 0.7ms (2 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mUser Count (34.9ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (1.2ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:39:43 +0000
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+Processing by HomeController#index as */*
+  [1m[36mBetterStructureSql::SchemaVersion Count (0.4ms)[0m  [1m[34mSELECT COUNT(*) FROM "better_structure_sql_schema_versions" /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:5:in `index'
+  [1m[36mBetterStructureSql::SchemaVersion Load (0.2ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" ORDER BY "better_structure_sql_schema_versions"."created_at" DESC LIMIT 1 /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:6:in `index'
+  Rendering layout layouts/application.html.erb
+  Rendering home/index.html.erb within layouts/application
+  Rendered home/index.html.erb within layouts/application (Duration: 0.4ms | GC: 0.0ms)
+  Rendered layout layouts/application.html.erb (Duration: 1.4ms | GC: 0.0ms)
+Completed 200 OK in 5ms (Views: 2.2ms | ActiveRecord: 0.6ms (2 queries, 0 cached) | GC: 0.0ms)
+
+
+  [1m[36mUser Count (30.7ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.9ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (33.3ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (26.6ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.6ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (30.9ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (26.0ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.5ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35m (1.1ms)[0m  [1m[34mSELECT extname, extversion, nspname as schema_name FROM pg_extension JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace WHERE nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY extname /*application='Integration'*/[0m
+  [1m[35m (0.6ms)[0m  [1m[34mSELECT t.typname as name, t.typtype as type, n.nspname as schema FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE t.typtype IN ('e', 'c', 'd') AND n.nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY t.typname /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.6ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35m (1.0ms)[0m  [1m[34mSELECT extname, extversion, nspname as schema_name FROM pg_extension JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace WHERE nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY extname /*application='Integration'*/[0m
+  [1m[35m (0.7ms)[0m  [1m[34mSELECT t.typname as name, t.typtype as type, n.nspname as schema FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE t.typtype IN ('e', 'c', 'd') AND n.nspname NOT IN ('pg_catalog', 'information_schema') ORDER BY t.typname /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (31.0ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (26.4ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (1.7ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.7ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (33.8ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_development" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35mSQL (0.1ms)[0m  [1m[35mSET search_path TO public /*application='Integration'*/[0m
+  [1m[35m (26.3ms)[0m  [1m[35mCREATE DATABASE "better_structure_sql_test" ENCODING = 'unicode' /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_try_advisory_lock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.7ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::InternalMetadata Load (2.0ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = 'environment' ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1 /*application='Integration'*/[0m
+  [1m[35m (0.2ms)[0m  [1m[34mSELECT pg_advisory_unlock(3058621165926952290) /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (0.2ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mActiveRecord::SchemaMigration Load (1.6ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+  [1m[36mUser Load (1.1ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'alice@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'bob@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Load (0.2ms)[0m  [1m[34mSELECT "users".* FROM "users" WHERE "users"."email" = 'charlie@example.com' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (1.0ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Getting Started with Rails' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 1 AND "posts"."title" = 'Understanding PostgreSQL' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Docker for Development' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.2ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 2 AND "posts"."title" = 'Draft Post' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mPost Load (0.3ms)[0m  [1m[34mSELECT "posts".* FROM "posts" WHERE "posts"."user_id" = 3 AND "posts"."title" = 'Ruby Best Practices' LIMIT 1 /*application='Integration'*/[0m
+  [1m[36mUser Count (0.3ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (0.2ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
+Started GET "/" for 172.19.0.1 at 2025-11-19 02:54:15 +0000
+  [1m[36mActiveRecord::SchemaMigration Load (1.8ms)[0m  [1m[34mSELECT "schema_migrations"."version" FROM "schema_migrations" ORDER BY "schema_migrations"."version" ASC /*application='Integration'*/[0m
+Processing by HomeController#index as */*
+  [1m[36mBetterStructureSql::SchemaVersion Count (30.6ms)[0m  [1m[34mSELECT COUNT(*) FROM "better_structure_sql_schema_versions" /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:5:in `index'
+  [1m[36mBetterStructureSql::SchemaVersion Load (1.5ms)[0m  [1m[34mSELECT "better_structure_sql_schema_versions".* FROM "better_structure_sql_schema_versions" ORDER BY "better_structure_sql_schema_versions"."created_at" DESC LIMIT 1 /*action='index',application='Integration',controller='home'*/[0m
+  ↳ app/controllers/home_controller.rb:6:in `index'
+  Rendering layout layouts/application.html.erb
+  Rendering home/index.html.erb within layouts/application
+  Rendered home/index.html.erb within layouts/application (Duration: 0.6ms | GC: 0.0ms)
+  Rendered layout layouts/application.html.erb (Duration: 4.3ms | GC: 0.2ms)
+Completed 200 OK in 107ms (Views: 8.4ms | ActiveRecord: 47.2ms (2 queries, 0 cached) | GC: 27.4ms)
+
+
+  [1m[36mUser Count (30.6ms)[0m  [1m[34mSELECT COUNT(*) FROM "users" /*application='Integration'*/[0m
+  [1m[36mPost Count (1.5ms)[0m  [1m[34mSELECT COUNT(*) FROM "posts" /*application='Integration'*/[0m
