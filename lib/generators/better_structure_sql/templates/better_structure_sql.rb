@@ -36,10 +36,11 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true  # Store versions in database
   config.schema_versions_limit = 10     # Keep last 10 versions (0 = unlimited)
 
-  # Replace default Rails schema dump/load tasks
+  # Replace default Rails schema dump/load tasks (opt-in)
   # When true, db:schema:dump and db:schema:load will use BetterStructureSql automatically
   # This also automatically sets config.active_record.schema_format = :sql
+  # When false (default), use explicit tasks: db:schema:dump_better and db:schema:load_better
   # NOTE: Only works with SQL format. Silently ignored if output_path ends with '.rb'
-  config.replace_default_dump = true
-  config.replace_default_load = true
+  config.replace_default_dump = false
+  config.replace_default_load = false
 end

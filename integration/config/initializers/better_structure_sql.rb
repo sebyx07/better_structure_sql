@@ -103,18 +103,20 @@ BetterStructureSql.configure do |config|
   config.schema_versions_limit = ENV.fetch('SCHEMA_VERSIONS_LIMIT', '10').to_i
 
   # ===================================================================================
-  # RAILS INTEGRATION
+  # RAILS INTEGRATION (opt-in)
   # ===================================================================================
 
-  # Replace default Rails schema dump task
+  # Replace default Rails schema dump task (opt-in, default: false)
   # When true, `rails db:schema:dump` uses BetterStructureSql instead of pg_dump
+  # When false, use explicit task: `rails db:schema:dump_better`
   #
   # Set to false if you want to use both side-by-side
-  config.replace_default_dump = ENV.fetch('REPLACE_DEFAULT_DUMP', 'true') == 'true'
+  config.replace_default_dump = ENV.fetch('REPLACE_DEFAULT_DUMP', 'false') == 'true'
 
-  # Replace default Rails schema load task
+  # Replace default Rails schema load task (opt-in, default: false)
   # When true, `rails db:schema:load` uses BetterStructureSql loader
-  config.replace_default_load = ENV.fetch('REPLACE_DEFAULT_LOAD', 'true') == 'true'
+  # When false, use explicit task: `rails db:schema:load_better`
+  config.replace_default_load = ENV.fetch('REPLACE_DEFAULT_LOAD', 'false') == 'true'
 
   # ===================================================================================
   # FORMATTING OPTIONS

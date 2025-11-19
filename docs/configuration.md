@@ -11,9 +11,10 @@ BetterStructureSql.configure do |config|
   # Core Settings
   # ========================================
 
-  # Replace Rails' default rake db:schema:dump task
+  # Replace Rails' default rake db:schema:dump task (opt-in)
   # Default: false
-  config.replace_default_dump = true
+  # When false, use explicit task: rails db:schema:dump_better
+  config.replace_default_dump = false
 
   # Output file path (relative to Rails.root)
   # Default: 'db/structure.sql'

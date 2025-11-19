@@ -19,7 +19,8 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
   config.schema_versions_limit = 10
 
-  # Replace default Rails schema dump and load
-  config.replace_default_dump = true
-  config.replace_default_load = true
+  # Replace default Rails schema dump and load (opt-in, default: false)
+  # When false, use explicit tasks: rails db:schema:dump_better and rails db:schema:load_better
+  config.replace_default_dump = false
+  config.replace_default_load = false
 end

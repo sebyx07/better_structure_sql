@@ -8,15 +8,15 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 SET search_path TO public;
 
 -- Custom Types
-CREATE TYPE address AS (street character varying(255), city character varying(100), state character varying(2), zip_code character varying(10), country character varying(50));
-CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived');
-CREATE TYPE priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
-CREATE TYPE user_role AS ENUM ('admin', 'moderator', 'user', 'guest');
+CREATE TYPE IF NOT EXISTS address AS (street character varying(255), city character varying(100), state character varying(2), zip_code character varying(10), country character varying(50));
+CREATE TYPE IF NOT EXISTS post_status AS ENUM ('draft', 'published', 'archived');
+CREATE TYPE IF NOT EXISTS priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
+CREATE TYPE IF NOT EXISTS user_role AS ENUM ('admin', 'moderator', 'user', 'guest');
 
 -- Domains
-CREATE DOMAIN email_address AS character varying(255) CHECK (((VALUE)::text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$'::text));
-CREATE DOMAIN percentage AS numeric(5,2) CHECK (((VALUE >= (0)::numeric) AND (VALUE <= (100)::numeric)));
-CREATE DOMAIN positive_integer AS integer CHECK ((VALUE > 0));
+CREATE DOMAIN IF NOT EXISTS email_address AS character varying(255) CHECK (((VALUE)::text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$'::text));
+CREATE DOMAIN IF NOT EXISTS percentage AS numeric(5,2) CHECK (((VALUE >= (0)::numeric) AND (VALUE <= (100)::numeric)));
+CREATE DOMAIN IF NOT EXISTS positive_integer AS integer CHECK ((VALUE > 0));
 
 -- Functions
 
@@ -354,235 +354,235 @@ END;
 $function$;
 
 -- Sequences
-CREATE SEQUENCE better_structure_sql_schema_versions_id_seq
+CREATE SEQUENCE IF NOT EXISTS better_structure_sql_schema_versions_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE categories_id_seq
+CREATE SEQUENCE IF NOT EXISTS categories_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_000_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_000_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_001_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_001_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_002_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_002_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_003_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_003_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_004_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_004_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_005_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_005_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_006_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_006_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_007_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_007_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_008_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_008_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_009_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_009_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_010_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_010_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_011_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_011_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_012_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_012_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_013_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_013_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_014_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_014_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_015_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_015_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_016_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_016_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_017_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_017_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_018_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_018_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_019_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_019_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_020_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_020_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_021_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_021_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_022_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_022_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_023_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_023_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_024_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_024_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_025_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_025_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_026_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_026_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_027_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_027_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_028_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_028_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_029_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_029_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_030_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_030_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_031_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_031_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_032_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_032_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_033_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_033_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_034_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_034_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_035_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_035_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_036_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_036_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_037_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_037_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_038_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_038_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_039_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_039_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_040_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_040_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_041_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_041_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_042_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_042_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_043_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_043_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_044_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_044_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_045_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_045_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_046_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_046_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_047_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_047_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_048_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_048_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE large_table_049_id_seq
+CREATE SEQUENCE IF NOT EXISTS large_table_049_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE order_items_id_seq
+CREATE SEQUENCE IF NOT EXISTS order_items_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE orders_id_seq
+CREATE SEQUENCE IF NOT EXISTS orders_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE posts_id_seq
+CREATE SEQUENCE IF NOT EXISTS posts_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE product_price_history_id_seq
+CREATE SEQUENCE IF NOT EXISTS product_price_history_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE products_id_seq
+CREATE SEQUENCE IF NOT EXISTS products_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
-CREATE SEQUENCE users_id_seq
+CREATE SEQUENCE IF NOT EXISTS users_id_seq
   START WITH 1
   MINVALUE 1
   MAXVALUE 9223372036854775807;
@@ -593,985 +593,985 @@ SET default_table_access_method = heap;
 
 -- Tables
 
-CREATE TABLE ar_internal_metadata (
-  key varchar NOT NULL,
-  value varchar,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (key)
+CREATE TABLE IF NOT EXISTS ar_internal_metadata (
+  "key" varchar NOT NULL,
+  "value" varchar,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("key")
 );
 
-CREATE TABLE better_structure_sql_schema_versions (
-  id bigint NOT NULL DEFAULT nextval('better_structure_sql_schema_versions_id_seq'::regclass),
-  content text NOT NULL,
-  zip_archive bytea,
-  pg_version varchar NOT NULL,
-  format_type varchar NOT NULL,
-  output_mode varchar NOT NULL,
-  content_size bigint NOT NULL,
-  line_count integer NOT NULL,
-  file_count integer,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS better_structure_sql_schema_versions (
+  "id" bigint NOT NULL DEFAULT nextval('better_structure_sql_schema_versions_id_seq'::regclass),
+  "content" text NOT NULL,
+  "zip_archive" bytea,
+  "pg_version" varchar NOT NULL,
+  "format_type" varchar NOT NULL,
+  "output_mode" varchar NOT NULL,
+  "content_size" bigint NOT NULL,
+  "line_count" integer NOT NULL,
+  "file_count" integer,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT format_type_check CHECK (((format_type)::text = ANY (ARRAY[('sql'::character varying)::text, ('rb'::character varying)::text]))),
   CONSTRAINT output_mode_check CHECK (((output_mode)::text = ANY (ARRAY[('single_file'::character varying)::text, ('multi_file'::character varying)::text])))
 );
 
-CREATE TABLE categories (
-  id bigint NOT NULL DEFAULT nextval('categories_id_seq'::regclass),
-  name varchar NOT NULL,
-  slug varchar NOT NULL,
-  description text,
-  parent_id integer,
-  position integer DEFAULT 0,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS categories (
+  "id" bigint NOT NULL DEFAULT nextval('categories_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "slug" varchar NOT NULL,
+  "description" text,
+  "parent_id" integer,
+  "position" integer DEFAULT 0,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id")
 );
 
-CREATE TABLE events (
-  id uuid NOT NULL DEFAULT uuid_generate_v8(),
-  user_id bigint,
-  event_type varchar NOT NULL,
-  event_name varchar NOT NULL,
-  event_data jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  user_agent varchar,
-  occurred_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS events (
+  "id" uuid NOT NULL DEFAULT uuid_generate_v8(),
+  "user_id" bigint,
+  "event_type" varchar NOT NULL,
+  "event_name" varchar NOT NULL,
+  "event_data" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "user_agent" varchar,
+  "occurred_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("id"),
   CONSTRAINT check_event_type_not_empty CHECK (((length((event_type)::text) > 0) AND (length((event_name)::text) > 0)))
 );
 
-CREATE TABLE large_table_000 (
-  id bigint NOT NULL DEFAULT nextval('large_table_000_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_000 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_000_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_000_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_001 (
-  id bigint NOT NULL DEFAULT nextval('large_table_001_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_001 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_001_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_001_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_002 (
-  id bigint NOT NULL DEFAULT nextval('large_table_002_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_002 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_002_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_002_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_003 (
-  id bigint NOT NULL DEFAULT nextval('large_table_003_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_003 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_003_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_003_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_004 (
-  id bigint NOT NULL DEFAULT nextval('large_table_004_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_004 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_004_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_004_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_005 (
-  id bigint NOT NULL DEFAULT nextval('large_table_005_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_005 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_005_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_005_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_006 (
-  id bigint NOT NULL DEFAULT nextval('large_table_006_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_006 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_006_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_006_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_007 (
-  id bigint NOT NULL DEFAULT nextval('large_table_007_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_007 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_007_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_007_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_008 (
-  id bigint NOT NULL DEFAULT nextval('large_table_008_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_008 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_008_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_008_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_009 (
-  id bigint NOT NULL DEFAULT nextval('large_table_009_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_009 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_009_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_009_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_010 (
-  id bigint NOT NULL DEFAULT nextval('large_table_010_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_010 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_010_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_010_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_011 (
-  id bigint NOT NULL DEFAULT nextval('large_table_011_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_011 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_011_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_011_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_012 (
-  id bigint NOT NULL DEFAULT nextval('large_table_012_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_012 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_012_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_012_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_013 (
-  id bigint NOT NULL DEFAULT nextval('large_table_013_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_013 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_013_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_013_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_014 (
-  id bigint NOT NULL DEFAULT nextval('large_table_014_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_014 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_014_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_014_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_015 (
-  id bigint NOT NULL DEFAULT nextval('large_table_015_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_015 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_015_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_015_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_016 (
-  id bigint NOT NULL DEFAULT nextval('large_table_016_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_016 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_016_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_016_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_017 (
-  id bigint NOT NULL DEFAULT nextval('large_table_017_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_017 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_017_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_017_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_018 (
-  id bigint NOT NULL DEFAULT nextval('large_table_018_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_018 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_018_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_018_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_019 (
-  id bigint NOT NULL DEFAULT nextval('large_table_019_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_019 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_019_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_019_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_020 (
-  id bigint NOT NULL DEFAULT nextval('large_table_020_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_020 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_020_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_020_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_021 (
-  id bigint NOT NULL DEFAULT nextval('large_table_021_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_021 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_021_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_021_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_022 (
-  id bigint NOT NULL DEFAULT nextval('large_table_022_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_022 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_022_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_022_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_023 (
-  id bigint NOT NULL DEFAULT nextval('large_table_023_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_023 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_023_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_023_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_024 (
-  id bigint NOT NULL DEFAULT nextval('large_table_024_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_024 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_024_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_024_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_025 (
-  id bigint NOT NULL DEFAULT nextval('large_table_025_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_025 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_025_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_025_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_026 (
-  id bigint NOT NULL DEFAULT nextval('large_table_026_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_026 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_026_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_026_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_027 (
-  id bigint NOT NULL DEFAULT nextval('large_table_027_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_027 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_027_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_027_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_028 (
-  id bigint NOT NULL DEFAULT nextval('large_table_028_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_028 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_028_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_028_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_029 (
-  id bigint NOT NULL DEFAULT nextval('large_table_029_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_029 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_029_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_029_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_030 (
-  id bigint NOT NULL DEFAULT nextval('large_table_030_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_030 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_030_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_030_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_031 (
-  id bigint NOT NULL DEFAULT nextval('large_table_031_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_031 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_031_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_031_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_032 (
-  id bigint NOT NULL DEFAULT nextval('large_table_032_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_032 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_032_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_032_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_033 (
-  id bigint NOT NULL DEFAULT nextval('large_table_033_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_033 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_033_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_033_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_034 (
-  id bigint NOT NULL DEFAULT nextval('large_table_034_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_034 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_034_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_034_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_035 (
-  id bigint NOT NULL DEFAULT nextval('large_table_035_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_035 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_035_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_035_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_036 (
-  id bigint NOT NULL DEFAULT nextval('large_table_036_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_036 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_036_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_036_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_037 (
-  id bigint NOT NULL DEFAULT nextval('large_table_037_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_037 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_037_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_037_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_038 (
-  id bigint NOT NULL DEFAULT nextval('large_table_038_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_038 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_038_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_038_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_039 (
-  id bigint NOT NULL DEFAULT nextval('large_table_039_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_039 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_039_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_039_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_040 (
-  id bigint NOT NULL DEFAULT nextval('large_table_040_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_040 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_040_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_040_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_041 (
-  id bigint NOT NULL DEFAULT nextval('large_table_041_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_041 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_041_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_041_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_042 (
-  id bigint NOT NULL DEFAULT nextval('large_table_042_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_042 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_042_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_042_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_043 (
-  id bigint NOT NULL DEFAULT nextval('large_table_043_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_043 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_043_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_043_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_044 (
-  id bigint NOT NULL DEFAULT nextval('large_table_044_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_044 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_044_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_044_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_045 (
-  id bigint NOT NULL DEFAULT nextval('large_table_045_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_045 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_045_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_045_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_046 (
-  id bigint NOT NULL DEFAULT nextval('large_table_046_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_046 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_046_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_046_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_047 (
-  id bigint NOT NULL DEFAULT nextval('large_table_047_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_047 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_047_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_047_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_048 (
-  id bigint NOT NULL DEFAULT nextval('large_table_048_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  related_id bigint,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_048 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_048_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  "related_id" bigint,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_048_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE large_table_049 (
-  id bigint NOT NULL DEFAULT nextval('large_table_049_id_seq'::regclass),
-  name varchar NOT NULL,
-  description text,
-  status integer DEFAULT 0,
-  price numeric(10,2),
-  active boolean DEFAULT true,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  ip_address inet,
-  external_id uuid,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS large_table_049 (
+  "id" bigint NOT NULL DEFAULT nextval('large_table_049_id_seq'::regclass),
+  "name" varchar NOT NULL,
+  "description" text,
+  "status" integer DEFAULT 0,
+  "price" numeric(10,2),
+  "active" boolean DEFAULT true,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "ip_address" inet,
+  "external_id" uuid,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT chk_large_table_049_status CHECK (((status >= 0) AND (status <= 10)))
 );
 
-CREATE TABLE order_items (
-  id bigint NOT NULL DEFAULT nextval('order_items_id_seq'::regclass),
-  order_id bigint NOT NULL,
-  product_id bigint NOT NULL,
-  quantity integer NOT NULL,
-  unit_price numeric(10,2) NOT NULL,
-  discount_amount numeric(10,2) DEFAULT 0.0,
-  subtotal numeric(10,2) NOT NULL,
-  product_snapshot jsonb DEFAULT '{}'::jsonb,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS order_items (
+  "id" bigint NOT NULL DEFAULT nextval('order_items_id_seq'::regclass),
+  "order_id" bigint NOT NULL,
+  "product_id" bigint NOT NULL,
+  "quantity" integer NOT NULL,
+  "unit_price" numeric(10,2) NOT NULL,
+  "discount_amount" numeric(10,2) DEFAULT 0.0,
+  "subtotal" numeric(10,2) NOT NULL,
+  "product_snapshot" jsonb DEFAULT '{}'::jsonb,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT check_item_amounts_positive CHECK (((unit_price > (0)::numeric) AND (discount_amount >= (0)::numeric) AND (subtotal >= (0)::numeric)))
 );
 
-CREATE TABLE orders (
-  id bigint NOT NULL DEFAULT nextval('orders_id_seq'::regclass),
-  user_id bigint NOT NULL,
-  order_number varchar NOT NULL,
-  status post_status NOT NULL DEFAULT 'draft'::post_status,
-  subtotal numeric(10,2) NOT NULL DEFAULT 0.0,
-  tax_amount numeric(10,2) NOT NULL DEFAULT 0.0,
-  shipping_cost numeric(10,2) NOT NULL DEFAULT 0.0,
-  total_amount numeric(10,2) NOT NULL DEFAULT 0.0,
-  shipping_address jsonb DEFAULT '{}'::jsonb,
-  billing_address jsonb DEFAULT '{}'::jsonb,
-  notes text,
-  confirmed_at timestamp,
-  shipped_at timestamp,
-  delivered_at timestamp,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS orders (
+  "id" bigint NOT NULL DEFAULT nextval('orders_id_seq'::regclass),
+  "user_id" bigint NOT NULL,
+  "order_number" varchar NOT NULL,
+  "status" post_status NOT NULL DEFAULT 'draft'::post_status,
+  "subtotal" numeric(10,2) NOT NULL DEFAULT 0.0,
+  "tax_amount" numeric(10,2) NOT NULL DEFAULT 0.0,
+  "shipping_cost" numeric(10,2) NOT NULL DEFAULT 0.0,
+  "total_amount" numeric(10,2) NOT NULL DEFAULT 0.0,
+  "shipping_address" jsonb DEFAULT '{}'::jsonb,
+  "billing_address" jsonb DEFAULT '{}'::jsonb,
+  "notes" text,
+  "confirmed_at" timestamp,
+  "shipped_at" timestamp,
+  "delivered_at" timestamp,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT check_order_amounts_positive CHECK (((subtotal >= (0)::numeric) AND (tax_amount >= (0)::numeric) AND (shipping_cost >= (0)::numeric) AND (total_amount >= (0)::numeric)))
 );
 
-CREATE TABLE posts (
-  id bigint NOT NULL DEFAULT nextval('posts_id_seq'::regclass),
-  user_id bigint NOT NULL,
-  title varchar NOT NULL,
-  body text,
-  published_at timestamp,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS posts (
+  "id" bigint NOT NULL DEFAULT nextval('posts_id_seq'::regclass),
+  "user_id" bigint NOT NULL,
+  "title" varchar NOT NULL,
+  "body" text,
+  "published_at" timestamp,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id")
 );
 
-CREATE TABLE product_price_history (
-  id bigint NOT NULL DEFAULT nextval('product_price_history_id_seq'::regclass),
-  product_id bigint NOT NULL,
-  old_price numeric(10,2),
-  new_price numeric(10,2) NOT NULL,
-  changed_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS product_price_history (
+  "id" bigint NOT NULL DEFAULT nextval('product_price_history_id_seq'::regclass),
+  "product_id" bigint NOT NULL,
+  "old_price" numeric(10,2),
+  "new_price" numeric(10,2) NOT NULL,
+  "changed_at" timestamp NOT NULL,
+  PRIMARY KEY ("id")
 );
 
-CREATE TABLE products (
-  id bigint NOT NULL DEFAULT nextval('products_id_seq'::regclass),
-  category_id bigint NOT NULL,
-  name varchar NOT NULL,
-  sku varchar NOT NULL,
-  description text,
-  price numeric(10,2) NOT NULL,
-  discount_percentage numeric(5,2),
-  stock_quantity integer NOT NULL DEFAULT 0,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  specifications jsonb DEFAULT '{}'::jsonb,
-  tags varchar[] DEFAULT '{}'::character varying[],
-  is_active boolean DEFAULT true,
-  is_featured boolean DEFAULT false,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id),
+CREATE TABLE IF NOT EXISTS products (
+  "id" bigint NOT NULL DEFAULT nextval('products_id_seq'::regclass),
+  "category_id" bigint NOT NULL,
+  "name" varchar NOT NULL,
+  "sku" varchar NOT NULL,
+  "description" text,
+  "price" numeric(10,2) NOT NULL,
+  "discount_percentage" numeric(5,2),
+  "stock_quantity" integer NOT NULL DEFAULT 0,
+  "metadata" jsonb DEFAULT '{}'::jsonb,
+  "specifications" jsonb DEFAULT '{}'::jsonb,
+  "tags" varchar[] DEFAULT '{}'::character varying[],
+  "is_active" boolean DEFAULT true,
+  "is_featured" boolean DEFAULT false,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id"),
   CONSTRAINT check_discount_range CHECK (((discount_percentage >= (0)::numeric) AND (discount_percentage <= (100)::numeric))),
   CONSTRAINT check_price_positive CHECK ((price > (0)::numeric)),
   CONSTRAINT check_stock_non_negative CHECK ((stock_quantity >= 0))
 );
 
-CREATE TABLE schema_migrations (
-  version varchar NOT NULL,
-  PRIMARY KEY (version)
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  "version" varchar NOT NULL,
+  PRIMARY KEY ("version")
 );
 
-CREATE TABLE sessions (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  user_id bigint NOT NULL,
-  token varchar NOT NULL,
-  ip_address inet,
-  user_agent varchar,
-  expires_at timestamp NOT NULL,
-  last_accessed_at timestamp,
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS sessions (
+  "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+  "user_id" bigint NOT NULL,
+  "token" varchar NOT NULL,
+  "ip_address" inet,
+  "user_agent" varchar,
+  "expires_at" timestamp NOT NULL,
+  "last_accessed_at" timestamp,
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id")
 );
 
-CREATE TABLE users (
-  id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
-  email varchar NOT NULL,
-  encrypted_password varchar,
-  uuid uuid DEFAULT uuid_generate_v4(),
-  created_at timestamp NOT NULL,
-  updated_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS users (
+  "id" bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  "email" varchar NOT NULL,
+  "encrypted_password" varchar,
+  "uuid" uuid DEFAULT uuid_generate_v4(),
+  "created_at" timestamp NOT NULL,
+  "updated_at" timestamp NOT NULL,
+  PRIMARY KEY ("id")
 );
 
 -- Indexes
@@ -1813,7 +1813,7 @@ ALTER TABLE sessions ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) RE
 
 -- Views
 
-CREATE VIEW active_products_view AS
+CREATE OR REPLACE VIEW active_products_view AS
 SELECT p.id,
     p.name,
     p.sku,
@@ -1826,7 +1826,7 @@ SELECT p.id,
   WHERE (p.is_active = true)
   ORDER BY p.created_at DESC;
 
-CREATE VIEW large_view_00 AS
+CREATE OR REPLACE VIEW large_view_00 AS
 SELECT large_table_000.id,
     large_table_000.name,
     large_table_000.status,
@@ -1835,7 +1835,7 @@ SELECT large_table_000.id,
    FROM large_table_000
   WHERE (large_table_000.active = true);
 
-CREATE VIEW large_view_01 AS
+CREATE OR REPLACE VIEW large_view_01 AS
 SELECT large_table_002.id,
     large_table_002.name,
     large_table_002.status,
@@ -1844,7 +1844,7 @@ SELECT large_table_002.id,
    FROM large_table_002
   WHERE (large_table_002.active = true);
 
-CREATE VIEW large_view_02 AS
+CREATE OR REPLACE VIEW large_view_02 AS
 SELECT large_table_004.id,
     large_table_004.name,
     large_table_004.status,
@@ -1853,7 +1853,7 @@ SELECT large_table_004.id,
    FROM large_table_004
   WHERE (large_table_004.active = true);
 
-CREATE VIEW large_view_03 AS
+CREATE OR REPLACE VIEW large_view_03 AS
 SELECT large_table_006.id,
     large_table_006.name,
     large_table_006.status,
@@ -1862,7 +1862,7 @@ SELECT large_table_006.id,
    FROM large_table_006
   WHERE (large_table_006.active = true);
 
-CREATE VIEW large_view_04 AS
+CREATE OR REPLACE VIEW large_view_04 AS
 SELECT large_table_008.id,
     large_table_008.name,
     large_table_008.status,
@@ -1871,7 +1871,7 @@ SELECT large_table_008.id,
    FROM large_table_008
   WHERE (large_table_008.active = true);
 
-CREATE VIEW large_view_05 AS
+CREATE OR REPLACE VIEW large_view_05 AS
 SELECT large_table_010.id,
     large_table_010.name,
     large_table_010.status,
@@ -1880,7 +1880,7 @@ SELECT large_table_010.id,
    FROM large_table_010
   WHERE (large_table_010.active = true);
 
-CREATE VIEW large_view_06 AS
+CREATE OR REPLACE VIEW large_view_06 AS
 SELECT large_table_012.id,
     large_table_012.name,
     large_table_012.status,
@@ -1889,7 +1889,7 @@ SELECT large_table_012.id,
    FROM large_table_012
   WHERE (large_table_012.active = true);
 
-CREATE VIEW large_view_07 AS
+CREATE OR REPLACE VIEW large_view_07 AS
 SELECT large_table_014.id,
     large_table_014.name,
     large_table_014.status,
@@ -1898,7 +1898,7 @@ SELECT large_table_014.id,
    FROM large_table_014
   WHERE (large_table_014.active = true);
 
-CREATE VIEW large_view_08 AS
+CREATE OR REPLACE VIEW large_view_08 AS
 SELECT large_table_016.id,
     large_table_016.name,
     large_table_016.status,
@@ -1907,7 +1907,7 @@ SELECT large_table_016.id,
    FROM large_table_016
   WHERE (large_table_016.active = true);
 
-CREATE VIEW large_view_09 AS
+CREATE OR REPLACE VIEW large_view_09 AS
 SELECT large_table_018.id,
     large_table_018.name,
     large_table_018.status,
@@ -1916,7 +1916,7 @@ SELECT large_table_018.id,
    FROM large_table_018
   WHERE (large_table_018.active = true);
 
-CREATE VIEW large_view_10 AS
+CREATE OR REPLACE VIEW large_view_10 AS
 SELECT large_table_020.id,
     large_table_020.name,
     large_table_020.status,
@@ -1925,7 +1925,7 @@ SELECT large_table_020.id,
    FROM large_table_020
   WHERE (large_table_020.active = true);
 
-CREATE VIEW large_view_11 AS
+CREATE OR REPLACE VIEW large_view_11 AS
 SELECT large_table_022.id,
     large_table_022.name,
     large_table_022.status,
@@ -1934,7 +1934,7 @@ SELECT large_table_022.id,
    FROM large_table_022
   WHERE (large_table_022.active = true);
 
-CREATE VIEW large_view_12 AS
+CREATE OR REPLACE VIEW large_view_12 AS
 SELECT large_table_024.id,
     large_table_024.name,
     large_table_024.status,
@@ -1943,7 +1943,7 @@ SELECT large_table_024.id,
    FROM large_table_024
   WHERE (large_table_024.active = true);
 
-CREATE VIEW large_view_13 AS
+CREATE OR REPLACE VIEW large_view_13 AS
 SELECT large_table_026.id,
     large_table_026.name,
     large_table_026.status,
@@ -1952,7 +1952,7 @@ SELECT large_table_026.id,
    FROM large_table_026
   WHERE (large_table_026.active = true);
 
-CREATE VIEW large_view_14 AS
+CREATE OR REPLACE VIEW large_view_14 AS
 SELECT large_table_028.id,
     large_table_028.name,
     large_table_028.status,
@@ -1961,7 +1961,7 @@ SELECT large_table_028.id,
    FROM large_table_028
   WHERE (large_table_028.active = true);
 
-CREATE VIEW large_view_15 AS
+CREATE OR REPLACE VIEW large_view_15 AS
 SELECT large_table_030.id,
     large_table_030.name,
     large_table_030.status,
@@ -1970,7 +1970,7 @@ SELECT large_table_030.id,
    FROM large_table_030
   WHERE (large_table_030.active = true);
 
-CREATE VIEW large_view_16 AS
+CREATE OR REPLACE VIEW large_view_16 AS
 SELECT large_table_032.id,
     large_table_032.name,
     large_table_032.status,
@@ -1979,7 +1979,7 @@ SELECT large_table_032.id,
    FROM large_table_032
   WHERE (large_table_032.active = true);
 
-CREATE VIEW large_view_17 AS
+CREATE OR REPLACE VIEW large_view_17 AS
 SELECT large_table_034.id,
     large_table_034.name,
     large_table_034.status,
@@ -1988,7 +1988,7 @@ SELECT large_table_034.id,
    FROM large_table_034
   WHERE (large_table_034.active = true);
 
-CREATE VIEW large_view_18 AS
+CREATE OR REPLACE VIEW large_view_18 AS
 SELECT large_table_036.id,
     large_table_036.name,
     large_table_036.status,
@@ -1997,7 +1997,7 @@ SELECT large_table_036.id,
    FROM large_table_036
   WHERE (large_table_036.active = true);
 
-CREATE VIEW large_view_19 AS
+CREATE OR REPLACE VIEW large_view_19 AS
 SELECT large_table_038.id,
     large_table_038.name,
     large_table_038.status,
@@ -2006,7 +2006,7 @@ SELECT large_table_038.id,
    FROM large_table_038
   WHERE (large_table_038.active = true);
 
-CREATE VIEW user_post_stats AS
+CREATE OR REPLACE VIEW user_post_stats AS
 SELECT u.id AS user_id,
     u.email,
     count(p.id) AS total_posts,
@@ -2018,7 +2018,7 @@ SELECT u.id AS user_id,
 
 -- Materialized Views
 
-CREATE MATERIALIZED VIEW product_category_summary AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS product_category_summary AS
 SELECT c.id AS category_id,
     c.name AS category_name,
     count(p.id) AS product_count,

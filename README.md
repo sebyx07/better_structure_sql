@@ -177,6 +177,7 @@ Interactive documentation with tutorials, database-specific guides, and real-wor
 - [Configuration](docs/configuration.md) - All configuration options
 - [Usage](docs/usage.md) - Rake tasks and examples
 - [Schema Versions](docs/schema_versions.md) - Version storage feature
+- [Troubleshooting](docs/usage.md#troubleshooting) - Common issues and solutions
 - [Multi-File Schema Output](docs/features/multi-file-schema-output/README.md) - Handle massive schemas
 - [Web UI Engine](docs/features/dev-environment-docker-web-ui/README.md) - Browse versions via web interface
 - [Docker Development](DOCKER.md) - Complete Docker environment guide
@@ -269,8 +270,10 @@ BetterStructureSql.configure do |config|
   # Single file output (default)
   config.output_path = 'db/structure.sql'
 
-  # Replace default rake db:schema:dump
-  config.replace_default_dump = true
+  # Replace default rake db:schema:dump (opt-in, default: false)
+  # When false, use explicit tasks: rails db:schema:dump_better
+  config.replace_default_dump = false
+  config.replace_default_load = false
 
   # Schema version storage (optional)
   config.enable_schema_versions = true

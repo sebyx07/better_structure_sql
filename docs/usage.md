@@ -317,6 +317,229 @@ GRANT SELECT ON ALL TABLES IN SCHEMA information_schema TO your_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO your_user;
 ```
 
+### Manually Adding Schema Versions in Production
+
+If you have an existing `schema.rb` or `structure.sql` in production but no stored schema versions, you can manually add them to the database.
+
+#### Scenario: Production Database Without Version History
+
+You have:
+- Production database running with current schema
+- No stored schema versions (table exists but empty)
+- Want to capture current schema as baseline
+
+#### Solution 1: Store Current Production Schema
+
+From production environment:
+
+```bash
+# Generate and store current schema in one step
+RAILS_ENV=production rails db:schema:dump_better
+RAILS_ENV=production rails db:schema:store
+```
+
+Or programmatically in Rails console:
+
+```ruby
+# Production Rails console
+BetterStructureSql::Dumper.dump(output_path: 'db/structure.sql')
+BetterStructureSql::SchemaVersions.store_current
+```
+
+#### Solution 2: Import Existing Schema File
+
+If you have an existing `schema.rb` or `structure.sql` that matches production:
+
+```ruby
+# Production Rails console
+content = File.read(Rails.root.join('db', 'structure.sql'))
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+
+BetterStructureSql::SchemaVersions.store(
+  content: content,
+  format_type: 'sql',
+  pg_version: db_version
+)
+```
+
+For `schema.rb`:
+
+```ruby
+# Production Rails console
+content = File.read(Rails.root.join('db', 'schema.rb'))
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+
+BetterStructureSql::SchemaVersions.store(
+  content: content,
+  format_type: 'rb',
+  pg_version: db_version
+)
+```
+
+#### Solution 3: Copy from Development to Production
+
+If development has schema versions but production doesn't:
+
+```ruby
+# Development: Export latest version
+dev_version = BetterStructureSql::SchemaVersions.latest
+File.write('tmp/schema_export.sql', dev_version.content)
+```
+
+```bash
+# Copy to production server
+scp tmp/schema_export.sql production-server:/tmp/
+```
+
+```ruby
+# Production Rails console
+content = File.read('/tmp/schema_export.sql')
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+
+BetterStructureSql::SchemaVersions.store(
+  content: content,
+  format_type: 'sql',
+  pg_version: db_version
+)
+```
+
+#### Solution 4: Backfill Historical Versions from Git
+
+If you have historical schema files in git:
+
+```bash
+# Extract schema from specific git commits
+git show main~10:db/structure.sql > /tmp/schema_v1.sql
+git show main~5:db/structure.sql > /tmp/schema_v2.sql
+git show main:db/structure.sql > /tmp/schema_v3.sql
+```
+
+```ruby
+# Production Rails console
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+
+# Store historical versions (oldest first)
+['/tmp/schema_v1.sql', '/tmp/schema_v2.sql', '/tmp/schema_v3.sql'].each do |file|
+  content = File.read(file)
+  BetterStructureSql::SchemaVersions.store(
+    content: content,
+    format_type: 'sql',
+    pg_version: db_version
+  )
+  sleep 1  # Ensure different timestamps
+end
+```
+
+#### Solution 5: Multi-File Schema Import
+
+For multi-file schema output stored in git:
+
+```bash
+# Extract multi-file schema directory from git commit
+git archive --format=tar main:db/schema | tar -x -C /tmp/schema_export
+```
+
+```ruby
+# Production Rails console
+require 'zip'
+
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+schema_dir = '/tmp/schema_export'
+
+# Create ZIP from directory
+zip_buffer = BetterStructureSql::ZipGenerator.create_from_directory(schema_dir)
+
+BetterStructureSql::SchemaVersions.store(
+  zip_archive: zip_buffer.string,
+  output_mode: 'multi_file',
+  pg_version: db_version
+)
+```
+
+#### Verification
+
+After adding versions, verify they were stored correctly:
+
+```ruby
+# Check count
+BetterStructureSql::SchemaVersions.count
+# => 3
+
+# List versions
+BetterStructureSql::SchemaVersions.all_versions.each do |v|
+  puts "ID: #{v.id}, Created: #{v.created_at}, Size: #{v.formatted_size}"
+end
+
+# Verify latest version content
+latest = BetterStructureSql::SchemaVersions.latest
+puts latest.content.lines.first(10)
+```
+
+#### Common Issues
+
+**Issue**: "Table doesn't exist error"
+```bash
+# Solution: Run migration to create table
+RAILS_ENV=production rails db:migrate
+```
+
+**Issue**: "Permission denied when reading file"
+```bash
+# Solution: Ensure Rails process has read access
+chmod 644 db/structure.sql
+```
+
+**Issue**: "Database version mismatch"
+```ruby
+# Solution: Get correct database version
+db_version = case ActiveRecord::Base.connection.adapter_name
+when 'PostgreSQL'
+  ActiveRecord::Base.connection.select_value('SHOW server_version')
+when 'Mysql2'
+  ActiveRecord::Base.connection.select_value('SELECT VERSION()')
+when 'SQLite'
+  ActiveRecord::Base.connection.select_value('SELECT sqlite_version()')
+end
+
+# Use correct version when storing
+BetterStructureSql::SchemaVersions.store(
+  content: content,
+  format_type: 'sql',
+  pg_version: db_version
+)
+```
+
+#### Automated Production Baseline Script
+
+Create a one-time setup script:
+
+```ruby
+# lib/tasks/schema_baseline.rake
+namespace :db do
+  namespace :schema do
+    desc 'Create baseline schema version from current database'
+    task baseline: :environment do
+      puts "Creating baseline schema version..."
+
+      # Dump current schema
+      BetterStructureSql::Dumper.dump(output_path: 'db/structure.sql')
+
+      # Store as version
+      BetterStructureSql::SchemaVersions.store_current
+
+      latest = BetterStructureSql::SchemaVersions.latest
+      puts "✓ Baseline created: ID #{latest.id}, Size #{latest.formatted_size}"
+      puts "Total versions: #{BetterStructureSql::SchemaVersions.count}"
+    end
+  end
+end
+```
+
+Usage:
+```bash
+RAILS_ENV=production rails db:schema:baseline
+```
+
 ## Next Steps
 
 - [Schema Versions](schema_versions.md)

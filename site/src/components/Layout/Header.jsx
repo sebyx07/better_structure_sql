@@ -60,6 +60,15 @@ function Header() {
                     Configuration
                   </Link>
                 </li>
+                <li>
+                  <hr className="dropdown-divider" />
+                </li>
+                <li>
+                  <Link className="dropdown-item" to="/troubleshooting">
+                    <i className="bi bi-tools me-2" />
+                    Troubleshooting
+                  </Link>
+                </li>
               </ul>
             </li>
             <li className="nav-item dropdown">

@@ -210,7 +210,7 @@ module BetterStructureSql
       # Schema migrations - create batch INSERT statements
       # Each batch INSERT is a complete SQL statement, chunked into groups
       # SQLite doesn't include schema_migrations in structure.sql (Rails manages it separately)
-      if !adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter' && table_exists?('schema_migrations')
+      if adapter.class.name != 'BetterStructureSql::Adapters::SqliteAdapter' && table_exists?('schema_migrations')
         versions = fetch_schema_migration_versions
         unless versions.empty?
           # Chunk versions into groups (each group will be one batch INSERT)
