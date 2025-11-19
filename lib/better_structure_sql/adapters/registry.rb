@@ -41,8 +41,9 @@ module BetterStructureSql
             validate_mysql_gem!
             MysqlAdapter.new(connection)
           when :sqlite
-            # Phase 2: SQLite not yet supported (coming in Phase 3)
-            raise Error, 'SQLite adapter not yet implemented (coming in Phase 3)'
+            require_relative 'sqlite_adapter'
+            validate_sqlite_gem!
+            SqliteAdapter.new(connection)
           else
             raise Error, "Unknown database adapter: #{adapter_name}"
           end
@@ -99,6 +100,14 @@ module BetterStructureSql
           require 'mysql2'
         rescue LoadError
           raise Error, 'MySQL adapter requires the mysql2 gem. Add to your Gemfile: gem "mysql2"'
+        end
+
+        # Validate sqlite3 gem is available
+        # @raise [Error] If sqlite3 gem is not installed
+        def validate_sqlite_gem!
+          require 'sqlite3'
+        rescue LoadError
+          raise Error, 'SQLite adapter requires the sqlite3 gem. Add to your Gemfile: gem "sqlite3"'
         end
       end
     end
