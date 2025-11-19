@@ -99,7 +99,14 @@ module BetterStructureSql
         sql_path = Rails.root.join(config.output_path)
         rb_path = Rails.root.join('db/schema.rb')
 
-        if File.exist?(sql_path)
+        # Respect Rails schema_format configuration
+        schema_format = Rails.application.config.active_record.schema_format
+
+        if schema_format == :ruby && File.exist?(rb_path)
+          ['rb', File.read(rb_path)]
+        elsif schema_format == :sql && File.exist?(sql_path)
+          ['sql', File.read(sql_path)]
+        elsif File.exist?(sql_path)
           ['sql', File.read(sql_path)]
         elsif File.exist?(rb_path)
           ['rb', File.read(rb_path)]

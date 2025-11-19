@@ -44,6 +44,10 @@ bower.json
 !/log/.keep
 !/tmp/.keep
 
+# Ignore integration app logs and schema files
+/integration/log/*
+/integration/db/schema.rb
+
 # Ignore pidfiles, but keep the directory.
 /tmp/pids/*
 !/tmp/pids/.keep

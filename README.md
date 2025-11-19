@@ -170,6 +170,29 @@ end
 - PostgreSQL 12+
 - Ruby 2.7+
 
+## Migration Guides
+
+### Migrating from schema.rb to structure.sql
+
+If you're currently using Rails' `schema.rb` (Ruby format) and want to switch to `structure.sql` (SQL format) with BetterStructureSql, we have a comprehensive guide:
+
+**[📖 Migration Guide: From schema.rb to structure.sql](docs/migration-guides/from-schema-rb-to-structure-sql.md)**
+
+This guide covers:
+- Why migrate from schema.rb to structure.sql
+- Step-by-step migration process
+- Configuration for both formats
+- Switching between formats dynamically
+- Comparing SQL vs Ruby schema versions
+- Rollback procedures
+- Best practices and troubleshooting
+
+BetterStructureSql supports **both** `schema.rb` and `structure.sql` formats, allowing you to:
+- Store versions of either format
+- Switch between formats using `SCHEMA_FORMAT` environment variable
+- Compare different formats in the web UI
+- Migrate gradually from Ruby to SQL format
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub.

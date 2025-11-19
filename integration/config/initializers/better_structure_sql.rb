@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 BetterStructureSql.configure do |config|
-  # Output path for structure dump
-  config.output_path = Rails.root.join('db/structure.sql')
+  # Output path for structure dump - respect Rails schema_format
+  schema_file = Rails.application.config.active_record.schema_format == :ruby ? 'db/schema.rb' : 'db/structure.sql'
+  config.output_path = Rails.root.join(schema_file)
 
   # Schema search path
   config.search_path = 'public'
