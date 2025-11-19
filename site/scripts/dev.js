@@ -6,9 +6,21 @@ const PORT = 3000;
 // Ensure public/dist exists
 mkdirSync('public/dist', { recursive: true });
 
-// Copy index.html to public for dev server
-const html = readFileSync('public/index.html', 'utf8');
-writeFileSync('public/index-dev.html', html.replace('%PUBLIC_URL%', ''));
+// Read template and inject script tags for dev
+const html = readFileSync('public/index.template.html', 'utf8');
+const htmlWithScripts = html
+  .replace('%PUBLIC_URL%', '')
+  .replace(
+    '</head>',
+    '  <link rel="stylesheet" href="/dist/main.css">\n  </head>'
+  )
+  .replace(
+    '</body>',
+    '  <script type="module" src="/dist/main.js"></script>\n  </body>'
+  );
+
+// Write as index.html so localhost:3000 works
+writeFileSync('public/index.html', htmlWithScripts);
 
 const ctx = await esbuild.context({
   entryPoints: ['src/main.jsx'],
@@ -17,6 +29,7 @@ const ctx = await esbuild.context({
   format: 'esm',
   splitting: true,
   sourcemap: true,
+  jsx: 'automatic',
   loader: {
     '.js': 'jsx',
     '.jsx': 'jsx',
@@ -40,7 +53,6 @@ await ctx.watch();
 const { host, port } = await ctx.serve({
   servedir: 'public',
   port: PORT,
-  fallback: 'public/index-dev.html',
 });
 
 console.log(`🚀 Dev server running at http://${host}:${port}`);

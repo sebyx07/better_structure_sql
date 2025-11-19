@@ -15,6 +15,7 @@ esbuild
     outdir: 'dist',
     publicPath: '/better_structure_sql',
     metafile: true,
+    jsx: 'automatic',
     loader: {
       '.js': 'jsx',
       '.jsx': 'jsx',
@@ -34,7 +35,7 @@ esbuild
           {
             entryPoints: ['src/main.jsx'],
             filename: 'index.html',
-            htmlTemplate: readFileSync('public/index.html', 'utf8'),
+            htmlTemplate: readFileSync('public/index.template.html', 'utf8'),
           },
         ],
       }),

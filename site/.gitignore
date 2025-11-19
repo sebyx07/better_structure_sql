@@ -5,7 +5,7 @@ package-lock.json
 # Build output
 dist/
 public/dist/
-public/index-dev.html
+public/index.html
 
 # Testing
 coverage/
