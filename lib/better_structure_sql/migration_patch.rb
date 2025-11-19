@@ -105,7 +105,22 @@ module BetterStructureSql
       end
 
       def pending_migrations?
-        ActiveRecord::Base.connection.migration_context.needs_migration?
+        # Use ActiveRecord::Base.connection_pool.migration_context for compatibility
+        # Different Rails versions have migration_context in different places
+        if ActiveRecord::Base.connection_pool.respond_to?(:migration_context)
+          ActiveRecord::Base.connection_pool.migration_context.needs_migration?
+        elsif ActiveRecord::Base.connection.respond_to?(:migration_context)
+          ActiveRecord::Base.connection.migration_context.needs_migration?
+        elsif defined?(ActiveRecord::MigrationContext)
+          # Fallback: construct migration context manually
+          paths = ActiveRecord::Tasks::DatabaseTasks.migrations_paths
+          schema_migration = ActiveRecord::Base.connection.schema_migration
+          internal_metadata = ActiveRecord::Base.connection.internal_metadata
+          ActiveRecord::MigrationContext.new(paths, schema_migration, internal_metadata).needs_migration?
+        else
+          # Very old Rails, assume migrations are pending to be safe
+          true
+        end
       end
 
       def purge_current_test_schema_with_directory_support
