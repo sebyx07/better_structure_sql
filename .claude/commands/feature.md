@@ -1,7 +1,7 @@
 ---
 description: Build feature with documentation-first approach
 argument-hint: [feature-name]
-allowed-tools: Write, Read, Glob, Grep, Task
+allowed-tools: Write, Read, Glob, Grep, Task, Bash
 ---
 
 Build feature with documentation-first workflow.
