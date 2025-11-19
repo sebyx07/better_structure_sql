@@ -24,6 +24,11 @@ const ctx = await esbuild.context({
     '.svg': 'file',
     '.png': 'file',
     '.jpg': 'file',
+    '.ico': 'file',
+    '.woff': 'file',
+    '.woff2': 'file',
+    '.ttf': 'file',
+    '.eot': 'file',
   },
   define: {
     'process.env.NODE_ENV': '"development"',
