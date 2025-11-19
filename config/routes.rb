@@ -4,6 +4,7 @@ BetterStructureSql::Engine.routes.draw do
   resources :schema_versions, only: %i[index show] do
     member do
       get :raw
+      get :download
     end
   end
 

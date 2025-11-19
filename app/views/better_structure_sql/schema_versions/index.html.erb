@@ -28,8 +28,10 @@
               <tr>
                 <th scope="col" class="text-center" style="width: 80px;">ID</th>
                 <th scope="col" style="width: 120px;">Format</th>
+                <th scope="col" style="width: 150px;">Mode</th>
                 <th scope="col" style="width: 180px;">PostgreSQL</th>
                 <th scope="col">Created At</th>
+                <th scope="col" style="width: 100px;">Files</th>
                 <th scope="col" style="width: 120px;">Size</th>
                 <th scope="col" class="text-end" style="width: 200px;">Actions</th>
               </tr>
@@ -41,10 +43,10 @@
                     #<%= version.id %>
                   </td>
                   <td>
-                    <span class="badge badge-format <%= version.format_type == 'sql' ? 'bg-primary' : 'bg-success' %>">
-                      <i class="bi <%= version.format_type == 'sql' ? 'bi-filetype-sql' : 'bi-filetype-rb' %>"></i>
-                      <%= version.format_type.upcase %>
-                    </span>
+                    <%= format_type_badge(version.format_type) %>
+                  </td>
+                  <td>
+                    <%= format_output_mode(version.output_mode) %>
                   </td>
                   <td>
                     <span class="text-muted">
@@ -60,6 +62,15 @@
                     </small>
                   </td>
                   <td>
+                    <% if version.file_count %>
+                      <span class="badge bg-light text-dark">
+                        <%= version.file_count %> files
+                      </span>
+                    <% else %>
+                      <span class="text-muted">1 file</span>
+                    <% end %>
+                  </td>
+                  <td>
                     <span class="badge bg-secondary">
                       <%= version.formatted_size %>
                     </span>
@@ -72,12 +83,12 @@
                         <i class="bi bi-eye"></i>
                         View
                       </a>
-                      <a href="<%= better_structure_sql.raw_schema_version_path(version) %>"
-                         class="btn btn-outline-secondary"
-                         title="Download raw text file"
+                      <a href="<%= better_structure_sql.download_schema_version_path(version) %>"
+                         class="btn btn-outline-success"
+                         title="Download"
                          data-turbo="false">
                         <i class="bi bi-download"></i>
-                        Raw
+                        Download
                       </a>
                     </div>
                   </td>

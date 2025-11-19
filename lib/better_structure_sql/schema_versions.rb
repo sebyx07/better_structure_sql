@@ -145,7 +145,8 @@ module BetterStructureSql
         content_parts << File.read(header_path) if File.exist?(header_path)
 
         # Read numbered directories in order (01_ through 10_)
-        Dir.glob(base_path.join('{01..10}_*')).sort.each do |dir|
+        # Use pattern that works with Dir.glob
+        Dir.glob(File.join(base_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
           Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
             content_parts << File.read(file)
           end

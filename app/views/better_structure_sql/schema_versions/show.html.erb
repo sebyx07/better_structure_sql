@@ -29,9 +29,16 @@
               Format
             </h6>
             <p class="mb-0">
-              <span class="badge <%= @schema_version.format_type == 'sql' ? 'bg-primary' : 'bg-success' %>">
-                <%= @schema_version.format_type.upcase %>
-              </span>
+              <%= format_type_badge(@schema_version.format_type) %>
+            </p>
+          </div>
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-folder"></i>
+              Output Mode
+            </h6>
+            <p class="mb-0">
+              <%= format_output_mode(@schema_version.output_mode) %>
             </p>
           </div>
           <div class="col-md-3">
@@ -41,6 +48,9 @@
             </h6>
             <p class="mb-0"><%= @schema_version.pg_version %></p>
           </div>
+        </div>
+
+        <div class="row mt-3">
           <div class="col-md-3">
             <h6 class="text-muted mb-1">
               <i class="bi bi-calendar-event"></i>
@@ -53,9 +63,6 @@
               </small>
             </p>
           </div>
-        </div>
-
-        <div class="row mt-3">
           <div class="col-md-3">
             <h6 class="text-muted mb-1">
               <i class="bi bi-file-earmark-bar-graph"></i>
@@ -65,12 +72,25 @@
               <span class="badge bg-secondary"><%= @schema_version.formatted_size %></span>
             </p>
           </div>
-          <div class="col-md-9">
+          <div class="col-md-3">
             <h6 class="text-muted mb-1">
               <i class="bi bi-info-circle"></i>
               Lines
             </h6>
-            <p class="mb-0"><%= @schema_version.line_count %> lines</p>
+            <p class="mb-0"><%= number_with_delimiter(@schema_version.line_count) %> lines</p>
+          </div>
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-files"></i>
+              Files
+            </h6>
+            <p class="mb-0">
+              <% if @schema_version.file_count %>
+                <span class="badge bg-light text-dark"><%= @schema_version.file_count %> files</span>
+              <% else %>
+                <span class="text-muted">1 file</span>
+              <% end %>
+            </p>
           </div>
         </div>
       </div>
@@ -78,19 +98,41 @@
 
     <!-- Actions -->
     <div class="mb-3">
-      <a href="<%= better_structure_sql.raw_schema_version_path(@schema_version) %>"
-         class="btn btn-primary"
+      <a href="<%= better_structure_sql.download_schema_version_path(@schema_version) %>"
+         class="btn btn-primary btn-lg"
          data-turbo="false">
-        <i class="bi bi-download"></i>
-        Download Raw File
+        <% if @schema_version.multi_file? %>
+          <i class="bi bi-file-zip"></i>
+          Download ZIP Archive
+        <% else %>
+          <i class="bi bi-download"></i>
+          Download File
+        <% end %>
       </a>
       <% if @schema_version.respond_to?(:content) && @schema_version.content.present? %>
-        <button type="button" class="btn btn-outline-secondary" onclick="copyToClipboard()">
+        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="copyToClipboard()">
           <i class="bi bi-clipboard"></i>
           Copy to Clipboard
         </button>
       <% end %>
     </div>
+
+    <!-- Multi-file Info -->
+    <% if @schema_version.multi_file? && @manifest %>
+      <div class="alert alert-info mb-4">
+        <h6 class="alert-heading">
+          <i class="bi bi-info-circle"></i>
+          Multi-File Schema
+        </h6>
+        <p class="mb-2">This schema was generated in multi-file format with <%= @schema_version.file_count %> files across organized directories.</p>
+        <% if @manifest['directories'] %>
+          <p class="mb-0 small">
+            <strong>Directories:</strong>
+            <%= @manifest['directories'].keys.sort.join(', ') %>
+          </p>
+        <% end %>
+      </div>
+    <% end %>
 
     <!-- Schema Content -->
     <div class="card shadow-sm">
@@ -98,6 +140,9 @@
         <h5 class="card-title mb-0">
           <i class="bi bi-code-square"></i>
           Schema Content
+          <% if @schema_version.multi_file? %>
+            <small class="text-muted">(combined from all files)</small>
+          <% end %>
         </h5>
       </div>
       <div class="card-body p-0">
@@ -109,7 +154,7 @@
             <strong>File too large to display</strong>
             <p class="mb-0 mt-2">
               This schema file is too large to display in the browser (limit: 200 KB).
-              Please use the "Download Raw File" button above to download and view it locally.
+              Please use the "Download" button above to download and view it locally.
             </p>
           </div>
         <% end %>
