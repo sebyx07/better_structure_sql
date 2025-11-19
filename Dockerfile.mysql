@@ -6,7 +6,9 @@ RUN apk add --no-cache \
     mysql-dev \
     mysql-client \
     nodejs \
-    tzdata
+    tzdata \
+    git \
+    yaml-dev
 
 # Set working directory
 WORKDIR /app
@@ -16,7 +18,6 @@ COPY better_structure_sql.gemspec /app/
 COPY lib/better_structure_sql/version.rb /app/lib/better_structure_sql/
 COPY Gemfile /app/
 COPY integration_mysql/Gemfile /app/integration_mysql/
-COPY integration_mysql/Gemfile.lock /app/integration_mysql/ 2>/dev/null || true
 
 # Install gems
 WORKDIR /app/integration_mysql

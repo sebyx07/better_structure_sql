@@ -5,12 +5,36 @@ module BetterStructureSql
     class TriggerGenerator < Base
       def generate(trigger)
         # PostgreSQL's pg_get_triggerdef returns complete CREATE TRIGGER statement
-        definition = trigger[:definition].strip
+        if trigger[:definition]
+          definition = trigger[:definition].strip
+          definition += ';' unless definition.end_with?(';')
+          return definition
+        end
 
-        # Ensure definition ends with semicolon
-        definition += ';' unless definition.end_with?(';')
+        # For MySQL/SQLite, generate CREATE TRIGGER from components
+        timing = trigger[:timing] || 'AFTER'
+        event = trigger[:event] || 'INSERT'
+        table_name = quote_identifier(trigger[:table_name])
+        trigger_name = quote_identifier(trigger[:name])
+        statement = trigger[:statement] || trigger[:body] || ''
 
-        definition
+        <<~SQL.strip
+          CREATE TRIGGER #{trigger_name}
+          #{timing} #{event} ON #{table_name}
+          FOR EACH ROW
+          BEGIN
+            #{statement}
+          END;
+        SQL
+      end
+
+      private
+
+      def quote_identifier(identifier)
+        return identifier if identifier.nil?
+
+        # Use double quotes for SQL standard identifier quoting
+        "\"#{identifier}\""
       end
     end
   end

@@ -35,7 +35,7 @@ services:
       - .:/app
       - bundle_cache_mysql:/usr/local/bundle
     working_dir: /app/integration_mysql
-    command: bash -c "bundle install && bundle exec rails db:create db:migrate && bundle exec rails server -b 0.0.0.0"
+    command: sh -c "bundle install && bundle exec rails db:create db:migrate && bundle exec rails server -b 0.0.0.0"
 
 volumes:
   mysql_data:

@@ -64,3 +64,4 @@ bower.json
 *.swp
 *.swo
 *~
+integration_mysql/db/structure.sql
