@@ -4,21 +4,20 @@ module BetterStructureSql
   module Introspection
     module Extensions
       def fetch_extensions(connection)
-        query = <<~SQL.squish
-          SELECT extname, extversion, nspname as schema_name
-          FROM pg_extension
-          JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace
-          WHERE nspname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY extname
-        SQL
+        adapter = get_adapter(connection)
+        adapter.fetch_extensions(connection)
+      rescue StandardError => e
+        warn "Warning: Failed to fetch extensions: #{e.message}"
+        []
+      end
 
-        connection.execute(query).map do |row|
-          {
-            name: row['extname'],
-            version: row['extversion'],
-            schema: row['schema_name']
-          }
-        end
+      private
+
+      def get_adapter(connection)
+        @get_adapter ||= Adapters::Registry.adapter_for(
+          connection,
+          adapter_override: BetterStructureSql.configuration.adapter
+        )
       end
     end
   end

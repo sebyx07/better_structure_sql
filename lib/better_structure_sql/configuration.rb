@@ -23,9 +23,10 @@ module BetterStructureSql
                   :sort_tables,
                   :max_lines_per_file,
                   :overflow_threshold,
-                  :generate_manifest
+                  :generate_manifest,
+                  :adapter
 
-    attr_reader :output_path
+    attr_reader :output_path, :postgresql
 
     def output_path=(value)
       @output_path = value.to_s
@@ -55,6 +56,8 @@ module BetterStructureSql
       @max_lines_per_file = 500
       @overflow_threshold = 1.1
       @generate_manifest = true
+      @adapter = :auto
+      @postgresql = Adapters::PostgresqlConfig.new
     end
 
     def validate!
@@ -64,6 +67,7 @@ module BetterStructureSql
       validate_schemas!
       validate_max_lines_per_file!
       validate_overflow_threshold!
+      validate_adapter!
     end
 
     private
@@ -100,6 +104,14 @@ module BetterStructureSql
       return if overflow_threshold.is_a?(Numeric) && overflow_threshold >= 1.0
 
       raise Error, 'overflow_threshold must be >= 1.0'
+    end
+
+    def validate_adapter!
+      valid_adapters = %i[auto postgresql mysql sqlite]
+
+      return if valid_adapters.include?(adapter)
+
+      raise Error, "Invalid adapter: #{adapter}. Valid options: #{valid_adapters.join(', ')}"
     end
   end
 end

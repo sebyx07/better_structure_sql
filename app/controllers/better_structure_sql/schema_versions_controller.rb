@@ -132,14 +132,14 @@ module BetterStructureSql
 
       return nil unless start_pos && end_pos
 
-      manifest_section = content[start_pos + start_marker.length..end_pos - 1]
+      manifest_section = content[(start_pos + start_marker.length)..(end_pos - 1)]
       manifest_json = manifest_section.lines
                                       .map { |line| line.sub(/^--\s?/, '') }
                                       .join
 
       JSON.parse(manifest_json)
     rescue JSON::ParserError => e
-      Rails.logger.debug "Failed to parse manifest: #{e.message}"
+      Rails.logger.debug { "Failed to parse manifest: #{e.message}" }
       nil
     end
 

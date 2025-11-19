@@ -4,44 +4,28 @@ module BetterStructureSql
   module Introspection
     module Views
       def fetch_views(connection)
-        query = <<~SQL.squish
-          SELECT
-            schemaname,
-            viewname,
-            definition
-          FROM pg_views
-          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY viewname
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            schema: row['schemaname'],
-            name: row['viewname'],
-            definition: row['definition']
-          }
-        end
+        adapter = get_adapter(connection)
+        adapter.fetch_views(connection)
+      rescue StandardError => e
+        warn "Warning: Failed to fetch views: #{e.message}"
+        []
       end
 
       def fetch_materialized_views(connection)
-        query = <<~SQL.squish
-          SELECT
-            schemaname,
-            matviewname,
-            definition
-          FROM pg_matviews
-          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY matviewname
-        SQL
+        adapter = get_adapter(connection)
+        adapter.fetch_materialized_views(connection)
+      rescue StandardError => e
+        warn "Warning: Failed to fetch materialized views: #{e.message}"
+        []
+      end
 
-        connection.execute(query).map do |row|
-          {
-            schema: row['schemaname'],
-            name: row['matviewname'],
-            definition: row['definition'],
-            indexes: fetch_materialized_view_indexes(connection, row['matviewname'])
-          }
-        end
+      private
+
+      def get_adapter(connection)
+        @get_adapter ||= Adapters::Registry.adapter_for(
+          connection,
+          adapter_override: BetterStructureSql.configuration.adapter
+        )
       end
     end
   end
