@@ -27,7 +27,8 @@ describe('Header', () => {
       </MemoryRouter>
     );
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Examples')).toBeInTheDocument();
+    expect(screen.getByText('Getting Started')).toBeInTheDocument();
+    expect(screen.getByText('Database Guides')).toBeInTheDocument();
   });
 });
 
