@@ -14,6 +14,10 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root 'home#index'
 
-  # Mount BetterStructureSql engine (TODO: implement engine)
-  # mount BetterStructureSql::Engine => "/better_structure_sql"
+  # Mount BetterStructureSql engine
+  # For production, wrap in authentication constraint:
+  # authenticate :user, ->(user) { user.admin? } do
+  #   mount BetterStructureSql::Engine, at: "/better_structure_sql"
+  # end
+  mount BetterStructureSql::Engine, at: "/better_structure_sql"
 end

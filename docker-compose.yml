@@ -33,6 +33,7 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_NAME: better_structure_sql_development
       RAILS_ENV: development
+      BETTER_STRUCTURE_SQL_ROOT: /app
     depends_on:
       postgres:
         condition: service_healthy

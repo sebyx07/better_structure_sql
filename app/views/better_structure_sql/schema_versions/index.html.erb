@@ -1,0 +1,99 @@
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="h2">
+        <i class="bi bi-database-fill-gear text-primary"></i>
+        Schema Versions
+      </h1>
+      <div class="text-muted">
+        <i class="bi bi-info-circle"></i>
+        Total: <%= @schema_versions.count %>
+      </div>
+    </div>
+
+    <% if @schema_versions.empty? %>
+      <div class="empty-state">
+        <i class="bi bi-inbox" style="font-size: 4rem;"></i>
+        <h3 class="mt-3">No Schema Versions Yet</h3>
+        <p class="text-muted">
+          Schema versions will appear here after running:<br>
+          <code>rails db:schema:dump</code> (with versioning enabled)
+        </p>
+      </div>
+    <% else %>
+      <div class="card shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col" class="text-center" style="width: 80px;">ID</th>
+                <th scope="col" style="width: 120px;">Format</th>
+                <th scope="col" style="width: 180px;">PostgreSQL</th>
+                <th scope="col">Created At</th>
+                <th scope="col" style="width: 120px;">Size</th>
+                <th scope="col" class="text-end" style="width: 200px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @schema_versions.each do |version| %>
+                <tr>
+                  <td class="text-center fw-bold text-muted">
+                    #<%= version.id %>
+                  </td>
+                  <td>
+                    <span class="badge badge-format <%= version.format_type == 'sql' ? 'bg-primary' : 'bg-success' %>">
+                      <i class="bi <%= version.format_type == 'sql' ? 'bi-filetype-sql' : 'bi-filetype-rb' %>"></i>
+                      <%= version.format_type.upcase %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="text-muted">
+                      <i class="bi bi-server"></i>
+                      <%= version.pg_version %>
+                    </span>
+                  </td>
+                  <td>
+                    <i class="bi bi-calendar-event"></i>
+                    <%= version.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
+                    <small class="text-muted d-block">
+                      <%= time_ago_in_words(version.created_at) %> ago
+                    </small>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary">
+                      <%= version.formatted_size %>
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <a href="<%= better_structure_sql.schema_version_path(version) %>"
+                         class="btn btn-outline-primary"
+                         title="View details">
+                        <i class="bi bi-eye"></i>
+                        View
+                      </a>
+                      <a href="<%= better_structure_sql.raw_schema_version_path(version) %>"
+                         class="btn btn-outline-secondary"
+                         title="Download raw text file"
+                         data-turbo="false">
+                        <i class="bi bi-download"></i>
+                        Raw
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <% if @schema_versions.count >= 100 %>
+        <div class="alert alert-info mt-3">
+          <i class="bi bi-info-circle"></i>
+          Showing the 100 most recent versions. Older versions are still stored in the database.
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

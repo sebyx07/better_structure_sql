@@ -23,6 +23,7 @@ require_relative 'better_structure_sql/schema_version'
 require_relative 'better_structure_sql/schema_versions'
 require_relative 'better_structure_sql/dumper'
 require_relative 'better_structure_sql/railtie' if defined?(Rails::Railtie)
+require_relative 'better_structure_sql/engine' if defined?(Rails::Engine)
 
 module BetterStructureSql
   class Error < StandardError; end

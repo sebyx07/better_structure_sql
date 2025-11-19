@@ -1,0 +1,128 @@
+<div class="row">
+  <div class="col-12">
+    <!-- Header with Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="h2">
+        <i class="bi bi-file-earmark-code text-primary"></i>
+        Schema Version #<%= @schema_version.id %>
+      </h1>
+      <a href="<%= better_structure_sql.schema_versions_path %>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+        Back to List
+      </a>
+    </div>
+
+    <!-- Metadata Card -->
+    <div class="card metadata-card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-hash"></i>
+              Version ID
+            </h6>
+            <p class="mb-0 fw-bold">#<%= @schema_version.id %></p>
+          </div>
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-filetype-sql"></i>
+              Format
+            </h6>
+            <p class="mb-0">
+              <span class="badge <%= @schema_version.format_type == 'sql' ? 'bg-primary' : 'bg-success' %>">
+                <%= @schema_version.format_type.upcase %>
+              </span>
+            </p>
+          </div>
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-server"></i>
+              PostgreSQL Version
+            </h6>
+            <p class="mb-0"><%= @schema_version.pg_version %></p>
+          </div>
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-calendar-event"></i>
+              Created
+            </h6>
+            <p class="mb-0">
+              <%= @schema_version.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
+              <small class="text-muted d-block">
+                <%= time_ago_in_words(@schema_version.created_at) %> ago
+              </small>
+            </p>
+          </div>
+        </div>
+
+        <div class="row mt-3">
+          <div class="col-md-3">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-file-earmark-bar-graph"></i>
+              Size
+            </h6>
+            <p class="mb-0">
+              <span class="badge bg-secondary"><%= @schema_version.formatted_size %></span>
+            </p>
+          </div>
+          <div class="col-md-9">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-info-circle"></i>
+              Lines
+            </h6>
+            <p class="mb-0"><%= @schema_version.content.lines.count %> lines</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mb-3">
+      <a href="<%= better_structure_sql.raw_schema_version_path(@schema_version) %>"
+         class="btn btn-primary"
+         data-turbo="false">
+        <i class="bi bi-download"></i>
+        Download Raw File
+      </a>
+      <button type="button" class="btn btn-outline-secondary" onclick="copyToClipboard()">
+        <i class="bi bi-clipboard"></i>
+        Copy to Clipboard
+      </button>
+    </div>
+
+    <!-- Schema Content -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-code-square"></i>
+          Schema Content
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <pre class="code-block m-0" id="schema-content"><%= @schema_version.content %></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyToClipboard() {
+    const content = document.getElementById('schema-content').textContent;
+    navigator.clipboard.writeText(content).then(function() {
+      // Show success feedback
+      const btn = event.target.closest('button');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+      btn.classList.remove('btn-outline-secondary');
+      btn.classList.add('btn-success');
+
+      setTimeout(function() {
+        btn.innerHTML = originalHTML;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-secondary');
+      }, 2000);
+    }, function(err) {
+      alert('Failed to copy to clipboard: ' + err);
+    });
+  }
+</script>
