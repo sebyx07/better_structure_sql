@@ -24,10 +24,11 @@ BetterStructureSql.configure do |config|
   #   - custom/path.sql   (custom location)
   #
   # The format (SQL vs Ruby) is automatically detected from the file extension
+  # For multi-file mode, set output_path to a directory (e.g., 'db/schema')
   schema_file = if Rails.application.config.active_record.schema_format == :ruby
                   'db/schema.rb'
                 else
-                  'db/structure.sql'
+                  ENV.fetch('MULTI_FILE_SCHEMA', 'false') == 'true' ? 'db/schema' : 'db/structure.sql'
                 end
   config.output_path = Rails.root.join(ENV.fetch('SCHEMA_OUTPUT_PATH', schema_file))
 

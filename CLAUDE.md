@@ -69,12 +69,40 @@ Ruby gem that generates clean PostgreSQL schema dumps for Rails applications wit
 - Track PostgreSQL version and format type
 - Manage retention with configurable limits
 - Provide query interface for versions
+- ZIP archive storage for multi-file schemas
+- Extract and restore from stored versions
 
 **DependencyResolver** - Object ordering
 - Build dependency graph
 - Topological sort for correct order
 - Handle views depending on tables
 - Handle functions used by triggers
+
+**FileWriter** - Multi-file output management
+- Detect output mode (file vs directory)
+- Chunk sections into 500 LOC files with overflow handling
+- Create numbered directories with load-order prefixes (1_extensions, 2_types, etc.)
+- Write files incrementally for memory efficiency
+- Generate numbered filenames (000001.sql, 000002.sql)
+
+**ManifestGenerator** - Metadata for multi-file dumps
+- Calculate statistics (total files, lines, breakdown by type)
+- Generate load order respecting dependencies
+- JSON format for tooling integration
+- Parse and validate existing manifests
+
+**ZipGenerator** - ZIP archive creation and extraction
+- Uses rubyzip for in-memory ZIP operations
+- Create from directory or file map
+- Extract with path traversal protection
+- Validation for ZIP bombs (file count, size limits)
+- Stream large archives efficiently
+
+**SchemaLoader** - Multi-format schema loading
+- Auto-detect file vs directory mode
+- Load multi-file using manifest order
+- Stream large single files
+- Support restoration from stored versions with temporary extraction
 
 ### Rails Integration
 
@@ -402,4 +430,4 @@ Pass dependencies as parameters:
 
 ## Keywords for Context
 
-PostgreSQL, schema dump, structure.sql, pg_dump replacement, Rails gem, database introspection, information_schema, pg_catalog, SQL generation, schema versioning, deterministic output, clean diffs, version control, database migrations, schema management, ActiveRecord, pure Ruby, TDD, SOLID principles, single responsibility, dependency injection, topological sort, foreign keys, indexes, views, triggers, functions, extensions, custom types, enums, partitioned tables, table inheritance, Rails integration, rake tasks, Railtie, configuration management, retention policy, metadata extraction, comparison testing, performance optimization, batch queries, dependency resolution, graceful degradation, error handling, code quality, test coverage, dummy application, integration testing, unit testing, RSpec, factory_bot, database_cleaner, continuous integration, GitHub Actions, semantic versioning, open source, MIT license, Rails Engine, mountable engine, Bootstrap 5, CDN assets, web UI, schema browser, Docker, docker-compose, PostgreSQL container, volume persistence, development environment, integration app, authentication patterns, Devise, Pundit, authorization, configurable routes, multi-database architecture, environment variables, database.yml customization, initializer configuration, format selection, live reload, asset-free deployment
+PostgreSQL, schema dump, structure.sql, pg_dump replacement, Rails gem, database introspection, information_schema, pg_catalog, SQL generation, schema versioning, deterministic output, clean diffs, version control, database migrations, schema management, ActiveRecord, pure Ruby, TDD, SOLID principles, single responsibility, dependency injection, topological sort, foreign keys, indexes, views, triggers, functions, extensions, custom types, enums, partitioned tables, table inheritance, Rails integration, rake tasks, Railtie, configuration management, retention policy, metadata extraction, comparison testing, performance optimization, batch queries, dependency resolution, graceful degradation, error handling, code quality, test coverage, dummy application, integration testing, unit testing, RSpec, factory_bot, database_cleaner, continuous integration, GitHub Actions, semantic versioning, open source, MIT license, Rails Engine, mountable engine, Bootstrap 5, CDN assets, web UI, schema browser, Docker, docker-compose, PostgreSQL container, volume persistence, development environment, integration app, authentication patterns, Devise, Pundit, authorization, configurable routes, multi-database architecture, environment variables, database.yml customization, initializer configuration, format selection, live reload, asset-free deployment, multi-file schema output, directory-based dump, numbered directories, load order prefixes, 1_extensions 2_types 3_sequences 4_tables 5_indexes 6_foreign_keys 7_views 8_functions 9_triggers, chunking strategy, 500 LOC limit, overflow threshold, file splitting, numbered SQL files, 000001.sql 000002.sql, manifest JSON, rubyzip gem, ZIP archive storage, binary column zip_archive, output_mode column, multi_file single_file modes, ZipGenerator class, FileWriter class, ManifestGenerator class, SchemaLoader class, directory tree visualization, Web UI ZIP download, extract and replace workflow, massive database schemas, tens of thousands of tables, memory efficient chunking, incremental file writing, dependency-safe ordering, topological load order, in-memory ZIP operations, path traversal protection, ZIP bomb validation, file count limits, size limits, temporary directory extraction, manifest-driven loading, git-friendly multi-file diffs, developer navigation, organized object types, scalable architecture, large schema support

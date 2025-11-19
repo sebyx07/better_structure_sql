@@ -31,6 +31,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'pg', '>= 1.0'
   spec.add_dependency 'rails', '>= 7.0'
+  spec.add_dependency 'rubyzip', '>= 2.0.0'
 
   spec.add_development_dependency 'database_cleaner-active_record', '~> 2.1'
   spec.add_development_dependency 'factory_bot_rails', '~> 6.2'

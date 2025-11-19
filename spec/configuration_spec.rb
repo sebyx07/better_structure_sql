@@ -73,6 +73,18 @@ RSpec.describe BetterStructureSql::Configuration do
     it 'enables table sorting by default' do
       expect(config.sort_tables).to be true
     end
+
+    it 'sets max_lines_per_file to 500' do
+      expect(config.max_lines_per_file).to eq(500)
+    end
+
+    it 'sets overflow_threshold to 1.1' do
+      expect(config.overflow_threshold).to eq(1.1)
+    end
+
+    it 'enables manifest generation by default' do
+      expect(config.generate_manifest).to be true
+    end
   end
 
   describe '#validate!' do
@@ -129,6 +141,48 @@ RSpec.describe BetterStructureSql::Configuration do
       it 'raises an error' do
         config.schemas = 'public'
         expect { config.validate! }.to raise_error(BetterStructureSql::Error, /schemas must be a non-empty array/)
+      end
+    end
+
+    context 'when max_lines_per_file is zero' do
+      it 'raises an error' do
+        config.max_lines_per_file = 0
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+      end
+    end
+
+    context 'when max_lines_per_file is negative' do
+      it 'raises an error' do
+        config.max_lines_per_file = -100
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+      end
+    end
+
+    context 'when max_lines_per_file is not an integer' do
+      it 'raises an error' do
+        config.max_lines_per_file = '500'
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+      end
+    end
+
+    context 'when overflow_threshold is less than 1.0' do
+      it 'raises an error' do
+        config.overflow_threshold = 0.9
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be >= 1.0/)
+      end
+    end
+
+    context 'when overflow_threshold is not numeric' do
+      it 'raises an error' do
+        config.overflow_threshold = '1.1'
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be >= 1.0/)
+      end
+    end
+
+    context 'when overflow_threshold is exactly 1.0' do
+      it 'does not raise an error' do
+        config.overflow_threshold = 1.0
+        expect { config.validate! }.not_to raise_error
       end
     end
 

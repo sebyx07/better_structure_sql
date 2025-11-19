@@ -30,12 +30,22 @@ Rails' `pg_dump` creates noisy `structure.sql` files with version-specific comme
   - Sequences
   - Custom types and enums
 
+### Multi-File Schema Output (Optional)
+- **Massive schema support** - Handle tens of thousands of tables effortlessly
+- **Directory-based output** - Split schema across organized, numbered directories
+- **Smart chunking** - 500 LOC per file with intelligent overflow handling
+- **Better git diffs** - See only changed files, not entire schema
+- **ZIP downloads** - Download complete directory structure as archive
+- **Easy navigation** - Find tables quickly in `4_tables/`, triggers in `9_triggers/`, etc.
+
 ### Schema Versioning (Optional)
 - Store schema versions in database with metadata
 - Track PostgreSQL version, format type (SQL/Ruby), creation timestamp
+- ZIP archive storage for multi-file schemas
 - Configurable retention policy (keep last N versions)
 - Browse and download versions via web UI (mountable Rails engine)
 - Works with both `structure.sql` and `schema.rb`
+- Restore from any stored version
 
 ### Web UI Engine
 - **Mountable Rails Engine** - Browse schema versions in any Rails app
@@ -90,6 +100,7 @@ See [DOCKER.md](DOCKER.md) for complete Docker documentation.
 - [Configuration](docs/configuration.md) - All configuration options
 - [Usage](docs/usage.md) - Rake tasks and examples
 - [Schema Versions](docs/schema_versions.md) - Version storage feature
+- [Multi-File Schema Output](docs/features/multi-file-schema-output/README.md) - Handle massive schemas
 - [Web UI Engine](docs/features/dev-environment-docker-web-ui/README.md) - Browse versions via web interface
 - [Docker Development](DOCKER.md) - Complete Docker environment guide
 - [Testing](docs/testing.md) - RSpec testing guide
@@ -143,9 +154,14 @@ INSERT INTO "schema_migrations" (version) VALUES
 
 ## Configuration Example
 
+### Single-File Output (Default)
+
 ```ruby
 # config/initializers/better_structure_sql.rb
 BetterStructureSql.configure do |config|
+  # Single file output (default)
+  config.output_path = 'db/structure.sql'
+
   # Replace default rake db:schema:dump
   config.replace_default_dump = true
 
@@ -163,6 +179,68 @@ BetterStructureSql.configure do |config|
   config.search_path = '"$user", public'
 end
 ```
+
+### Multi-File Output (For Large Schemas)
+
+```ruby
+# config/initializers/better_structure_sql.rb
+BetterStructureSql.configure do |config|
+  # Multi-file output - splits schema across directories
+  config.output_path = 'db/schema'
+
+  # Chunking configuration
+  config.max_lines_per_file = 500        # Soft limit per file (default: 500)
+  config.overflow_threshold = 1.1        # 10% overflow allowed (default: 1.1)
+  config.generate_manifest = true        # Create _manifest.json (default: true)
+
+  # Schema version storage with ZIP archives
+  config.enable_schema_versions = true
+  config.schema_versions_limit = 10
+
+  # Feature toggles
+  config.include_extensions = true
+  config.include_functions = true
+  config.include_triggers = true
+  config.include_views = true
+end
+```
+
+### Directory Structure (Multi-File Mode)
+
+When using `config.output_path = 'db/schema'`, your schema is organized by type with numbered directories indicating load order:
+
+```
+db/schema/
+├── _header.sql              # SET statements and search path
+├── _manifest.json           # Metadata and load order
+├── 1_extensions/
+│   └── 000001.sql
+├── 2_types/
+│   └── 000001.sql
+├── 3_sequences/
+│   └── 000001.sql
+├── 4_tables/
+│   ├── 000001.sql          # ~500 lines per file
+│   ├── 000002.sql
+│   └── 000003.sql
+├── 5_indexes/
+│   └── 000001.sql
+├── 6_foreign_keys/
+│   └── 000001.sql
+├── 7_views/
+│   └── 000001.sql
+├── 8_functions/
+│   └── 000001.sql
+└── 9_triggers/
+    └── 000001.sql
+```
+
+**Benefits for Large Schemas**:
+- ✅ Memory efficient - incremental file writing
+- ✅ Git friendly - only changed files in diffs
+- ✅ Easy navigation - find specific tables/triggers quickly
+- ✅ ZIP downloads - complete directory as single archive
+- ✅ Scalable - handles 50,000+ database objects
 
 ## Requirements
 

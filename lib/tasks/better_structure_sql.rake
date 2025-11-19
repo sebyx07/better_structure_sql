@@ -15,32 +15,43 @@ namespace :db do
       output = dumper.dump(store_version: false)
 
       puts "Schema dumped to #{BetterStructureSql.configuration.output_path}"
-      puts "Total size: #{output.bytesize} bytes"
+
+      if output.is_a?(Hash)
+        # Multi-file mode
+        total_files = output.size
+        total_size = output.values.sum(&:bytesize)
+        puts "Total files: #{total_files}"
+        puts "Total size: #{format_bytes(total_size)}"
+      else
+        # Single-file mode
+        puts "Total size: #{format_bytes(output.bytesize)}"
+      end
     end
 
-    desc 'Load the database schema from db/structure.sql (BetterStructureSql format)'
-    task load_better: %i[load_config check_protected_environments] do
-      config = BetterStructureSql.configuration
-      structure_file = Rails.root.join(config.output_path)
+    def format_bytes(bytes)
+      units = %w[B KB MB GB]
+      return "#{bytes} B" if bytes < 1024
 
-      unless File.exist?(structure_file)
-        puts "Schema file not found: #{structure_file}"
+      exp = (Math.log(bytes) / Math.log(1024)).floor
+      exp = [exp, units.length - 1].min
+      size = bytes / (1024.0**exp)
+
+      format('%.2f %s', size, units[exp])
+    end
+
+    desc 'Load the database schema from db/structure.sql or directory (BetterStructureSql format)'
+    task load_better: %i[load_config check_protected_environments] do
+      require 'better_structure_sql'
+
+      config = BetterStructureSql.configuration
+      loader = BetterStructureSql::SchemaLoader.new(config)
+
+      begin
+        loader.load
+      rescue BetterStructureSql::SchemaLoader::LoadError => e
+        puts "Error loading schema: #{e.message}"
         exit 1
       end
-
-      # Clean the file: remove Rails' appended duplicate INSERT if present
-      content = File.read(structure_file)
-      # Remove everything after the last ON CONFLICT DO NOTHING;
-      clean_content = content.sub(/ON CONFLICT DO NOTHING;.*\z/m, "ON CONFLICT DO NOTHING;\n")
-
-      # Execute SQL directly using ActiveRecord connection
-      connection = ActiveRecord::Base.connection
-      connection.execute('SET client_min_messages TO warning')
-
-      # Execute the cleaned SQL
-      connection.execute(clean_content)
-
-      puts "Schema loaded from #{structure_file}"
     end
 
     desc 'Store current schema as a version in the database'
@@ -60,6 +71,8 @@ namespace :db do
         puts 'Schema version stored successfully'
         puts "  ID: #{version.id}"
         puts "  Format: #{version.format_type}"
+        puts "  Mode: #{version.output_mode}"
+        puts "  Files: #{version.file_count || 1}"
         puts "  PostgreSQL: #{version.pg_version}"
         puts "  Size: #{version.formatted_size}"
         puts "  Total versions: #{BetterStructureSql::SchemaVersions.count}"
@@ -83,11 +96,17 @@ namespace :db do
         puts 'No schema versions stored yet'
       else
         puts "Total versions: #{versions.count}"
-        puts "\nID     Format       PostgreSQL      Created              Size"
-        puts '-' * 80
+        puts "\nID     Format  Mode          Files   PostgreSQL      Created              Size"
+        puts '-' * 95
         versions.each do |version|
-          puts format('%-6d %-12s %-15s %-20s %s', version.id, version.format_type, version.pg_version,
-                      version.created_at.strftime('%Y-%m-%d %H:%M:%S'), version.formatted_size)
+          puts format('%-6d %-7s %-13s %-7s %-15s %-20s %s',
+                      version.id,
+                      version.format_type,
+                      version.output_mode,
+                      version.file_count || 1,
+                      version.pg_version,
+                      version.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                      version.formatted_size)
         end
       end
     end
@@ -111,6 +130,46 @@ namespace :db do
       puts "Deleted #{deleted_count} old version(s)"
       puts "Retained #{BetterStructureSql::SchemaVersions.count} version(s)"
       puts "Retention limit: #{config.schema_versions_limit}"
+    end
+
+    desc 'Restore schema from stored version'
+    task :restore, [:version_id] => :environment do |_t, args|
+      require 'better_structure_sql'
+
+      version_id = args[:version_id] || ENV.fetch('VERSION_ID', nil)
+      raise 'Usage: rails db:schema:restore[VERSION_ID]' unless version_id
+
+      version = BetterStructureSql::SchemaVersions.find(version_id)
+      raise "Version #{version_id} not found" unless version
+
+      connection = ActiveRecord::Base.connection
+      connection.execute('SET client_min_messages TO warning')
+
+      if version.multi_file?
+        # Extract ZIP to temp directory
+        temp_dir = Rails.root.join('tmp', "schema_restore_#{version.id}")
+        FileUtils.rm_rf(temp_dir)
+
+        BetterStructureSql::ZipGenerator.extract_to_directory(version.zip_archive, temp_dir)
+
+        # Load from temp directory
+        loader = BetterStructureSql::SchemaLoader.new
+        loader.load(temp_dir)
+
+        # Cleanup
+        FileUtils.rm_rf(temp_dir)
+
+        puts "Schema version #{version.id} restored from #{version.file_count} files"
+      else
+        # Single file - load from content
+        connection.execute(version.content)
+
+        puts "Schema version #{version.id} restored"
+      end
+
+      puts "  Format: #{version.format_type}"
+      puts "  PostgreSQL: #{version.pg_version}"
+      puts "  Size: #{version.formatted_size}"
     end
   end
 end

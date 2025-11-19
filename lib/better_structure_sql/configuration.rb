@@ -20,7 +20,10 @@ module BetterStructureSql
                   :schemas,
                   :indent_size,
                   :add_section_spacing,
-                  :sort_tables
+                  :sort_tables,
+                  :max_lines_per_file,
+                  :overflow_threshold,
+                  :generate_manifest
 
     attr_reader :output_path
 
@@ -49,6 +52,9 @@ module BetterStructureSql
       @indent_size = 2
       @add_section_spacing = true
       @sort_tables = true
+      @max_lines_per_file = 500
+      @overflow_threshold = 1.1
+      @generate_manifest = true
     end
 
     def validate!
@@ -56,6 +62,8 @@ module BetterStructureSql
       validate_schema_versions_limit!
       validate_indent_size!
       validate_schemas!
+      validate_max_lines_per_file!
+      validate_overflow_threshold!
     end
 
     private
@@ -80,6 +88,18 @@ module BetterStructureSql
       return if schemas.is_a?(Array) && schemas.any?
 
       raise Error, 'schemas must be a non-empty array'
+    end
+
+    def validate_max_lines_per_file!
+      return if max_lines_per_file.is_a?(Integer) && max_lines_per_file.positive?
+
+      raise Error, 'max_lines_per_file must be a positive integer'
+    end
+
+    def validate_overflow_threshold!
+      return if overflow_threshold.is_a?(Numeric) && overflow_threshold >= 1.0
+
+      raise Error, 'overflow_threshold must be >= 1.0'
     end
   end
 end

@@ -21,6 +21,10 @@ require_relative 'better_structure_sql/generators/domain_generator'
 require_relative 'better_structure_sql/pg_version'
 require_relative 'better_structure_sql/schema_version'
 require_relative 'better_structure_sql/schema_versions'
+require_relative 'better_structure_sql/file_writer'
+require_relative 'better_structure_sql/manifest_generator'
+require_relative 'better_structure_sql/zip_generator'
+require_relative 'better_structure_sql/schema_loader'
 require_relative 'better_structure_sql/dumper'
 require_relative 'better_structure_sql/railtie' if defined?(Rails::Railtie)
 require_relative 'better_structure_sql/engine' if defined?(Rails::Engine)

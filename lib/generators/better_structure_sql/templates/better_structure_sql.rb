@@ -2,12 +2,16 @@
 
 BetterStructureSql.configure do |config|
   # Output path for structure dump
+  # Single file: 'db/structure.sql'
+  # Multi-file: 'db/schema' (directory)
+  # NOTE: BetterStructureSql only supports SQL format dumps (structure.sql).
+  #       Using 'db/schema.rb' will skip replacement of dump/load tasks (can still store versions).
   config.output_path = Rails.root.join('db/structure.sql')
 
   # Schema search path
   config.search_path = 'public'
 
-  # Feature toggles
+  # Feature toggles - what to include in dumps
   config.include_extensions = true
   config.include_functions = true
   config.include_triggers = true
@@ -17,12 +21,22 @@ BetterStructureSql.configure do |config|
   config.include_custom_types = true
   config.include_domains = true
 
-  # Schema versioning (stores schema history in database, similar to Rails' ar_internal_metadata)
-  config.enable_schema_versions = true
-  config.schema_versions_limit = 10
+  # Output formatting
+  config.add_section_spacing = true # Add blank lines between sections
+  config.sort_tables = false        # Sort tables alphabetically (or use dependency order)
+
+  # Multi-file output settings (only used when output_path is a directory)
+  config.max_lines_per_file = 500 # Target lines per file (soft limit)
+  config.overflow_threshold = 1.1       # Allow files to be up to 10% larger to avoid tiny files
+  config.generate_manifest = true       # Generate _manifest.json with statistics
+
+  # Schema versioning (stores schema history in database for rollback/comparison)
+  config.enable_schema_versions = true  # Store versions in database
+  config.schema_versions_limit = 10     # Keep last 10 versions (0 = unlimited)
 
   # Replace default Rails schema dump/load tasks
   # When true, db:schema:dump and db:schema:load will use BetterStructureSql automatically
+  # NOTE: Only works with SQL format. Silently ignored if output_path ends with '.rb'
   config.replace_default_dump = true
   config.replace_default_load = true
 end
