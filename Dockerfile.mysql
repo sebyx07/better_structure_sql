@@ -1,0 +1,34 @@
+FROM ruby:3.2-alpine
+
+# Install dependencies
+RUN apk add --no-cache \
+    build-base \
+    mysql-dev \
+    mysql-client \
+    nodejs \
+    tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy gemspec and Gemfile from gem root
+COPY better_structure_sql.gemspec /app/
+COPY lib/better_structure_sql/version.rb /app/lib/better_structure_sql/
+COPY Gemfile /app/
+COPY integration_mysql/Gemfile /app/integration_mysql/
+COPY integration_mysql/Gemfile.lock /app/integration_mysql/ 2>/dev/null || true
+
+# Install gems
+WORKDIR /app/integration_mysql
+RUN bundle install
+
+# Copy application code
+WORKDIR /app
+COPY . /app/
+
+# Set working directory to integration_mysql
+WORKDIR /app/integration_mysql
+
+EXPOSE 3000
+
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]

@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: better_structure_sql_mysql_development
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: --default-authentication-plugin=mysql_native_password
+
+  web_mysql:
+    build:
+      context: .
+      dockerfile: Dockerfile.mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_ADAPTER: mysql2
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      RAILS_ENV: development
+    ports:
+      - "3001:3000"
+    volumes:
+      - .:/app
+      - bundle_cache_mysql:/usr/local/bundle
+    working_dir: /app/integration_mysql
+    command: bash -c "bundle install && bundle exec rails db:create db:migrate && bundle exec rails server -b 0.0.0.0"
+
+volumes:
+  mysql_data:
+  bundle_cache_mysql:

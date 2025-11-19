@@ -28,18 +28,18 @@ RSpec.describe BetterStructureSql::Adapters::Registry do
         expect(adapter).to be_a(BetterStructureSql::Adapters::PostgresqlAdapter)
       end
 
-      it 'raises error for MySQL in Phase 1' do
+      it 'detects MySQL adapter' do
         allow(connection).to receive(:adapter_name).and_return('Mysql2')
-        expect do
-          described_class.adapter_for(connection, adapter_override: :auto)
-        end.to raise_error(BetterStructureSql::Error, /MySQL adapter not yet implemented/)
+        allow(described_class).to receive(:require).with('mysql2').and_return(true)
+        adapter = described_class.adapter_for(connection, adapter_override: :auto)
+        expect(adapter).to be_a(BetterStructureSql::Adapters::MysqlAdapter)
       end
 
-      it 'raises error for SQLite in Phase 1' do
+      it 'raises error for SQLite in Phase 2' do
         allow(connection).to receive(:adapter_name).and_return('SQLite')
         expect do
           described_class.adapter_for(connection, adapter_override: :auto)
-        end.to raise_error(BetterStructureSql::Error, /SQLite adapter not yet implemented/)
+        end.to raise_error(BetterStructureSql::Error, /SQLite adapter not yet implemented.*Phase 3/)
       end
 
       it 'raises error for unsupported adapter' do

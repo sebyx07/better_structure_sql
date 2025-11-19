@@ -1,0 +1,23 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8mb4
+  collation: utf8mb4_unicode_ci
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("DB_HOST", "localhost") %>
+  port: <%= ENV.fetch("DB_PORT", 3306) %>
+  username: <%= ENV.fetch("DB_USERNAME", "root") %>
+  password: <%= ENV.fetch("DB_PASSWORD", "") %>
+
+development:
+  <<: *default
+  database: better_structure_sql_mysql_development
+
+test:
+  <<: *default
+  database: better_structure_sql_mysql_test
+
+production:
+  <<: *default
+  database: better_structure_sql_mysql_production
+  username: better_structure_sql
+  password: <%= ENV["BETTER_STRUCTURE_SQL_DATABASE_PASSWORD"] %>

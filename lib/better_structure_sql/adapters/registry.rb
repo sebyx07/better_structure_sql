@@ -37,11 +37,12 @@ module BetterStructureSql
             require_relative 'postgresql_adapter'
             PostgresqlAdapter.new(connection)
           when :mysql
-            # Phase 1: MySQL not yet supported
-            raise Error, 'MySQL adapter not yet implemented (coming in Phase 2)'
+            require_relative 'mysql_adapter'
+            validate_mysql_gem!
+            MysqlAdapter.new(connection)
           when :sqlite
-            # Phase 1: SQLite not yet supported
-            raise Error, 'SQLite adapter not yet implemented (coming in Phase 2)'
+            # Phase 2: SQLite not yet supported (coming in Phase 3)
+            raise Error, 'SQLite adapter not yet implemented (coming in Phase 3)'
           else
             raise Error, "Unknown database adapter: #{adapter_name}"
           end
@@ -90,6 +91,14 @@ module BetterStructureSql
 
           raise Error, "Invalid adapter override: #{adapter_override}. " \
                        "Valid options: #{valid_adapters.join(', ')}"
+        end
+
+        # Validate mysql2 gem is available
+        # @raise [Error] If mysql2 gem is not installed
+        def validate_mysql_gem!
+          require 'mysql2'
+        rescue LoadError
+          raise Error, 'MySQL adapter requires the mysql2 gem. Add to your Gemfile: gem "mysql2"'
         end
       end
     end
