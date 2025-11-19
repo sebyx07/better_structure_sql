@@ -144,6 +144,13 @@ module BetterStructureSql
         header_path = base_path.join('_header.sql')
         content_parts << File.read(header_path) if File.exist?(header_path)
 
+        # Read manifest and embed as SQL comment for later extraction
+        manifest_path = base_path.join('_manifest.json')
+        if File.exist?(manifest_path)
+          manifest_json = File.read(manifest_path)
+          content_parts << "-- MANIFEST_JSON_START\n-- #{manifest_json.gsub("\n", "\n-- ")}\n-- MANIFEST_JSON_END"
+        end
+
         # Read numbered directories in order (01_ through 10_)
         # Use pattern that works with Dir.glob
         Dir.glob(File.join(base_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|

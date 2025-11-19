@@ -120,20 +120,26 @@ module BetterStructureSql
     end
 
     def extract_manifest_from_content(content)
-      # Manifest is embedded as JSON in _manifest.json file within combined content
-      # Look for the manifest marker and extract JSON
-      manifest_marker = '-- Manifest:'
-      return nil unless content.include?(manifest_marker)
+      # Manifest is embedded in content between MANIFEST_JSON_START and MANIFEST_JSON_END markers
+      return nil unless content.include?('MANIFEST_JSON_START')
 
-      # Extract JSON from manifest comment
-      manifest_json = content.lines.find { |line| line.include?(manifest_marker) }
-                             &.sub(/.*-- Manifest:\s*/, '')
-                             &.strip
+      # Extract JSON from between markers, removing comment prefixes
+      start_marker = '-- MANIFEST_JSON_START'
+      end_marker = '-- MANIFEST_JSON_END'
 
-      return nil unless manifest_json
+      start_pos = content.index(start_marker)
+      end_pos = content.index(end_marker)
+
+      return nil unless start_pos && end_pos
+
+      manifest_section = content[start_pos + start_marker.length..end_pos - 1]
+      manifest_json = manifest_section.lines
+                                      .map { |line| line.sub(/^--\s?/, '') }
+                                      .join
 
       JSON.parse(manifest_json)
-    rescue JSON::ParserError
+    rescue JSON::ParserError => e
+      Rails.logger.debug "Failed to parse manifest: #{e.message}"
       nil
     end
 
