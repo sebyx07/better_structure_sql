@@ -5,6 +5,7 @@ import Installation from './pages/GettingStarted/Installation';
 import Configuration from './pages/GettingStarted/Configuration';
 import QuickStart from './pages/GettingStarted/QuickStart';
 import Examples from './pages/Examples';
+import PostgreSQL from './pages/Databases/PostgreSQL';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/configuration" element={<Configuration />} />
         <Route path="/quick-start" element={<QuickStart />} />
         <Route path="/examples" element={<Examples />} />
+        <Route path="/databases/postgresql" element={<PostgreSQL />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

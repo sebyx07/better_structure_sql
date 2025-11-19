@@ -62,6 +62,36 @@ function Header() {
                 </li>
               </ul>
             </li>
+            <li className="nav-item dropdown">
+              <button
+                type="button"
+                className="nav-link dropdown-toggle btn btn-link"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Database Guides
+              </button>
+              <ul className="dropdown-menu dropdown-menu-dark">
+                <li>
+                  <Link className="dropdown-item" to="/databases/postgresql">
+                    <i className="bi bi-database-fill me-2" />
+                    PostgreSQL
+                  </Link>
+                </li>
+                <li>
+                  <Link className="dropdown-item" to="/databases/mysql">
+                    <i className="bi bi-database me-2" />
+                    MySQL
+                  </Link>
+                </li>
+                <li>
+                  <Link className="dropdown-item" to="/databases/sqlite">
+                    <i className="bi bi-database-dash me-2" />
+                    SQLite
+                  </Link>
+                </li>
+              </ul>
+            </li>
             <li className="nav-item">
               <Link
                 className={`nav-link ${isActive('/examples') ? 'active' : ''}`}
