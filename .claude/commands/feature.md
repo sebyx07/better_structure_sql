@@ -1,39 +1,49 @@
 ---
-description: Build feature with documentation-first approach
+description: Research project and generate feature documentation
 argument-hint: [feature-name]
-allowed-tools: Write, Read, Glob, Grep, Task, Bash
+allowed-tools: Write, Read, Glob, Grep, Task
 ---
 
-Build feature with documentation-first workflow.
+IMPORTANT: This is a RESEARCH and DOCUMENTATION tool only. It explores the codebase and generates planning markdown files. NO implementation.
 
-## Documentation Structure
+## What This Does
 
-Create `docs/features/$ARGUMENTS/`:
+1. **Explore codebase**: Uses Task agents to understand project structure, patterns, conventions
+2. **Gather context**: Reads files to understand existing architecture
+3. **Generate documentation**: Creates markdown planning files in `docs/features/$ARGUMENTS/`
+
+## Generated Documentation Files
+
+`docs/features/$ARGUMENTS/`:
 - README.md: overview, use cases, configuration, examples
 - architecture.md: components, responsibilities, interactions, dependencies
 - plan/phase-N.md: objective, deliverables, tests, success criteria, dependencies
 
-## Phase Planning
+## Phase Documents Format
 
-Each phase contains:
-- Clear objective
-- Specific deliverables
+Each phase-N.md contains:
+- Objective statement
+- Deliverables list
 - Testing requirements
 - Success criteria
-- Phase dependencies
+- Dependencies
 
-## Project Updates
+## Project Documentation Updates
 
-- README.md: add concise feature description to features section
-- CLAUDE.md: minimal keyword-rich context (concepts, patterns, integration points only - no code)
+- README.md: add feature to features section
+- CLAUDE.md: add minimal keyword-rich context (concepts, patterns, integration points - NO code)
 
-## Output Requirements
+## Documentation Standards
 
-All documentation:
+All generated files must be:
 - Concise, scannable
 - Keyword-rich for AI context
-- Actionable acceptance criteria
-- No code in CLAUDE.md
-- Implementation details in feature docs only
+- Actionable criteria
+- No code samples in CLAUDE.md
+- Architecture details only in feature docs
 
-Start with documentation, get approval, implement phases sequentially.
+## Process
+
+1. Explore codebase
+2. Generate documentation
+3. Done - NO implementation happens in this command

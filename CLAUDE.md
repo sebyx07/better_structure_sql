@@ -358,6 +358,48 @@ Pass dependencies as parameters:
 - Avoid global state where possible
 - Enable testing with mocks
 
+## Web UI and Development Environment
+
+### Rails Engine (Mountable)
+**Location**: Integrated into gem at `app/`, `lib/better_structure_sql/engine.rb`
+**Purpose**: Web interface for browsing stored schema versions
+**Routes**: `/better_structure_sql/schema_versions` (configurable mount point)
+**Actions**: index (list), show (formatted view), raw (text download)
+**Layout**: Bootstrap 5 from CDN (no asset compilation)
+**Icons**: Bootstrap Icons from CDN
+**Authentication**: Configurable hook in ApplicationController (Devise, Pundit, custom)
+**Authorization**: Document patterns for admin-only access
+**Content-Type**: HTML for views, text/plain for raw downloads
+**Pagination**: Support for large version lists
+
+### Docker Development Environment
+**Services**: PostgreSQL (internal only), Rails web (port 3000)
+**Volumes**: postgres_data (persistence), gem source mount (live reload)
+**Integration app**: test/dummy or integration/ directory
+**Configuration**: Custom database.yml, custom BetterStructureSql initializer
+**Format support**: Both structure.sql and schema.rb
+**Seed data**: Sample schema versions with varied content
+**Multi-database prep**: Architecture supports future MySQL, SQLite (PostgreSQL only currently)
+**Environment variables**: DB_ADAPTER, DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD, DATABASE_URL
+**Dockerfile**: Ruby 3.2-alpine, postgresql-dev, build-base, nodejs
+**docker-compose.yml**: Service orchestration, health checks, networking
+
+### Engine Authentication Patterns
+**Primary approach**: Route constraints in config/routes.rb using `authenticate` or `constraints`
+**Devise integration**: `authenticate :user, ->(user) { user.admin? } do ... end`
+**Custom constraint**: Class with `matches?(request)` method
+**Alternative**: Controller-level via `class_eval` on ApplicationController
+**No auth**: Direct mount (development/testing only)
+**Documentation**: Multiple constraint examples in feature docs
+
+### Configuration Flexibility
+**Database**: Environment-specific database.yml, ENV overrides
+**Gem settings**: Initializer for format, versioning, retention
+**Engine mount**: Custom path in routes.rb
+**Format selection**: Toggle between sql/rb output
+**Feature flags**: Extensions, views, functions, triggers toggles
+**Future support**: Adapter detection for multi-database compatibility
+
 ## Keywords for Context
 
-PostgreSQL, schema dump, structure.sql, pg_dump replacement, Rails gem, database introspection, information_schema, pg_catalog, SQL generation, schema versioning, deterministic output, clean diffs, version control, database migrations, schema management, ActiveRecord, pure Ruby, TDD, SOLID principles, single responsibility, dependency injection, topological sort, foreign keys, indexes, views, triggers, functions, extensions, custom types, enums, partitioned tables, table inheritance, Rails integration, rake tasks, Railtie, configuration management, retention policy, metadata extraction, comparison testing, performance optimization, batch queries, dependency resolution, graceful degradation, error handling, code quality, test coverage, dummy application, integration testing, unit testing, RSpec, factory_bot, database_cleaner, continuous integration, GitHub Actions, semantic versioning, open source, MIT license
+PostgreSQL, schema dump, structure.sql, pg_dump replacement, Rails gem, database introspection, information_schema, pg_catalog, SQL generation, schema versioning, deterministic output, clean diffs, version control, database migrations, schema management, ActiveRecord, pure Ruby, TDD, SOLID principles, single responsibility, dependency injection, topological sort, foreign keys, indexes, views, triggers, functions, extensions, custom types, enums, partitioned tables, table inheritance, Rails integration, rake tasks, Railtie, configuration management, retention policy, metadata extraction, comparison testing, performance optimization, batch queries, dependency resolution, graceful degradation, error handling, code quality, test coverage, dummy application, integration testing, unit testing, RSpec, factory_bot, database_cleaner, continuous integration, GitHub Actions, semantic versioning, open source, MIT license, Rails Engine, mountable engine, Bootstrap 5, CDN assets, web UI, schema browser, Docker, docker-compose, PostgreSQL container, volume persistence, development environment, integration app, authentication patterns, Devise, Pundit, authorization, configurable routes, multi-database architecture, environment variables, database.yml customization, initializer configuration, format selection, live reload, asset-free deployment

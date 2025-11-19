@@ -34,14 +34,27 @@ Rails' `pg_dump` creates noisy `structure.sql` files with version-specific comme
 - Store schema versions in database with metadata
 - Track PostgreSQL version, format type (SQL/Ruby), creation timestamp
 - Configurable retention policy (keep last N versions)
-- Retrieve schema versions via API endpoint (example provided)
+- Browse and download versions via web UI (mountable Rails engine)
 - Works with both `structure.sql` and `schema.rb`
+
+### Web UI Engine
+- **Mountable Rails Engine** - Browse schema versions in any Rails app
+- **Bootstrap 5 interface** - No asset compilation required (CDN-based)
+- **View schema versions** - List, view formatted schema, download raw text
+- **Configurable authentication** - Integrate with Devise, Pundit, or custom auth
+- **Developer onboarding** - Easy access to latest schema for new team members
 
 ### Rails Integration
 - Drop-in replacement: `rake db:schema:dump` → uses BetterStructureSql
 - New task: `rake db:schema:dump_better` (explicit invocation)
 - New task: `rake db:schema:store` (version storage)
 - Configuration via `config/initializers/better_structure_sql.rb`
+
+### Docker Development Environment
+- **Single command setup** - `docker compose up` for full environment
+- **PostgreSQL included** - No local database installation needed
+- **Live code reloading** - Changes reflect immediately
+- **Integration app** - Test and demo environment included
 
 ## Quick Start
 
@@ -64,6 +77,8 @@ Your `db/structure.sql` is now clean and maintainable!
 - [Configuration](docs/configuration.md) - All configuration options
 - [Usage](docs/usage.md) - Rake tasks and examples
 - [Schema Versions](docs/schema_versions.md) - Version storage feature
+- [Web UI Engine](docs/features/dev-environment-docker-web-ui/README.md) - Browse versions via web interface
+- [Docker Development](docs/features/dev-environment-docker-web-ui/README.md) - Local development environment
 - [Testing](docs/testing.md) - RSpec testing guide
 - [MVP Phases](docs/mvp/) - Implementation roadmap
 
