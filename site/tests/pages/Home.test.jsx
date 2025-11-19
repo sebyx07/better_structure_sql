@@ -4,11 +4,16 @@ import { HelmetProvider } from 'react-helmet-async';
 import { describe, it, expect } from 'vitest';
 import Home from '../../src/pages/Home';
 
+const routerFutureFlags = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+};
+
 describe('Home Page', () => {
   it('renders hero section with tagline', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>
@@ -20,7 +25,7 @@ describe('Home Page', () => {
   it('renders feature cards', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>
@@ -35,7 +40,7 @@ describe('Home Page', () => {
   it('renders database badges', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>
@@ -49,7 +54,7 @@ describe('Home Page', () => {
   it('renders AI benefits section', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>
@@ -62,7 +67,7 @@ describe('Home Page', () => {
   it('renders beta notice', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>
@@ -74,7 +79,7 @@ describe('Home Page', () => {
   it('renders call-to-action buttons', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <Home />
         </MemoryRouter>
       </HelmetProvider>

@@ -5,10 +5,15 @@ import Header from '../../src/components/Layout/Header';
 import Footer from '../../src/components/Layout/Footer';
 import Layout from '../../src/components/Layout/Layout';
 
+const routerFutureFlags = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+};
+
 describe('Header', () => {
   it('renders brand logo', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFutureFlags}>
         <Header />
       </MemoryRouter>
     );
@@ -17,7 +22,7 @@ describe('Header', () => {
 
   it('renders navigation links', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFutureFlags}>
         <Header />
       </MemoryRouter>
     );
@@ -47,7 +52,7 @@ describe('Footer', () => {
 describe('Layout', () => {
   it('renders children content', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFutureFlags}>
         <Layout>
           <div data-testid="test-content">Test Content</div>
         </Layout>
@@ -59,7 +64,7 @@ describe('Layout', () => {
 
   it('includes header and footer', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={routerFutureFlags}>
         <Layout>
           <div>Content</div>
         </Layout>

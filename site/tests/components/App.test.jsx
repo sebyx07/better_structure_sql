@@ -4,11 +4,16 @@ import { HelmetProvider } from 'react-helmet-async';
 import { describe, it, expect } from 'vitest';
 import App from '../../src/App';
 
+const routerFutureFlags = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+};
+
 describe('App', () => {
   it('renders without crashing', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <App />
         </MemoryRouter>
       </HelmetProvider>
@@ -19,7 +24,7 @@ describe('App', () => {
   it('renders header navigation', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <App />
         </MemoryRouter>
       </HelmetProvider>
@@ -30,7 +35,7 @@ describe('App', () => {
   it('renders footer', () => {
     render(
       <HelmetProvider>
-        <MemoryRouter>
+        <MemoryRouter future={routerFutureFlags}>
           <App />
         </MemoryRouter>
       </HelmetProvider>
