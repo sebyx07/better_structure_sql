@@ -23,16 +23,24 @@ function Configuration() {
 
               <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
                 {`BetterStructureSql.configure do |config|
-  # Output path - single file (default)
+  # Output path
+  # Single file (default): 'db/structure.sql'
+  # Directory (recommended): 'db/schema'
   config.output_path = 'db/structure.sql'
 
-  # Replace default rake db:schema:dump
+  # Replace default rake tasks
   config.replace_default_dump = true
+  config.replace_default_load = true
 
   # Search path for PostgreSQL
-  config.search_path = '"$user", public'
+  config.search_path = 'public'
 end`}
               </CodeBlock>
+
+              <div className="alert alert-info mt-3">
+                <i className="bi bi-lightbulb me-2" />
+                <strong>Tip:</strong> For projects with 100+ tables, use <code>config.output_path = &apos;db/schema&apos;</code> (directory mode) for better organization and git diffs.
+              </div>
             </section>
 
             <section className="mb-5">
@@ -61,17 +69,92 @@ end`}
 
               <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
                 {`BetterStructureSql.configure do |config|
-  # All enabled by default
-  config.include_extensions = true   # PostgreSQL extensions
-  config.include_functions = true    # Functions/stored procedures
-  config.include_triggers = true     # Triggers
-  config.include_views = true        # Views and materialized views
+  # All enabled by default (features auto-skip if not supported by database)
+  config.include_extensions = true          # PostgreSQL only
+  config.include_custom_types = true        # PostgreSQL (ENUM, composite), MySQL (ENUM/SET)
+  config.include_domains = true             # PostgreSQL only
+  config.include_sequences = true           # PostgreSQL only
+  config.include_functions = true           # PostgreSQL, MySQL (stored procedures)
+  config.include_triggers = true            # All databases
+  config.include_views = true               # All databases
+  config.include_materialized_views = true  # PostgreSQL only
 end`}
               </CodeBlock>
+
+              <div className="alert alert-info mt-3">
+                <i className="bi bi-info-circle me-2" />
+                Features not supported by your database are automatically skipped. No need to disable them manually.
+              </div>
+
+              <h3 className="mt-4 mb-3">Database Support Matrix</h3>
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>PostgreSQL</th>
+                    <th>MySQL</th>
+                    <th>SQLite</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>include_extensions</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_custom_types</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-warning">ENUM/SET</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_domains</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_sequences</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_functions</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-warning">Stored Procs</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_triggers</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_views</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_materialized_views</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                </tbody>
+              </table>
             </section>
 
             <section className="mb-5">
               <h2 className="mb-3">Multi-File Output</h2>
+              <div className="alert alert-warning mb-3">
+                <i className="bi bi-star-fill me-2" />
+                <strong>Recommended for large projects:</strong> Use directory mode (<code>db/schema</code>) instead of single file for better git diffs, easier navigation, and AI-friendly organization.
+              </div>
               <p>For large schemas (1000+ tables), split into organized directories:</p>
 
               <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
@@ -110,28 +193,33 @@ end`}
               <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
                 {`BetterStructureSql.configure do |config|
   # Core settings
-  config.output_path = 'db/structure.sql'    # File or directory
-  config.replace_default_dump = true          # Override rake db:schema:dump
-  config.search_path = '"$user", public'      # PostgreSQL search path
+  config.output_path = 'db/structure.sql'         # File or directory
+  config.replace_default_dump = true              # Override rake db:schema:dump
+  config.replace_default_load = true              # Override rake db:schema:load
+  config.search_path = 'public'                   # PostgreSQL only
 
   # Schema versioning
-  config.enable_schema_versions = false       # Store versions in DB
-  config.schema_versions_limit = 10           # Keep N versions (0 = unlimited)
+  config.enable_schema_versions = true            # All databases
+  config.schema_versions_limit = 10               # Keep N versions (0 = unlimited)
 
-  # Feature toggles
-  config.include_extensions = true            # Extensions (PostgreSQL)
-  config.include_functions = true             # Functions/procedures
-  config.include_triggers = true              # Triggers
-  config.include_views = true                 # Views (including materialized)
+  # Feature toggles (auto-skip if unsupported)
+  config.include_extensions = true                # PostgreSQL only
+  config.include_custom_types = true              # PostgreSQL (ENUM, composite), MySQL (ENUM/SET)
+  config.include_domains = true                   # PostgreSQL only
+  config.include_sequences = true                 # PostgreSQL only
+  config.include_functions = true                 # PostgreSQL, MySQL (stored procedures)
+  config.include_triggers = true                  # All databases
+  config.include_views = true                     # All databases
+  config.include_materialized_views = true        # PostgreSQL only
 
   # Multi-file output settings
-  config.max_lines_per_file = 500            # Lines per file
-  config.overflow_threshold = 1.1            # Allow 10% overflow
-  config.generate_manifest = true            # Create _manifest.json
+  config.max_lines_per_file = 500                 # Lines per file
+  config.overflow_threshold = 1.1                 # Allow 10% overflow
+  config.generate_manifest = true                 # Create _manifest.json
 
   # Formatting
-  config.indent_size = 2                     # SQL indentation
-  config.add_section_spacing = true          # Spacing between sections
+  config.add_section_spacing = true               # Spacing between sections
+  config.sort_tables = false                      # Sort tables alphabetically
 end`}
               </CodeBlock>
             </section>

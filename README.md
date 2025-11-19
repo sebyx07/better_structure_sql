@@ -287,7 +287,9 @@ BetterStructureSql.configure do |config|
 end
 ```
 
-### 📁 Multi-File Output (For Large Schemas)
+### 📁 Multi-File Output (Recommended for Large Projects)
+
+> **💡 Recommended:** Use `db/schema` directory mode for projects with 100+ tables for better git diffs, easier navigation, and AI-friendly organization.
 
 ```ruby
 # config/initializers/better_structure_sql.rb

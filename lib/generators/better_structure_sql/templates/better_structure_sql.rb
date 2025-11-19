@@ -3,23 +3,25 @@
 BetterStructureSql.configure do |config|
   # Output path for structure dump
   # Single file: 'db/structure.sql'
-  # Multi-file: 'db/schema' (directory)
+  # Multi-file: 'db/schema' (directory) - RECOMMENDED for large projects
+  #   Benefits: better git diffs, easier navigation, AI-friendly organization
   # NOTE: BetterStructureSql only supports SQL format dumps (structure.sql).
   #       Using 'db/schema.rb' will skip replacement of dump/load tasks (can still store versions).
   config.output_path = Rails.root.join('db/structure.sql')
 
-  # Schema search path
+  # Schema search path (PostgreSQL only)
   config.search_path = 'public'
 
   # Feature toggles - what to include in dumps
-  config.include_extensions = true
-  config.include_functions = true
-  config.include_triggers = true
-  config.include_views = true
-  config.include_materialized_views = true
-  config.include_sequences = true
-  config.include_custom_types = true
-  config.include_domains = true
+  # Features auto-skip if not supported by your database
+  config.include_extensions = true          # PostgreSQL only
+  config.include_custom_types = true        # PostgreSQL (ENUM, composite), MySQL (ENUM/SET)
+  config.include_domains = true             # PostgreSQL only
+  config.include_sequences = true           # PostgreSQL only
+  config.include_functions = true           # PostgreSQL, MySQL (stored procedures)
+  config.include_triggers = true            # All databases
+  config.include_views = true               # All databases
+  config.include_materialized_views = true  # PostgreSQL only
 
   # Output formatting
   config.add_section_spacing = true # Add blank lines between sections
@@ -36,6 +38,7 @@ BetterStructureSql.configure do |config|
 
   # Replace default Rails schema dump/load tasks
   # When true, db:schema:dump and db:schema:load will use BetterStructureSql automatically
+  # This also automatically sets config.active_record.schema_format = :sql
   # NOTE: Only works with SQL format. Silently ignored if output_path ends with '.rb'
   config.replace_default_dump = true
   config.replace_default_load = true

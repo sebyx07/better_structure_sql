@@ -76,6 +76,11 @@ gem 'pg', '>= 1.0'         # For PostgreSQL 12+
               <p className="mt-3">
                 You should now see a clean <code>db/structure.sql</code> file without pg_dump noise!
               </p>
+
+              <div className="alert alert-info mt-3">
+                <i className="bi bi-magic me-2" />
+                <strong>Automatic Setup:</strong> With <code>replace_default_dump = true</code>, BetterStructureSql automatically configures Rails to use SQL schema format. No need to manually set <code>config.active_record.schema_format</code> in <code>application.rb</code>!
+              </div>
             </section>
 
             <div className="alert alert-success">

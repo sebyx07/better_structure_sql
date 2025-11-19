@@ -28,6 +28,9 @@ module BetterStructureSql
         is_ruby_format = config.output_path.to_s.end_with?('.rb')
 
         if config.replace_default_dump && !is_ruby_format
+          # Automatically set Rails to use SQL schema format
+          Rails.application.config.active_record.schema_format = :sql
+
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksExtension)
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksDumpInfoExtension)
           # Also prepend path override for dump
