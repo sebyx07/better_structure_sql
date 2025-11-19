@@ -63,7 +63,8 @@ module BetterStructureSql
     end
 
     def custom_types_section
-      types = Introspection.fetch_custom_types(connection)
+      # Only include enums and composite types (not domains, they have their own section)
+      types = Introspection.fetch_custom_types(connection).reject { |t| t[:type] == 'domain' }
       return nil if types.empty?
 
       generator = Generators::TypeGenerator.new(config)
