@@ -2,17 +2,20 @@ import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function PostgreSQL() {
   return (
-    <div className="postgresql-guide">
-      <h1 className="mb-4">
-        <i className="bi bi-database-fill-gear text-primary me-3" />
-        PostgreSQL Guide
-      </h1>
+    <div className="container my-4">
+      <div className="row">
+        <div className="col-lg-10 offset-lg-1">
+          <div className="postgresql-guide">
+            <h1 className="mb-4">
+              <i className="bi bi-database-fill-gear text-primary me-3" />
+              PostgreSQL Guide
+            </h1>
 
-      <div className="alert alert-info">
-        <i className="bi bi-info-circle me-2" />
-        PostgreSQL has the most comprehensive feature support in BetterStructureSql with 100% coverage
-        of extensions, custom types, functions, triggers, materialized views, and partitioned tables.
-      </div>
+            <div className="alert alert-info">
+              <i className="bi bi-info-circle me-2" />
+              PostgreSQL has the most comprehensive feature support in BetterStructureSql with 100% coverage
+              of extensions, custom types, functions, triggers, materialized views, and partitioned tables.
+            </div>
 
       {/* UUID v8 for Better Primary Keys */}
       <section className="mb-5">
@@ -728,6 +731,9 @@ CREATE TABLE event_logs_2024_03 PARTITION OF event_logs
           </div>
         </div>
       </section>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
