@@ -29,11 +29,11 @@ module BetterStructureSql
         SQL
 
         connection.execute(query).map do |row|
-          table_name = row[0]
+          table_name = row['name'] || row[0]
           {
             name: table_name,
             schema: 'main',
-            sql: row[1],
+            sql: row['sql'] || row[1],
             columns: fetch_columns(connection, table_name),
             primary_key: fetch_primary_key(connection, table_name),
             constraints: fetch_constraints(connection, table_name)
@@ -51,16 +51,16 @@ module BetterStructureSql
           index_list = connection.execute("PRAGMA index_list(#{quote_identifier(table_name)})")
 
           index_list.each do |index_row|
-            index_name = index_row[1]
-            is_unique = index_row[2].to_i == 1
-            origin = index_row[3] # 'c' = CREATE INDEX, 'u' = UNIQUE constraint, 'pk' = PRIMARY KEY
+            index_name = index_row['name'] || index_row[1]
+            is_unique = (index_row['unique'] || index_row[2]).to_i == 1
+            origin = index_row['origin'] || index_row[3] # 'c' = CREATE INDEX, 'u' = UNIQUE constraint, 'pk' = PRIMARY KEY
 
             # Skip auto-generated indexes for PRIMARY KEY and UNIQUE constraints
             next if skip_origins.include?(origin)
 
             # Get columns for this index
             index_info = connection.execute("PRAGMA index_info(#{quote_identifier(index_name)})")
-            columns = index_info.map { |col_row| col_row[2] }
+            columns = index_info.map { |col_row| col_row['name'] || col_row[2] }
 
             indexes << {
               table: table_name,
@@ -83,14 +83,18 @@ module BetterStructureSql
           fk_list = connection.execute("PRAGMA foreign_key_list(#{quote_identifier(table_name)})")
 
           fk_list.each do |fk_row|
+            from_col = fk_row['from'] || fk_row[3]
+            to_table = fk_row['table'] || fk_row[2]
+            to_col = fk_row['to'] || fk_row[4]
+
             foreign_keys << {
               table: table_name,
-              name: "fk_#{table_name}_#{fk_row[2]}_#{fk_row[3]}", # Generate name
-              column: fk_row[3],
-              foreign_table: fk_row[2],
-              foreign_column: fk_row[4],
-              on_update: fk_row[5],
-              on_delete: fk_row[6]
+              name: "fk_#{table_name}_#{to_table}_#{from_col}", # Generate name
+              column: from_col,
+              foreign_table: to_table,
+              foreign_column: to_col,
+              on_update: fk_row['on_update'] || fk_row[5],
+              on_delete: fk_row['on_delete'] || fk_row[6]
             }
           end
         end
@@ -107,7 +111,7 @@ module BetterStructureSql
         SQL
 
         connection.execute(query).map do |row|
-          sql = row[1]
+          sql = row['sql'] || row[1]
           # Extract just the SELECT part from CREATE VIEW statement for compatibility
           # with existing ViewGenerator
           definition = if sql&.match(/CREATE\s+VIEW\s+\w+\s+AS\s+(.*)/im)
@@ -118,7 +122,7 @@ module BetterStructureSql
 
           {
             schema: 'main',
-            name: row[0],
+            name: row['name'] || row[0],
             definition: definition || '',
             updatable: false # SQLite views are generally not updatable
           }
@@ -150,7 +154,7 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           # Parse timing and event from SQL
-          sql = row[2]
+          sql = row['sql'] || row[2] || ''
           timing_match = sql.match(/\b(BEFORE|AFTER|INSTEAD OF)\b/i)
           timing = timing_match ? timing_match.captures.first.upcase : 'AFTER'
 
@@ -159,8 +163,8 @@ module BetterStructureSql
 
           {
             schema: 'main',
-            name: row[0],
-            table_name: row[1],
+            name: row['name'] || row[0],
+            table_name: row['tbl_name'] || row[1],
             timing: timing,
             event: event,
             statement: sql
@@ -322,11 +326,11 @@ module BetterStructureSql
 
         table_info.map do |row|
           {
-            name: row[1],
-            type: resolve_column_type(row[2]),
-            nullable: row[3].to_i.zero?,
-            default: row[4],
-            primary_key: row[5].to_i == 1
+            name: row['name'] || row[1],
+            type: resolve_column_type(row['type'] || row[2]),
+            nullable: (row['notnull'] || row[3]).to_i.zero?,
+            default: row['dflt_value'] || row[4],
+            primary_key: (row['pk'] || row[5]).to_i == 1
           }
         end
       end
@@ -335,9 +339,9 @@ module BetterStructureSql
         table_info = connection.execute("PRAGMA table_info(#{quote_identifier(table_name)})")
 
         table_info
-          .select { |row| row[5].to_i == 1 }
-          .sort_by { |row| row[5] } # Sort by pk order
-          .pluck(1)
+          .select { |row| (row['pk'] || row[5]).to_i == 1 }
+          .sort_by { |row| row['pk'] || row[5] } # Sort by pk order
+          .map { |row| row['name'] || row[1] }
       end
 
       def fetch_constraints(connection, table_name)
@@ -353,7 +357,7 @@ module BetterStructureSql
         result = connection.execute(query).first
         return [] unless result
 
-        sql = result[0]
+        sql = result['sql'] || result[0]
         return [] unless sql
 
         # Extract CHECK constraints from SQL
