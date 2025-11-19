@@ -1,0 +1,1 @@
+import{a as t}from"/better_structure_sql/chunk-YE3HR6IB.js";var i=t((a,n)=>{function e(s){return{name:"VBScript in HTML",subLanguage:"xml",contains:[{begin:"<%",end:"%>",subLanguage:"vbscript"}]}}n.exports=e});export default i();

@@ -1,0 +1,1 @@
+import{a as e}from"/better_structure_sql/chunk-YE3HR6IB.js";var n=e((t,s)=>{function a(l){return{name:"Shell Session",aliases:["console"],contains:[{className:"meta",begin:/^\s{0,3}[/~\w\d[\]()@-]*[>%$#]/,starts:{end:/[^\\](?=\s*$)/,subLanguage:"bash"}}]}}s.exports=a});export default n();

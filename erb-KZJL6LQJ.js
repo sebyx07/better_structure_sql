@@ -1,0 +1,1 @@
+import{a as u}from"/better_structure_sql/chunk-YE3HR6IB.js";var a=u((g,e)=>{function r(n){return{name:"ERB",subLanguage:"xml",contains:[n.COMMENT("<%#","%>"),{begin:"<%[%=-]?",end:"[%-]?%>",subLanguage:"ruby",excludeBegin:!0,excludeEnd:!0}]}}e.exports=r});export default a();

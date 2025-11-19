@@ -1,0 +1,1 @@
+import{a as e}from"/better_structure_sql/chunk-YE3HR6IB.js";var s=e((r,a)=>{function n(t){return{name:"Node REPL",contains:[{className:"meta",starts:{end:/ |$/,starts:{end:"$",subLanguage:"javascript"}},variants:[{begin:/^>(?=[ ]|$)/},{begin:/^\.\.\.(?=[ ]|$)/}]}]}}a.exports=n});export default s();

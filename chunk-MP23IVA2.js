@@ -1,0 +1,1 @@
+import{a as e}from"/better_structure_sql/chunk-YE3HR6IB.js";var i=e((r,a)=>{a.exports=s;s.displayName="hsts";s.aliases=[];function s(t){t.languages.hsts={directive:{pattern:/\b(?:includeSubDomains|max-age|preload)(?=[\s;=]|$)/i,alias:"property"},operator:/=/,punctuation:/;/}}});export{i as a};

@@ -1,0 +1,1 @@
+import{a as g}from"/better_structure_sql/chunk-I24RFFIH.js";import{a as n}from"/better_structure_sql/chunk-EDG56S3A.js";import{a}from"/better_structure_sql/chunk-YE3HR6IB.js";var l=a((u,r)=>{var i=g(),s=n();r.exports=t;t.displayName="t4Vb";t.aliases=[];function t(e){e.register(i),e.register(s),e.languages["t4-vb"]=e.languages["t4-templating"].createT4("vbnet")}});export{l as a};

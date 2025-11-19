@@ -1,0 +1,1 @@
+import{a as n}from"/better_structure_sql/chunk-YE3HR6IB.js";var a=n((t,e)=>{function s(r){return{name:"Clojure REPL",contains:[{className:"meta",begin:/^([\w.-]+|\s*#_)?=>/,starts:{end:/$/,subLanguage:"clojure"}}]}}e.exports=s});export default a();

@@ -1,0 +1,1 @@
+import{a as e}from"/better_structure_sql/chunk-YE3HR6IB.js";var n=e((t,a)=>{a.exports=s;s.displayName="csv";s.aliases=[];function s(c){c.languages.csv={value:/[^\r\n,"]+|"(?:[^"]|"")*"(?!")/,punctuation:/,/}}});export{n as a};
