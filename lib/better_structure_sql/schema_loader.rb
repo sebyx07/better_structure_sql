@@ -121,9 +121,7 @@ module BetterStructureSql
 
       sql.each_line do |line|
         # Skip standalone comment lines
-        if line.strip.start_with?('--') && current_statement.strip.empty?
-          next
-        end
+        next if line.strip.start_with?('--') && current_statement.strip.empty?
 
         current_statement << line
 
@@ -133,14 +131,10 @@ module BetterStructureSql
         stripped_line = line.strip.upcase
 
         # Detect start of block: "BEGIN" on its own line or "FOR EACH ROW BEGIN"
-        if stripped_line == 'BEGIN' || stripped_line.end_with?(' BEGIN')
-          in_block = true
-        end
+        in_block = true if stripped_line == 'BEGIN' || stripped_line.end_with?(' BEGIN')
 
         # Detect end of block: "END" or "END;"
-        if stripped_line == 'END;' || stripped_line == 'END'
-          in_block = false
-        end
+        in_block = false if ['END;', 'END'].include?(stripped_line)
 
         # Statement is complete when:
         # 1. Line ends with semicolon, AND

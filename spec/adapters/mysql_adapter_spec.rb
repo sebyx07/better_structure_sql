@@ -105,7 +105,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   describe '#fetch_functions' do
     it 'fetches stored procedures using SHOW CREATE' do
       query_result = [
-        ['test_proc', 'PROCEDURE']
+        %w[test_proc PROCEDURE]
       ]
 
       create_result = [
@@ -121,7 +121,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
       expect(functions.first[:name]).to eq('test_proc')
       expect(functions.first[:definition]).to include('CREATE')
       expect(functions.first[:definition]).to include('PROCEDURE')
-      # Note: DEFINER is in the raw definition; FunctionGenerator strips it during dump
+      # NOTE: DEFINER is in the raw definition; FunctionGenerator strips it during dump
     end
   end
 
@@ -134,7 +134,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   describe '#fetch_triggers' do
     it 'fetches triggers using SHOW CREATE' do
       query_result = [
-        ['test_trigger', 'INSERT', 'users', 'AFTER']
+        %w[test_trigger INSERT users AFTER]
       ]
 
       create_result = [
@@ -153,7 +153,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
       expect(triggers.first[:timing]).to eq('AFTER')
       expect(triggers.first[:definition]).to include('CREATE')
       expect(triggers.first[:definition]).to include('TRIGGER')
-      # Note: DEFINER is in the raw definition; TriggerGenerator strips it during dump
+      # NOTE: DEFINER is in the raw definition; TriggerGenerator strips it during dump
     end
   end
 

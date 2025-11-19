@@ -25,10 +25,14 @@ module BetterStructureSql
         return identifier if identifier.nil?
 
         # Detect adapter from ActiveRecord connection
-        adapter_name = ActiveRecord::Base.connection.adapter_name.downcase rescue nil
+        adapter_name = begin
+          ActiveRecord::Base.connection.adapter_name.downcase
+        rescue StandardError
+          nil
+        end
 
         # MySQL/MariaDB use backticks, PostgreSQL/SQLite use double quotes
-        if adapter_name == 'mysql' || adapter_name == 'mysql2' || adapter_name == 'trilogy'
+        if %w[mysql mysql2 trilogy].include?(adapter_name)
           "`#{identifier}`"
         else
           "\"#{identifier}\""

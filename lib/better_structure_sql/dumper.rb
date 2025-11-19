@@ -334,7 +334,7 @@ module BetterStructureSql
       lines = []
 
       # Add PostgreSQL-specific SET commands only for PostgreSQL
-      if adapter.class.name == 'BetterStructureSql::Adapters::PostgresqlAdapter'
+      if adapter.instance_of?(::BetterStructureSql::Adapters::PostgresqlAdapter)
         lines << "SET default_tablespace = '';"
         lines << ''
         lines << 'SET default_table_access_method = heap;'

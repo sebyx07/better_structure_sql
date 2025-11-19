@@ -10,9 +10,7 @@ module BetterStructureSql
           definition = trigger[:definition].strip
 
           # Strip DEFINER clause for MySQL triggers for portability
-          if definition.include?('CREATE DEFINER')
-            definition = definition.gsub(/CREATE DEFINER=`[^`]+`@`[^`]+`/, 'CREATE')
-          end
+          definition = definition.gsub(/CREATE DEFINER=`[^`]+`@`[^`]+`/, 'CREATE') if definition.include?('CREATE DEFINER')
 
           # Ensure ends with semicolon for structure.sql
           definition += ';' unless definition.end_with?(';')
