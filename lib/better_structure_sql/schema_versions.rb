@@ -96,20 +96,17 @@ module BetterStructureSql
       private
 
       def read_current_schema(config)
-        sql_path = Rails.root.join(config.output_path)
-        rb_path = Rails.root.join('db/schema.rb')
+        schema_path = Rails.root.join(config.output_path)
 
-        # Respect Rails schema_format configuration
-        schema_format = Rails.application.config.active_record.schema_format
+        # Deduce format from file extension in output_path
+        format_type = if config.output_path.to_s.end_with?('.rb')
+                        'rb'
+                      else
+                        'sql' # Default to SQL for .sql or any other extension
+                      end
 
-        if schema_format == :ruby && File.exist?(rb_path)
-          ['rb', File.read(rb_path)]
-        elsif schema_format == :sql && File.exist?(sql_path)
-          ['sql', File.read(sql_path)]
-        elsif File.exist?(sql_path)
-          ['sql', File.read(sql_path)]
-        elsif File.exist?(rb_path)
-          ['rb', File.read(rb_path)]
+        if File.exist?(schema_path)
+          [format_type, File.read(schema_path)]
         else
           [nil, nil]
         end
