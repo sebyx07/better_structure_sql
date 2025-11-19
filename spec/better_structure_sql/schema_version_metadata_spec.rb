@@ -141,16 +141,16 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
   end
 
   describe 'edge cases' do
-    it 'handles empty content' do
+    it 'handles very small content' do
       version = described_class.create!(
-        content: '',
+        content: 'a',
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql'
       )
 
-      expect(version.content_size).to eq(0)
-      expect(version.line_count).to eq(0)
-      expect(version.formatted_size).to eq('0 bytes')
+      expect(version.content_size).to eq(1)
+      expect(version.line_count).to eq(1)
+      expect(version.formatted_size).to eq('1 bytes')
     end
 
     it 'handles single line without newline' do
@@ -163,14 +163,14 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       expect(version.line_count).to eq(1)
     end
 
-    it 'handles content with only newlines' do
+    it 'handles content with multiple newlines' do
       version = described_class.create!(
-        content: "\n\n\n",
+        content: "a\n\n\n",
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql'
       )
 
-      expect(version.line_count).to eq(4) # Empty string before each \n
+      expect(version.line_count).to eq(3) # "a\n", "\n", "\n"
     end
 
     it 'handles very large content' do

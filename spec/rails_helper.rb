@@ -17,16 +17,10 @@ module Dummy
     config.secret_key_base = 'test'
     config.hosts.clear if config.respond_to?(:hosts)
     config.active_record.check_schema_cache_dump_version = false
+    config.root = File.expand_path('../..', __dir__)
+    config.paths.add 'config/database', with: 'config/database.yml'
   end
 end
-
-# Set up in-memory database
-ActiveRecord::Base.configurations = {
-  'test' => {
-    'adapter' => 'sqlite3',
-    'database' => ':memory:'
-  }
-}
 
 # Initialize app
 Rails.application = Dummy::Application.new
