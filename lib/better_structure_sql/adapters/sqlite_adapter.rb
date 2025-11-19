@@ -7,9 +7,60 @@ module BetterStructureSql
     class SqliteAdapter < BaseAdapter
       # Introspection methods using sqlite_master and PRAGMA
 
-      def fetch_extensions(_connection)
-        # SQLite doesn't support extensions like PostgreSQL
-        []
+      def fetch_extensions(connection)
+        # SQLite doesn't support extensions like PostgreSQL, but we can fetch PRAGMA settings
+        # Return them in a format compatible with the extensions section
+        fetch_pragma_settings(connection)
+      end
+
+      def fetch_pragma_settings(connection)
+        # List of important PRAGMAs to preserve in schema dump
+        important_pragmas = %w[
+          foreign_keys
+          recursive_triggers
+          defer_foreign_keys
+          journal_mode
+          synchronous
+          temp_store
+          locking_mode
+          auto_vacuum
+          cache_size
+        ]
+
+        pragmas = []
+        important_pragmas.each do |pragma_name|
+          begin
+            result = connection.execute("PRAGMA #{pragma_name}").first
+            next unless result
+
+            value = result.is_a?(Hash) ? (result[pragma_name] || result.values.first) : result[0]
+
+            # Only include non-default values that make sense to preserve
+            next if value.nil? || value.to_s.empty?
+            next if pragma_name == 'foreign_keys' && value.to_i.zero? # Skip if FK disabled
+
+            pragmas << {
+              name: pragma_name,
+              value: value,
+              sql: "PRAGMA #{pragma_name} = #{format_pragma_value(pragma_name, value)};"
+            }
+          rescue StandardError => e
+            # Skip PRAGMAs that fail (might not be supported in this SQLite version)
+            Rails.logger.debug("Skipping PRAGMA #{pragma_name}: #{e.message}") if defined?(Rails)
+          end
+        end
+
+        pragmas
+      end
+
+      def format_pragma_value(pragma_name, value)
+        # String values need quotes, numeric values don't
+        case pragma_name
+        when 'journal_mode', 'locking_mode', 'temp_store', 'synchronous'
+          value.to_s.match?(/^\d+$/) ? value.to_s : "'#{value}'"
+        else
+          value.to_s
+        end
       end
 
       def fetch_custom_types(_connection)

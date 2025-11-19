@@ -4,6 +4,12 @@ module BetterStructureSql
   module Generators
     class ExtensionGenerator < Base
       def generate(extension)
+        # Handle SQLite PRAGMAs (which are stored as "extensions")
+        if extension[:sql]
+          return extension[:sql]
+        end
+
+        # PostgreSQL extensions
         # Quote extension name if it contains special characters
         ext_name = extension[:name].include?('-') ? "\"#{extension[:name]}\"" : extension[:name]
         schema_clause = extension[:schema] == 'public' ? '' : " WITH SCHEMA #{extension[:schema]}"

@@ -263,7 +263,9 @@ module BetterStructureSql
       return nil if extensions.empty?
 
       generator = Generators::ExtensionGenerator.new(config)
-      lines = ['-- Extensions']
+      # Use appropriate section name based on adapter
+      section_name = adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter' ? 'PRAGMAs' : 'Extensions'
+      lines = ["-- #{section_name}"]
       lines += extensions.map { |ext| generator.generate(ext) }
       lines.join("\n")
     end
