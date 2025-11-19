@@ -8,20 +8,22 @@ Gem::Specification.new do |spec|
   spec.authors = ['sebyx07']
   spec.email = ['sebyx07.pro@gmail.com']
 
-  spec.summary = 'Clean PostgreSQL schema dumps for Rails without pg_dump noise'
+  spec.summary = 'Clean database schema dumps for Rails (PostgreSQL, MySQL, SQLite) without external tool dependencies'
   spec.description = <<~DESC
-    Pure Ruby PostgreSQL schema dumper for Rails applications. Generates clean,
-    deterministic structure.sql files without pg_dump dependency. Supports both
-    single-file and multi-file output for massive schemas with tens of thousands
-    of database objects. Includes schema versioning with ZIP storage and web UI.
+    Pure Ruby database schema dumper for Rails applications supporting PostgreSQL, MySQL, and SQLite.
+    Generates clean, deterministic structure.sql files without pg_dump/mysqldump/sqlite3 CLI dependencies.
+    Supports both single-file and multi-file output for massive schemas with tens of thousands
+    of database objects. Includes schema versioning with ZIP storage and web UI for browsing versions.
   DESC
-  spec.homepage = 'https://github.com/sebyx07/better_structure_sql'
+  spec.homepage = 'https://sebyx07.github.io/better_structure_sql/'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 2.7.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = spec.homepage
-  spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata['source_code_uri'] = 'https://github.com/sebyx07/better_structure_sql'
+  spec.metadata['documentation_uri'] = 'https://sebyx07.github.io/better_structure_sql/'
+  spec.metadata['changelog_uri'] = 'https://github.com/sebyx07/better_structure_sql/blob/main/CHANGELOG.md'
+  spec.metadata['bug_tracker_uri'] = 'https://github.com/sebyx07/better_structure_sql/issues'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.files = Dir.chdir(__dir__) do

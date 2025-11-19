@@ -50,6 +50,12 @@
     "mysql",
     "sqlite"
   ],
-  "author": "",
+  "homepage": "https://sebyx07.github.io/better_structure_sql/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sebyx07/better_structure_sql.git",
+    "directory": "site"
+  },
+  "author": "sebyx07",
   "license": "MIT"
 }

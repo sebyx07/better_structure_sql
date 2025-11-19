@@ -1,32 +1,65 @@
-# BetterStructureSql 🚀
+<div align="center">
 
-**Version: 0.1.0 (Beta)**
+# 🗄️ BetterStructureSql
 
-Clean, maintainable database schema dumps for Rails (PostgreSQL, MySQL, SQLite) without external tool dependencies.
+### Clean, maintainable database schema dumps for Rails
+**PostgreSQL • MySQL • SQLite**
 
-> **Note**: This gem is currently in beta (version 0.x). APIs may change between releases until v1.0. We welcome feedback and contributions!
+[![Gem Version](https://badge.fury.io/rb/better_structure_sql.svg)](https://badge.fury.io/rb/better_structure_sql)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-red.svg)](https://www.ruby-lang.org/)
+[![Rails](https://img.shields.io/badge/rails-%3E%3D%207.0-red.svg)](https://rubyonrails.org/)
 
-## Why BetterStructureSql? 🤔
+**[📚 Documentation](https://sebyx07.github.io/better_structure_sql/)** • **[🐙 GitHub](https://github.com/sebyx07/better_structure_sql)** • **[💎 RubyGems](https://rubygems.org/gems/better_structure_sql)**
+
+---
+
+</div>
+
+> **⚠️ Beta Notice**: This gem is currently in beta (version 0.1.0). APIs may change between releases until v1.0. We welcome feedback and contributions!
+
+## ✨ Why BetterStructureSql?
 
 Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structure.sql` files with version-specific comments, inconsistent formatting, and metadata that pollutes git diffs.
 
 **BetterStructureSql** uses pure Ruby introspection to generate clean schema files:
 
-- ✅ **Clean diffs** - Only actual schema changes in version control
-- ✅ **No external tools** - Pure Ruby database introspection (no pg_dump/mysqldump/sqlite3 CLI)
-- ✅ **Multi-database** - PostgreSQL, MySQL, SQLite support with adapter pattern
+<table>
+<tr>
+<td width="50%">
+
+### 🎯 Core Benefits
+
+- ✅ **Clean diffs** - Only actual schema changes
+- ✅ **No external tools** - Pure Ruby introspection
+- ✅ **Multi-database** - PostgreSQL, MySQL, SQLite
 - ✅ **Deterministic** - Same input = identical output
-- ✅ **Complete** - Tables, indexes, foreign keys, views, triggers, functions, extensions
-- ✅ **Schema versioning** - Store and retrieve schema versions with metadata
-- ✅ **Rails integration** - Drop-in replacement for `rake db:schema:dump`
 
-## Supported Databases
+</td>
+<td width="50%">
 
-- **PostgreSQL** (12+) - Full feature support (extensions, materialized views, functions, triggers, custom types)
-- **MySQL** (8.0+) - 80% feature parity (stored procedures, triggers, views, indexes)
-- **SQLite** (3.35+) - 60% feature parity (lightweight schemas, triggers, views)
+### 🚀 Advanced Features
 
-See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/README.md#feature-compatibility-matrix) for detailed comparison.
+- ✅ **Complete coverage** - Tables, views, triggers, functions
+- ✅ **Schema versioning** - Store & retrieve versions
+- ✅ **Multi-file output** - Handle massive schemas
+- ✅ **Rails integration** - Drop-in replacement
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🗃️ Database Support
+
+| Database | Version | Feature Coverage | Highlights |
+|----------|---------|------------------|------------|
+| **PostgreSQL** | 12+ | 🟢 **100%** | Extensions, materialized views, functions, triggers, custom types |
+| **MySQL** | 8.0+ | 🟡 **80%** | Stored procedures, triggers, views, indexes |
+| **SQLite** | 3.35+ | 🟡 **60%** | Lightweight schemas, triggers, views |
+
+📖 See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/README.md#feature-compatibility-matrix) for detailed comparison.
 
 ## Features
 
@@ -81,16 +114,12 @@ See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/
 - **Live code reloading** - Changes reflect immediately
 - **Integration app** - Test and demo environment included
 
-## Quick Start
+## 🚀 Quick Start
 
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
-
-# Add the database adapter gem you're using:
-gem 'pg'         # For PostgreSQL
-gem 'mysql2'     # For MySQL
-gem 'sqlite3'    # For SQLite
+gem 'pg'  # or 'mysql2' or 'sqlite3'
 ```
 
 ```bash
@@ -99,7 +128,7 @@ rails generate better_structure_sql:install
 rails db:schema:dump_better
 ```
 
-Your `db/structure.sql` is now clean and maintainable across any database!
+**🎉 Your `db/structure.sql` is now clean and maintainable!**
 
 ## Docker Development Environment 🐳
 
@@ -117,7 +146,7 @@ See [DOCKER.md](DOCKER.md) for complete Docker documentation.
 ## Documentation 📚
 
 ### 🌐 Documentation Website
-**[Visit the full documentation site →](https://YOUR_USERNAME.github.io/better_structure_sql/)**
+**[Visit the full documentation site →](https://sebyx07.github.io/better_structure_sql/)**
 
 Interactive documentation with tutorials, database-specific guides, and real-world examples showing how to use SQL databases to their fullest with BetterStructureSql. Features include:
 - Step-by-step tutorials for PostgreSQL, MySQL, and SQLite
@@ -142,9 +171,14 @@ Interactive documentation with tutorials, database-specific guides, and real-wor
 - [Database Adapters Architecture](docs/features/multi-database-adapter-support/architecture.md) - Technical deep dive
 - [Implementation Phases](docs/features/multi-database-adapter-support/plan/) - Phased rollout plan
 
-## Example Output
+## 📊 Example Output
 
-**Before (pg_dump):**
+<table>
+<tr>
+<td width="50%">
+
+### ❌ Before (pg_dump)
+
 ```sql
 --
 -- PostgreSQL database dump
@@ -155,16 +189,36 @@ Interactive documentation with tutorials, database-specific guides, and real-wor
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
--- ... 50+ lines of SET commands and comments ...
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+-- ... 50+ more lines ...
 ```
 
-**After (BetterStructureSql):**
+**😕 Issues:**
+- Version-specific comments
+- Noisy SET commands
+- Non-deterministic output
+- Hard to review diffs
+
+</td>
+<td width="50%">
+
+### ✅ After (BetterStructureSql)
+
 ```sql
 SET client_encoding = 'UTF8';
 
 -- Extensions
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS plpgsql
+  WITH SCHEMA pg_catalog;
+CREATE EXTENSION IF NOT EXISTS pgcrypto
+  WITH SCHEMA public;
 
 -- Tables
 CREATE TABLE users (
@@ -174,23 +228,23 @@ CREATE TABLE users (
   updated_at timestamp(6) NOT NULL
 );
 
-CREATE INDEX index_users_on_email ON users (email);
-
--- Schema Migrations
-SET search_path TO "$user", public;
-
-INSERT INTO "schema_migrations" (version) VALUES
-('20230714030024'),
-('20230714051430');
-
---
--- PostgreSQL database dump complete
---
+CREATE INDEX index_users_on_email
+  ON users (email);
 ```
 
-## Configuration Example
+**🎯 Benefits:**
+- Clean, minimal output
+- Deterministic
+- Easy to review
+- Version control friendly
 
-### Single-File Output (Default)
+</td>
+</tr>
+</table>
+
+## ⚙️ Configuration
+
+### 📄 Single-File Output (Default)
 
 ```ruby
 # config/initializers/better_structure_sql.rb
@@ -216,7 +270,7 @@ BetterStructureSql.configure do |config|
 end
 ```
 
-### Multi-File Output (For Large Schemas)
+### 📁 Multi-File Output (For Large Schemas)
 
 ```ruby
 # config/initializers/better_structure_sql.rb
@@ -241,7 +295,7 @@ BetterStructureSql.configure do |config|
 end
 ```
 
-### Directory Structure (Multi-File Mode)
+### 📂 Directory Structure (Multi-File Mode)
 
 When using `config.output_path = 'db/schema'`, your schema is organized by type with numbered directories indicating load order:
 
@@ -278,14 +332,16 @@ db/schema/
 - ✅ ZIP downloads - complete directory as single archive
 - ✅ Scalable - handles 50,000+ database objects
 
-## Requirements
+## 📋 Requirements
 
-- Rails 7.0+
-- Ruby 2.7+
-- Database adapter gem:
-  - `pg` (>= 1.0) for PostgreSQL 12+
-  - `mysql2` (>= 0.5) for MySQL 8.0+
-  - `sqlite3` (>= 1.4) for SQLite 3.35+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **Ruby** | 2.7+ | Tested up to Ruby 3.4.7 |
+| **Rails** | 7.0+ | Works with Rails 8.1.1+ |
+| **Database Adapter** | | Choose one: |
+| `pg` | ≥ 1.0 | For PostgreSQL 12+ |
+| `mysql2` | ≥ 0.5 | For MySQL 8.0+ |
+| `sqlite3` | ≥ 1.4 | For SQLite 3.35+ |
 
 ## Migration Guides
 
@@ -310,10 +366,27 @@ BetterStructureSql supports **both** `schema.rb` and `structure.sql` formats, al
 - Compare different formats in the web UI
 - Migrate gradually from Ruby to SQL format
 
-## Contributing
+---
 
-Bug reports and pull requests are welcome on GitHub.
+## 🤝 Contributing
 
-## License
+We welcome contributions! Bug reports and pull requests are welcome on [GitHub](https://github.com/sebyx07/better_structure_sql).
 
-The gem is available as open source under the terms of the MIT License.
+### How to Contribute
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Run the tests (`bundle exec rspec`)
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+## 📄 License
+
+This gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+---
+
+**Made with ❤️ by [sebyx07](https://github.com/sebyx07) and [contributors](https://github.com/sebyx07/better_structure_sql/graphs/contributors)**
+
+⭐ **Star this repo if you find it useful!** ⭐
