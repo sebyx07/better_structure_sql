@@ -92,8 +92,8 @@ module BetterStructureSql
         # PostgreSQL can handle multiple statements in one execute call
         connection.execute(sql)
       when 'mysql', 'mysql2', 'trilogy'
-        # MySQL can handle multiple statements but needs multi_statement=true in connection
-        connection.execute(sql)
+        # MySQL needs statements executed individually
+        execute_mysql_statements(connection, sql)
       else
         # Fallback: Try executing as-is first
         begin
@@ -106,6 +106,39 @@ module BetterStructureSql
             connection.execute("#{statement};")
           end
         end
+      end
+    end
+
+    def execute_mysql_statements(connection, sql)
+      # Split SQL into individual statements for MySQL
+      # MySQL can't execute multiple statements in one call via ActiveRecord
+      statements = []
+      current_statement = +'' # Unfreeze string with unary plus
+
+      sql.each_line do |line|
+        # Skip standalone comment lines
+        if line.strip.start_with?('--') && current_statement.strip.empty?
+          next
+        end
+
+        current_statement << line
+
+        # Check if statement is complete (ends with semicolon)
+        if line.strip.end_with?(';')
+          statements << current_statement.strip
+          current_statement = +'' # Unfreeze new string
+        end
+      end
+
+      # Add any remaining statement
+      statements << current_statement.strip unless current_statement.strip.empty?
+
+      # Execute each statement
+      statements.each do |statement|
+        next if statement.empty?
+        next if statement.start_with?('--') # Skip standalone comments
+
+        connection.execute(statement)
       end
     end
   end

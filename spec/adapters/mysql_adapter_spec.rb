@@ -103,18 +103,12 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   end
 
   describe '#fetch_functions' do
-    it 'fetches stored procedures and functions' do
-      query_result = [
-        ['calculate_total', 'FUNCTION', 'decimal(10,2)', 'BEGIN...END']
-      ]
-
-      allow(connection).to receive(:execute).and_return(query_result)
-
+    it 'returns empty array (procedures managed via migrations)' do
+      # MySQL stored procedures and functions are intentionally skipped
+      # They should be defined in migrations, not dumped to structure.sql
       functions = adapter.fetch_functions(connection)
 
-      expect(functions.length).to eq(1)
-      expect(functions.first[:name]).to eq('calculate_total')
-      expect(functions.first[:type]).to eq('FUNCTION')
+      expect(functions).to eq([])
     end
   end
 
@@ -125,19 +119,12 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   end
 
   describe '#fetch_triggers' do
-    it 'fetches triggers using information_schema' do
-      query_result = [
-        ['update_timestamp', 'INSERT', 'posts', 'BEFORE', 'BEGIN...END']
-      ]
-
-      allow(connection).to receive(:execute).and_return(query_result)
-
+    it 'returns empty array (triggers managed via migrations)' do
+      # MySQL triggers are intentionally skipped
+      # They should be defined in migrations, not dumped to structure.sql
       triggers = adapter.fetch_triggers(connection)
 
-      expect(triggers.length).to eq(1)
-      expect(triggers.first[:name]).to eq('update_timestamp')
-      expect(triggers.first[:timing]).to eq('BEFORE')
-      expect(triggers.first[:event]).to eq('INSERT')
+      expect(triggers).to eq([])
     end
   end
 

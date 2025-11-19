@@ -24,9 +24,9 @@ RSpec.describe BetterStructureSql::Generators::TableGenerator do
         result = generator.generate(table)
 
         expect(result).to include('CREATE TABLE users (')
-        expect(result).to include("id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass)")
-        expect(result).to include('email varchar NOT NULL')
-        expect(result).to include('PRIMARY KEY (id)')
+        expect(result).to include('"id" bigint NOT NULL DEFAULT nextval(\'users_id_seq\'::regclass)')
+        expect(result).to include('"email" varchar NOT NULL')
+        expect(result).to include('PRIMARY KEY ("id")')
       end
     end
 
@@ -45,9 +45,9 @@ RSpec.describe BetterStructureSql::Generators::TableGenerator do
 
         result = generator.generate(table)
 
-        expect(result).to include('id bigint NOT NULL')
-        expect(result).to include('title varchar')
-        expect(result).not_to match(/title varchar NOT NULL/)
+        expect(result).to include('"id" bigint NOT NULL')
+        expect(result).to include('"title" varchar')
+        expect(result).not_to match(/"title" varchar NOT NULL/)
       end
     end
 
@@ -66,7 +66,7 @@ RSpec.describe BetterStructureSql::Generators::TableGenerator do
 
         result = generator.generate(table)
 
-        expect(result).to include('PRIMARY KEY (user_id, role_id)')
+        expect(result).to include('PRIMARY KEY ("user_id", "role_id")')
       end
     end
 
@@ -130,10 +130,10 @@ RSpec.describe BetterStructureSql::Generators::TableGenerator do
 
         result = generator.generate(table)
 
-        expect(result).to include('created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP')
-        expect(result).to include('is_active boolean NOT NULL DEFAULT true')
-        expect(result).to include('count integer NOT NULL DEFAULT 0')
-        expect(result).to include("status varchar DEFAULT 'pending'")
+        expect(result).to include('"created_at" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP')
+        expect(result).to include('"is_active" boolean NOT NULL DEFAULT true')
+        expect(result).to include('"count" integer NOT NULL DEFAULT 0')
+        expect(result).to include('"status" varchar DEFAULT \'pending\'')
       end
     end
   end
