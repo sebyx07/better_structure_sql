@@ -240,4 +240,164 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
       expect(adapter.send(:resolve_column_type, 'BOOLEAN')).to eq('boolean')
     end
   end
+
+  describe 'SQL generation methods' do
+    describe '#generate_table' do
+      it 'returns original SQL from sqlite_master if available' do
+        table = {
+          name: 'users',
+          sql: 'CREATE TABLE users (id INTEGER PRIMARY KEY)'
+        }
+
+        expect(adapter.generate_table(table)).to eq('CREATE TABLE users (id INTEGER PRIMARY KEY)')
+      end
+
+      it 'generates CREATE TABLE from columns' do
+        table = {
+          name: 'users',
+          columns: [
+            { name: 'id', type: 'integer', nullable: false, primary_key: true },
+            { name: 'email', type: 'text', nullable: false }
+          ],
+          primary_key: ['id']
+        }
+
+        sql = adapter.generate_table(table)
+        expect(sql).to include('CREATE TABLE "users"')
+        expect(sql).to include('"id" INTEGER')
+        expect(sql).to include('PRIMARY KEY')
+        expect(sql).to include('"email" TEXT NOT NULL')
+      end
+    end
+
+    describe '#generate_index' do
+      it 'generates CREATE INDEX statement' do
+        index = {
+          name: 'idx_email',
+          table: 'users',
+          columns: ['email'],
+          unique: false
+        }
+
+        sql = adapter.generate_index(index)
+        expect(sql).to eq('CREATE INDEX "idx_email" ON "users" ("email");')
+      end
+
+      it 'generates CREATE UNIQUE INDEX statement' do
+        index = {
+          name: 'idx_email',
+          table: 'users',
+          columns: ['email'],
+          unique: true
+        }
+
+        sql = adapter.generate_index(index)
+        expect(sql).to eq('CREATE UNIQUE INDEX "idx_email" ON "users" ("email");')
+      end
+
+      it 'handles multi-column indexes' do
+        index = {
+          name: 'idx_name_email',
+          table: 'users',
+          columns: ['name', 'email'],
+          unique: false
+        }
+
+        sql = adapter.generate_index(index)
+        expect(sql).to include('"name", "email"')
+      end
+    end
+
+    describe '#generate_foreign_key' do
+      it 'generates inline foreign key constraint' do
+        fk = {
+          column: 'user_id',
+          foreign_table: 'users',
+          foreign_column: 'id',
+          on_delete: 'CASCADE',
+          on_update: 'NO ACTION'
+        }
+
+        sql = adapter.generate_foreign_key(fk)
+        expect(sql).to include('FOREIGN KEY ("user_id")')
+        expect(sql).to include('REFERENCES "users"("id")')
+        expect(sql).to include('ON DELETE CASCADE')
+        expect(sql).to include('ON UPDATE NO ACTION')
+      end
+    end
+
+    describe '#generate_view' do
+      it 'returns original SQL if it starts with CREATE VIEW' do
+        view = {
+          name: 'user_stats',
+          definition: 'CREATE VIEW user_stats AS SELECT * FROM users'
+        }
+
+        expect(adapter.generate_view(view)).to eq('CREATE VIEW user_stats AS SELECT * FROM users')
+      end
+
+      it 'generates CREATE VIEW from definition' do
+        view = {
+          name: 'user_stats',
+          definition: 'SELECT * FROM users'
+        }
+
+        sql = adapter.generate_view(view)
+        expect(sql).to include('CREATE VIEW "user_stats" AS')
+        expect(sql).to include('SELECT * FROM users')
+      end
+    end
+
+    describe '#generate_trigger' do
+      it 'returns original SQL if it starts with CREATE TRIGGER' do
+        trigger = {
+          name: 'update_timestamp',
+          statement: 'CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END'
+        }
+
+        expect(adapter.generate_trigger(trigger)).to eq('CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END')
+      end
+
+      it 'generates CREATE TRIGGER from components' do
+        trigger = {
+          name: 'update_timestamp',
+          timing: 'AFTER',
+          event: 'UPDATE',
+          table_name: 'posts',
+          body: 'UPDATE posts SET updated_at = datetime(\'now\') WHERE id = NEW.id;'
+        }
+
+        sql = adapter.generate_trigger(trigger)
+        expect(sql).to include('CREATE TRIGGER "update_timestamp"')
+        expect(sql).to include('AFTER UPDATE ON "posts"')
+        expect(sql).to include('BEGIN')
+        expect(sql).to include('END;')
+      end
+    end
+
+    describe '#quote_identifier' do
+      it 'quotes identifiers with double quotes' do
+        expect(adapter.send(:quote_identifier, 'table_name')).to eq('"table_name"')
+      end
+    end
+
+    describe '#format_default_value' do
+      it 'formats NULL' do
+        expect(adapter.send(:format_default_value, nil)).to eq('NULL')
+      end
+
+      it 'formats strings with quotes' do
+        expect(adapter.send(:format_default_value, 'test')).to eq("'test'")
+      end
+
+      it 'handles function calls without quotes' do
+        expect(adapter.send(:format_default_value, 'CURRENT_TIMESTAMP')).to eq('CURRENT_TIMESTAMP')
+      end
+
+      it 'formats booleans as 1/0' do
+        expect(adapter.send(:format_default_value, true)).to eq('1')
+        expect(adapter.send(:format_default_value, false)).to eq('0')
+      end
+    end
+  end
 end

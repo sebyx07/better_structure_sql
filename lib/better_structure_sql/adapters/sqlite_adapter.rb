@@ -193,6 +193,86 @@ module BetterStructureSql
         true # SQLite has always supported CHECK constraints
       end
 
+      # SQL Generation methods - SQLite-specific syntax
+
+      # Generate CREATE TABLE statement for SQLite
+      # @param table [Hash] Table hash with name, columns, primary_key
+      # @return [String] CREATE TABLE SQL statement
+      def generate_table(table)
+        sql = table[:sql]
+        return sql if sql # Use original SQL from sqlite_master if available
+
+        # Generate from columns if needed
+        lines = ["CREATE TABLE #{quote_identifier(table[:name])} ("]
+
+        column_defs = table[:columns].map do |col|
+          generate_column_definition(col, table[:primary_key])
+        end
+
+        # Add foreign keys inline if present
+        table[:foreign_keys]&.each do |fk|
+          column_defs << generate_foreign_key_inline(fk)
+        end
+
+        lines << column_defs.map { |col_def| "  #{col_def}" }.join(",\n")
+        lines << ');'
+
+        lines.join("\n")
+      end
+
+      # Generate CREATE INDEX statement for SQLite
+      # @param index [Hash] Index hash with name, table, columns, unique
+      # @return [String] CREATE INDEX SQL statement
+      def generate_index(index)
+        unique = index[:unique] ? 'UNIQUE ' : ''
+        columns = index[:columns].map { |col| quote_identifier(col) }.join(', ')
+
+        "CREATE #{unique}INDEX #{quote_identifier(index[:name])} " \
+          "ON #{quote_identifier(index[:table])} (#{columns});"
+      end
+
+      # Generate foreign key constraint (inline with table definition)
+      # @param fk [Hash] Foreign key hash
+      # @return [String] FOREIGN KEY constraint SQL
+      # rubocop:disable Naming/MethodParameterName
+      def generate_foreign_key(fk)
+        # SQLite requires foreign keys inline with CREATE TABLE
+        # This method is for documentation - actual usage is generate_foreign_key_inline
+        generate_foreign_key_inline(fk)
+      end
+
+      # Generate CREATE VIEW statement for SQLite
+      # @param view [Hash] View hash with name, definition
+      # @return [String] CREATE VIEW SQL statement
+      def generate_view(view)
+        definition = view[:definition]
+        return definition if /^CREATE\s+VIEW/i.match?(definition) # Already complete
+
+        "CREATE VIEW #{quote_identifier(view[:name])} AS\n#{definition};"
+      end
+
+      # Generate CREATE TRIGGER statement for SQLite
+      # @param trigger [Hash] Trigger hash with name, timing, event, table_name, statement
+      # @return [String] CREATE TRIGGER SQL statement
+      def generate_trigger(trigger)
+        statement = trigger[:statement]
+        return statement if /^CREATE\s+TRIGGER/i.match?(statement) # Already complete
+
+        # Generate from components
+        timing = trigger[:timing] || 'AFTER'
+        event = trigger[:event] || 'INSERT'
+        table = trigger[:table_name]
+        body = trigger[:body] || trigger[:statement]
+
+        <<~SQL.strip
+          CREATE TRIGGER #{quote_identifier(trigger[:name])}
+          #{timing} #{event} ON #{quote_identifier(table)}
+          BEGIN
+            #{body}
+          END;
+        SQL
+      end
+
       # Version detection
 
       def database_version
@@ -307,6 +387,69 @@ module BetterStructureSql
           'json' # Stored as TEXT but semantically JSON
         else
           type_string
+        end
+      end
+
+      # Generate column definition for CREATE TABLE
+      # @param col [Hash] Column hash with name, type, nullable, default, primary_key
+      # @param primary_keys [Array<String>] List of primary key column names
+      # @return [String] Column definition SQL
+      def generate_column_definition(col, primary_keys = [])
+        parts = [quote_identifier(col[:name]), col[:type].upcase]
+
+        # PRIMARY KEY for single-column pk with AUTOINCREMENT
+        if col[:primary_key] && primary_keys.length == 1
+          parts << 'PRIMARY KEY'
+          parts << 'AUTOINCREMENT' if col[:extra]&.include?('auto_increment') || col[:type]&.downcase == 'integer'
+        end
+
+        parts << 'NOT NULL' unless col[:nullable]
+        parts << "DEFAULT #{format_default_value(col[:default])}" if col[:default]
+
+        parts.join(' ')
+      end
+
+      # Generate inline foreign key constraint
+      # @param fk [Hash] Foreign key hash with column, foreign_table, foreign_column, on_delete, on_update
+      # @return [String] FOREIGN KEY constraint SQL
+      def generate_foreign_key_inline(fk)
+        parts = ["FOREIGN KEY (#{quote_identifier(fk[:column])})"]
+        parts << "REFERENCES #{quote_identifier(fk[:foreign_table])}(#{quote_identifier(fk[:foreign_column])})"
+        parts << "ON DELETE #{fk[:on_delete]}" if fk[:on_delete]
+        parts << "ON UPDATE #{fk[:on_update]}" if fk[:on_update]
+
+        parts.join(' ')
+      end
+      # rubocop:enable Naming/MethodParameterName
+
+      # Quote identifier (table/column name)
+      # @param name [String] Identifier to quote
+      # @return [String] Quoted identifier
+      def quote_identifier(name)
+        "\"#{name}\""
+      end
+
+      # Format default value for SQL
+      # @param value [Object] Default value
+      # @return [String] Formatted default value
+      def format_default_value(value)
+        case value
+        when nil
+          'NULL'
+        when String
+          # Check if it looks like a function call (uppercase letters/underscores followed by parentheses)
+          # or datetime/current_timestamp keywords
+          if value =~ /^[A-Z_]+\(/i || value =~ /^(CURRENT_|datetime|date|time)/i
+            value
+          else
+            "'#{value.gsub("'", "''")}'"
+          end
+        when TrueClass
+          '1'
+        when FalseClass
+          '0'
+        else
+          value.to_s
         end
       end
     end
