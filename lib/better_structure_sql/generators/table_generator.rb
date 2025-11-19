@@ -16,7 +16,8 @@ module BetterStructureSql
         column_defs = table[:columns].map { |col| column_definition(col) }
 
         if table[:primary_key]&.any?
-          pk_cols = table[:primary_key].join(', ')
+          # Quote primary key column names
+          pk_cols = table[:primary_key].map { |col| quote_column_name(col) }.join(', ')
           column_defs << "PRIMARY KEY (#{pk_cols})"
         end
 
@@ -40,7 +41,9 @@ module BetterStructureSql
       private
 
       def column_definition(column)
-        parts = [column[:name], column[:type]]
+        # Quote column name for MySQL compatibility (reserved words like 'key')
+        column_name = quote_column_name(column[:name])
+        parts = [column_name, column[:type]]
 
         parts << 'NOT NULL' unless column[:nullable]
 
@@ -93,6 +96,18 @@ module BetterStructureSql
         parts << "ON UPDATE #{fk[:on_update]}" if fk[:on_update] && fk[:on_update] != 'NO ACTION'
 
         parts.join(' ')
+      end
+
+      def quote_column_name(column_name)
+        # Detect adapter from ActiveRecord connection
+        adapter_name = ActiveRecord::Base.connection.adapter_name.downcase rescue nil
+
+        # MySQL/MariaDB use backticks, PostgreSQL/SQLite use double quotes
+        if adapter_name == 'mysql' || adapter_name == 'mysql2' || adapter_name == 'trilogy'
+          "`#{column_name}`"
+        else
+          "\"#{column_name}\""
+        end
       end
     end
   end
