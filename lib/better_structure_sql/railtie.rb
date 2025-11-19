@@ -26,9 +26,28 @@ module BetterStructureSql
         if config.replace_default_dump && !is_ruby_format
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksExtension)
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksDumpInfoExtension)
+          # Also prepend path override for dump
+          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksPathExtension)
         end
 
-        ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksLoadExtension) if config.replace_default_load && !is_ruby_format
+        if config.replace_default_load && !is_ruby_format
+          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksLoadExtension)
+          # Also prepend path override for load
+          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksPathExtension)
+        end
+      end
+    end
+
+    # Override schema_dump_path to return our configured path (both dump and load)
+    module DatabaseTasksPathExtension
+      def schema_dump_path(db_config, format = ActiveRecord.schema_format)
+        if format.to_sym == :sql && !BetterStructureSql.configuration.output_path.to_s.end_with?('.rb')
+          # Return our configured path for SQL format
+          Rails.root.join(BetterStructureSql.configuration.output_path)
+        else
+          # Use default Rails path for Ruby format
+          super
+        end
       end
     end
 
@@ -59,8 +78,25 @@ module BetterStructureSql
     end
 
     module DatabaseTasksLoadExtension
-      def structure_load(_configuration, *_args)
-        Rake::Task['db:schema:load_better'].invoke
+      # Override load_schema to handle both file and directory schemas
+      def load_schema(db_config, format = ActiveRecord.schema_format, *_args)
+        if format.to_sym == :sql
+          # Get the configured schema path (could be file or directory)
+          config = BetterStructureSql.configuration
+          schema_path = Rails.root.join(config.output_path)
+
+          # Check if schema exists (file or directory)
+          unless File.exist?(schema_path)
+            abort "#{schema_path} doesn't exist yet. Run `bin/rails db:migrate` to create it, then try again."
+          end
+
+          # Use our loader which handles both file and directory
+          loader = BetterStructureSql::SchemaLoader.new(config)
+          loader.load
+        else
+          # For Ruby format, call the original method
+          super
+        end
       end
     end
   end

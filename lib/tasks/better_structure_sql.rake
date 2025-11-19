@@ -1,9 +1,20 @@
 # frozen_string_literal: true
 
-# Guard against loading tasks multiple times
-return if defined?(BETTER_STRUCTURE_SQL_TASKS_LOADED)
-
-BETTER_STRUCTURE_SQL_TASKS_LOADED = true
+# Clear tasks on reload to avoid duplicate task errors
+if defined?(BETTER_STRUCTURE_SQL_TASKS_LOADED)
+  %w[
+    db:schema:dump_better
+    db:schema:load_better
+    db:schema:store
+    db:schema:versions
+    db:schema:cleanup
+    db:schema:restore
+  ].each do |task_name|
+    Rake::Task[task_name].clear if Rake::Task.task_defined?(task_name)
+  end
+else
+  BETTER_STRUCTURE_SQL_TASKS_LOADED = true
+end
 
 namespace :db do
   namespace :schema do
