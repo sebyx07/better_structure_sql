@@ -36,6 +36,7 @@ esbuild
             entryPoints: ['src/main.jsx'],
             filename: 'index.html',
             htmlTemplate: readFileSync('public/index.template.html', 'utf8'),
+            scriptLoading: 'module',
           },
         ],
       }),
