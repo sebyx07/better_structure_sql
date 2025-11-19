@@ -4,6 +4,9 @@ module BetterStructureSql
   class SchemaVersion < ActiveRecord::Base
     self.table_name = 'better_structure_sql_schema_versions'
 
+    # Callbacks
+    before_save :set_metadata
+
     # Validations
     validates :content, presence: true
     validates :pg_version, presence: true
@@ -17,7 +20,12 @@ module BetterStructureSql
 
     # Instance methods
     def size
-      content.bytesize
+      # Use stored content_size if available and content hasn't changed
+      if content_size.present? && !content_changed?
+        content_size
+      else
+        content.bytesize
+      end
     end
 
     def formatted_size
@@ -29,6 +37,15 @@ module BetterStructureSql
       else
         "#{(bytes / 1024.0 / 1024.0).round(2)} MB"
       end
+    end
+
+    private
+
+    def set_metadata
+      return unless content_changed?
+
+      self.content_size = content.bytesize
+      self.line_count = content.lines.count
     end
   end
 end

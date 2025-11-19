@@ -18,7 +18,7 @@ class CreateFunctionsAndTriggers < ActiveRecord::Migration[8.1]
       CREATE OR REPLACE FUNCTION validate_email(email_text text)
       RETURNS boolean AS $$
       BEGIN
-        RETURN email_text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$';
+        RETURN email_text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$';
       END;
       $$ LANGUAGE plpgsql IMMUTABLE;
     SQL
@@ -61,7 +61,7 @@ class CreateFunctionsAndTriggers < ActiveRecord::Migration[8.1]
       t.timestamp :changed_at, null: false
     end
 
-    add_index :product_price_history, [:product_id, :changed_at]
+    add_index :product_price_history, %i[product_id changed_at]
 
     # Create triggers
     execute <<~SQL

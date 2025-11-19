@@ -9,7 +9,7 @@ class CreateAdvancedIndexes < ActiveRecord::Migration[8.1]
     add_index :categories, 'LOWER(name)', name: 'index_categories_on_lower_name'
 
     # Composite indexes with WHERE clauses
-    add_index :products, [:category_id, :is_active, :price],
+    add_index :products, %i[category_id is_active price],
               where: 'is_active = true AND stock_quantity > 0',
               name: 'index_products_on_available_items'
 

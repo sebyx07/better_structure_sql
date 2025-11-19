@@ -7,7 +7,7 @@ module BetterStructureSql
     # Set the root to the gem root directory
     # For development with Docker volume mount, the gem is at /
     # In production, this will be the gem's installed location
-    config.root = ENV.fetch('BETTER_STRUCTURE_SQL_ROOT', File.expand_path('../../..', __FILE__))
+    config.root = ENV.fetch('BETTER_STRUCTURE_SQL_ROOT', File.expand_path('../..', __dir__))
 
     config.generators do |g|
       g.test_framework :rspec

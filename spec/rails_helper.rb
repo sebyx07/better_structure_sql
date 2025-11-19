@@ -9,12 +9,6 @@ require 'action_controller/railtie'
 require 'active_record/railtie'
 require 'rspec/rails'
 
-# Configure database before Rails initialization
-ActiveRecord::Base.establish_connection(
-  adapter: 'sqlite3',
-  database: ':memory:'
-)
-
 # Minimal Rails app for testing
 module Dummy
   class Application < Rails::Application
@@ -22,18 +16,24 @@ module Dummy
     config.eager_load = false
     config.secret_key_base = 'test'
     config.hosts.clear if config.respond_to?(:hosts)
-
-    # Skip database config file requirement
-    config.active_record.database_selector = nil if config.respond_to?(:active_record)
-    config.active_record.database_resolver = nil if config.respond_to?(:active_record)
+    config.active_record.check_schema_cache_dump_version = false
   end
 end
 
-# Initialize app before establishing connection
-Rails.application = Dummy::Application.new
-Rails.application.config.active_record.legacy_connection_handling = false if Rails.application.config.respond_to?(:active_record)
+# Set up in-memory database
+ActiveRecord::Base.configurations = {
+  'test' => {
+    'adapter' => 'sqlite3',
+    'database' => ':memory:'
+  }
+}
 
+# Initialize app
+Rails.application = Dummy::Application.new
 Dummy::Application.initialize!
+
+# Establish connection
+ActiveRecord::Base.establish_connection(:test)
 
 # Load engine
 require_relative '../lib/better_structure_sql/engine'
@@ -44,8 +44,12 @@ ActiveRecord::Schema.define do
     t.text :content, null: false
     t.string :pg_version, null: false
     t.string :format_type, null: false
+    t.bigint :content_size, null: false
+    t.integer :line_count, null: false
     t.timestamps
   end
+
+  add_index :better_structure_sql_schema_versions, :created_at
 end
 
 RSpec.configure do |config|
@@ -54,7 +58,7 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
 
   # Clean database between tests
-  config.before(:each) do
+  config.before do
     BetterStructureSql::SchemaVersion.delete_all
   end
 end

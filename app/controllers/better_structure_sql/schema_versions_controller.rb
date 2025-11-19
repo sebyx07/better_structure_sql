@@ -15,19 +15,17 @@ module BetterStructureSql
     # GET /better_structure_sql/schema_versions/:id
     def show
       @schema_version = SchemaVersion.select(:id, :pg_version, :format_type, :created_at, :updated_at,
-                                             'LENGTH(content) as content_size').find(params[:id])
+                                             :content_size, :line_count).find(params[:id])
 
       # Only load content if it's small enough to display
-      if @schema_version.content_size <= MAX_DISPLAY_SIZE
-        @schema_version = SchemaVersion.find(params[:id])
-      end
+      @schema_version = SchemaVersion.find(params[:id]) if @schema_version.content_size <= MAX_DISPLAY_SIZE
     rescue ActiveRecord::RecordNotFound
       render plain: 'Schema version not found', status: :not_found
     end
 
     # GET /better_structure_sql/schema_versions/:id/raw
     def raw
-      version = SchemaVersion.select(:id, :format_type, 'LENGTH(content) as content_size').find(params[:id])
+      version = SchemaVersion.select(:id, :format_type, :content_size).find(params[:id])
 
       filename = "schema_version_#{version.id}_#{version.format_type}.txt"
 

@@ -38,7 +38,8 @@ module BetterStructureSql
           FileUtils.mkdir_p(File.dirname(filename))
 
           # Call our dumper which already includes schema_migrations
-          BetterStructureSql::Dumper.new.dump
+          # Don't auto-store version here - use explicit db:schema:store task
+          BetterStructureSql::Dumper.new.dump(store_version: false)
         else
           # For Ruby format, call the original method
           super

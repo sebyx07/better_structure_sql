@@ -23,7 +23,7 @@ class CreateCustomTypes < ActiveRecord::Migration[8.1]
     # Create domain type with constraint
     execute <<~SQL
       CREATE DOMAIN email_address AS varchar(255)
-        CHECK (VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$');
+        CHECK (VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$');
 
       CREATE DOMAIN positive_integer AS integer
         CHECK (VALUE > 0);

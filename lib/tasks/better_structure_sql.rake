@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Guard against loading tasks multiple times
+return if defined?(BETTER_STRUCTURE_SQL_TASKS_LOADED)
+
+BETTER_STRUCTURE_SQL_TASKS_LOADED = true
+
 namespace :db do
   namespace :schema do
     desc 'Dump the database schema to db/structure.sql using BetterStructureSql'
@@ -7,14 +12,14 @@ namespace :db do
       require 'better_structure_sql'
 
       dumper = BetterStructureSql::Dumper.new
-      output = dumper.dump
+      output = dumper.dump(store_version: false)
 
       puts "Schema dumped to #{BetterStructureSql.configuration.output_path}"
       puts "Total size: #{output.bytesize} bytes"
     end
 
     desc 'Load the database schema from db/structure.sql (BetterStructureSql format)'
-    task load_better: [:load_config, :check_protected_environments] do
+    task load_better: %i[load_config check_protected_environments] do
       config = BetterStructureSql.configuration
       structure_file = Rails.root.join(config.output_path)
 
@@ -30,7 +35,7 @@ namespace :db do
 
       # Execute SQL directly using ActiveRecord connection
       connection = ActiveRecord::Base.connection
-      connection.execute("SET client_min_messages TO warning")
+      connection.execute('SET client_min_messages TO warning')
 
       # Execute the cleaned SQL
       connection.execute(clean_content)
@@ -50,6 +55,7 @@ namespace :db do
       end
 
       version = BetterStructureSql::SchemaVersions.store_current
+
       if version
         puts 'Schema version stored successfully'
         puts "  ID: #{version.id}"

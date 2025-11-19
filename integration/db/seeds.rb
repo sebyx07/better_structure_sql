@@ -20,7 +20,8 @@ puts "Created #{users.count} users"
 
 puts 'Creating sample posts...'
 posts = []
-posts << Post.create!(user: users[0], title: 'Getting Started with Rails', body: 'Rails is a web application framework running on the Ruby programming language.', published_at: 2.days.ago)
+posts << Post.create!(user: users[0], title: 'Getting Started with Rails', body: 'Rails is a web application framework running on the Ruby programming language.',
+                      published_at: 2.days.ago)
 posts << Post.create!(user: users[0], title: 'Understanding PostgreSQL', body: 'PostgreSQL is a powerful, open source object-relational database system.', published_at: 1.day.ago)
 posts << Post.create!(user: users[1], title: 'Docker for Development', body: 'Docker helps developers build, share, and run applications in containers.', published_at: 3.days.ago)
 posts << Post.create!(user: users[1], title: 'Draft Post', body: "This is a draft post that hasn't been published yet.", published_at: nil)
@@ -54,7 +55,7 @@ products << Product.create!(
   stock_quantity: 50,
   is_active: true,
   is_featured: true,
-  tags: ['electronics', 'smartphone', 'flagship'],
+  tags: %w[electronics smartphone flagship],
   metadata: { brand: 'TechCo', warranty: '2 years', color: 'black' },
   specifications: { screen: '6.7 inch OLED', ram: '12GB', storage: '256GB' }
 )
@@ -69,7 +70,7 @@ products << Product.create!(
   stock_quantity: 100,
   is_active: true,
   is_featured: false,
-  tags: ['electronics', 'audio', 'wireless'],
+  tags: %w[electronics audio wireless],
   metadata: { brand: 'AudioTech', warranty: '1 year' },
   specifications: { battery_life: '24 hours', drivers: '11mm dynamic' }
 )
@@ -85,7 +86,7 @@ products << Product.create!(
   stock_quantity: 30,
   is_active: true,
   is_featured: true,
-  tags: ['books', 'programming', 'software-engineering'],
+  tags: %w[books programming software-engineering],
   metadata: { author: 'David Thomas, Andrew Hunt', isbn: '978-0135957059', pages: 352 },
   specifications: { format: 'Paperback', language: 'English', publisher: 'Addison-Wesley' }
 )
@@ -99,7 +100,7 @@ products << Product.create!(
   stock_quantity: 20,
   is_active: true,
   is_featured: false,
-  tags: ['books', 'databases', 'distributed-systems'],
+  tags: %w[books databases distributed-systems],
   metadata: { author: 'Alex Petrov', isbn: '978-1492040347', pages: 373 },
   specifications: { format: 'Paperback', language: 'English' }
 )
@@ -115,8 +116,8 @@ products << Product.create!(
   stock_quantity: 200,
   is_active: true,
   is_featured: false,
-  tags: ['clothing', 'casual', 'cotton'],
-  metadata: { sizes: ['S', 'M', 'L', 'XL'], colors: ['white', 'black', 'navy'] },
+  tags: %w[clothing casual cotton],
+  metadata: { sizes: %w[S M L XL], colors: %w[white black navy] },
   specifications: { material: '100% cotton', care: 'Machine washable' }
 )
 
@@ -130,7 +131,7 @@ products << Product.create!(
   stock_quantity: 0,
   is_active: true,
   is_featured: false,
-  tags: ['garden', 'tools'],
+  tags: %w[garden tools],
   metadata: { pieces: 10, material: 'stainless steel' },
   specifications: { warranty: '5 years' }
 )
@@ -145,7 +146,7 @@ products << Product.create!(
   stock_quantity: 5,
   is_active: false,
   is_featured: false,
-  tags: ['electronics', 'smartphone', 'discontinued'],
+  tags: %w[electronics smartphone discontinued],
   metadata: { brand: 'OldTech' },
   specifications: {}
 )
@@ -246,7 +247,7 @@ puts 'Creating sample events...'
 event_types = ['user.login', 'user.logout', 'product.view', 'product.purchase', 'cart.add', 'cart.remove']
 event_names = ['User Login', 'User Logout', 'Product Viewed', 'Product Purchased', 'Added to Cart', 'Removed from Cart']
 
-50.times do |i|
+50.times do |_i|
   type_index = rand(event_types.length)
   Event.create!(
     user: users.sample,

@@ -59,7 +59,7 @@ class CreateUuidExamples < ActiveRecord::Migration[8.1]
 
     add_index :events, :event_type
     add_index :events, :event_name
-    add_index :events, [:user_id, :occurred_at]
+    add_index :events, %i[user_id occurred_at]
     add_index :events, :event_data, using: :gin
     add_index :events, :occurred_at, using: :brin
 

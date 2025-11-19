@@ -146,9 +146,12 @@ CREATE TABLE better_structure_sql_schema_versions (
   content text NOT NULL,
   pg_version varchar NOT NULL,
   format_type varchar NOT NULL,
+  content_size bigint NOT NULL,
+  line_count integer NOT NULL,
   created_at timestamp NOT NULL,
   updated_at timestamp NOT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  CONSTRAINT format_type_check CHECK (((format_type)::text = ANY ((ARRAY['sql'::character varying, 'rb'::character varying])::text[])))
 );
 
 CREATE TABLE categories (
@@ -283,7 +286,7 @@ CREATE TABLE users (
 );
 
 -- Indexes
-CREATE INDEX index_better_structure_sql_schema_versions_on_created_at ON public.better_structure_sql_schema_versions USING btree (created_at);
+CREATE INDEX index_better_structure_sql_schema_versions_on_created_at ON public.better_structure_sql_schema_versions USING btree (created_at DESC);
 CREATE INDEX index_categories_on_lower_name ON public.categories USING btree (lower((name)::text));
 CREATE INDEX index_categories_on_parent_id ON public.categories USING btree (parent_id);
 CREATE INDEX index_categories_on_position ON public.categories USING btree ("position");

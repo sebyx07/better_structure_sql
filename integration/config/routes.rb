@@ -19,5 +19,5 @@ Rails.application.routes.draw do
   # authenticate :user, ->(user) { user.admin? } do
   #   mount BetterStructureSql::Engine, at: "/better_structure_sql"
   # end
-  mount BetterStructureSql::Engine, at: "/better_structure_sql"
+  mount BetterStructureSql::Engine, at: '/better_structure_sql'
 end

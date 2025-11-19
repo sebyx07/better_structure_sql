@@ -93,10 +93,10 @@ module BetterStructureSql
       generator = Generators::TableGenerator.new(config)
       lines = [
         "SET default_tablespace = '';",
-        "",
-        "SET default_table_access_method = heap;",
-        "",
-        "-- Tables"
+        '',
+        'SET default_table_access_method = heap;',
+        '',
+        '-- Tables'
       ]
       lines += tables.map { |table| generator.generate(table) }
       lines.join("\n\n")
@@ -190,7 +190,7 @@ module BetterStructureSql
     end
 
     def footer
-      ""  # Just a blank line to ensure newline at end
+      '' # Just a blank line to ensure newline at end
     end
 
     def write_to_file(content)

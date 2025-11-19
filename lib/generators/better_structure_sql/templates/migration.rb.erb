@@ -4,6 +4,8 @@ class CreateBetterStructureSqlSchemaVersions < ActiveRecord::Migration<%= migrat
       t.text :content, null: false
       t.string :pg_version, null: false
       t.string :format_type, null: false
+      t.bigint :content_size, null: false
+      t.integer :line_count, null: false
       t.timestamp :created_at, null: false
     end
 

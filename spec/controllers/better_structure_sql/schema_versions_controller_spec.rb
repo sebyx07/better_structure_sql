@@ -7,6 +7,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
   routes { BetterStructureSql::Engine.routes }
 
   # Helper to create test schema version
+  # The model's before_save callback will automatically set content_size and line_count
   def create_schema_version(content_size: 1000)
     content = 'A' * content_size
     BetterStructureSql::SchemaVersion.create!(
@@ -94,12 +95,12 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
 
     context 'with non-existent version' do
       it 'returns 404' do
-        get :show, params: { id: 99999 }
+        get :show, params: { id: 99_999 }
         expect(response).to have_http_status(:not_found)
       end
 
       it 'renders error message' do
-        get :show, params: { id: 99999 }
+        get :show, params: { id: 99_999 }
         expect(response.body).to include('Schema version not found')
       end
     end
@@ -157,12 +158,12 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
 
     context 'with non-existent version' do
       it 'returns 404' do
-        get :raw, params: { id: 99999 }
+        get :raw, params: { id: 99_999 }
         expect(response).to have_http_status(:not_found)
       end
 
       it 'renders error message' do
-        get :raw, params: { id: 99999 }
+        get :raw, params: { id: 99_999 }
         expect(response.body).to include('Schema version not found')
       end
     end

@@ -41,7 +41,7 @@ class CreateProductsWithAdvancedFeatures < ActiveRecord::Migration[8.1]
     add_index :products, :specifications, using: :gin
     add_index :products, :tags, using: :gin
     add_index :products, :created_at
-    add_index :products, [:category_id, :price]
+    add_index :products, %i[category_id price]
 
     # Add check constraints
     execute <<~SQL
