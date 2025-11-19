@@ -1,0 +1,54 @@
+{
+  "name": "better-structure-sql-docs",
+  "version": "0.1.0",
+  "description": "Documentation site for BetterStructureSql gem",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "node scripts/build.js",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,json,css,md}\""
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.1",
+    "bootstrap": "^5.3.2",
+    "bootswatch": "^5.3.2",
+    "bootstrap-icons": "^1.11.2",
+    "react-syntax-highlighter": "^15.5.0",
+    "react-helmet-async": "^2.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "esbuild": "^0.19.10",
+    "@craftamap/esbuild-plugin-html": "^0.6.0",
+    "eslint": "^8.56.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.1.1",
+    "vitest": "^1.1.0",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/user-event": "^14.5.1",
+    "happy-dom": "^12.10.3"
+  },
+  "keywords": [
+    "documentation",
+    "rails",
+    "database",
+    "schema",
+    "postgresql",
+    "mysql",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "MIT"
+}
