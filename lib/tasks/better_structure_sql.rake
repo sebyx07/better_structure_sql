@@ -13,6 +13,31 @@ namespace :db do
       puts "Total size: #{output.bytesize} bytes"
     end
 
+    desc 'Load the database schema from db/structure.sql (BetterStructureSql format)'
+    task load_better: [:load_config, :check_protected_environments] do
+      config = BetterStructureSql.configuration
+      structure_file = Rails.root.join(config.output_path)
+
+      unless File.exist?(structure_file)
+        puts "Schema file not found: #{structure_file}"
+        exit 1
+      end
+
+      # Clean the file: remove Rails' appended duplicate INSERT if present
+      content = File.read(structure_file)
+      # Remove everything after the last ON CONFLICT DO NOTHING;
+      clean_content = content.sub(/ON CONFLICT DO NOTHING;.*\z/m, "ON CONFLICT DO NOTHING;\n")
+
+      # Execute SQL directly using ActiveRecord connection
+      connection = ActiveRecord::Base.connection
+      connection.execute("SET client_min_messages TO warning")
+
+      # Execute the cleaned SQL
+      connection.execute(clean_content)
+
+      puts "Schema loaded from #{structure_file}"
+    end
+
     desc 'Store current schema as a version in the database'
     task store: :environment do
       require 'better_structure_sql'

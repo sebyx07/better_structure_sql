@@ -2,7 +2,7 @@
 
 BetterStructureSql.configure do |config|
   # Output path for structure dump
-  config.output_path = Rails.root.join('db/structure.sql').to_s
+  config.output_path = Rails.root.join('db/structure.sql')
 
   # Schema search path
   config.search_path = 'public'
@@ -17,6 +17,7 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
   config.schema_versions_limit = 10
 
-  # Replace default Rails schema dump
+  # Replace default Rails schema dump and load
   config.replace_default_dump = true
+  config.replace_default_load = true
 end

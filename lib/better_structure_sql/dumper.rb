@@ -15,6 +15,7 @@ module BetterStructureSql
       output = []
       output << header
       output << extensions_section if config.include_extensions
+      output << set_schema_section
       output << custom_types_section if config.include_custom_types
       output << domains_section if config.include_domains
       output << sequences_section if config.include_sequences
@@ -26,7 +27,6 @@ module BetterStructureSql
       output << materialized_views_section if config.include_materialized_views
       output << triggers_section if config.include_triggers
       output << schema_migrations_section
-      output << search_path_section
       output << footer
 
       formatted_output = Formatter.new(config).format(output.compact.join("\n\n"))
@@ -42,7 +42,10 @@ module BetterStructureSql
     private
 
     def header
-      "SET client_encoding = 'UTF8';"
+      <<~HEADER.strip
+        SET client_encoding = 'UTF8';
+        SET standard_conforming_strings = on;
+      HEADER
     end
 
     def extensions_section
@@ -55,14 +58,19 @@ module BetterStructureSql
       lines.join("\n")
     end
 
+    def set_schema_section
+      "SET search_path TO #{config.search_path};"
+    end
+
     def custom_types_section
       types = Introspection.fetch_custom_types(connection)
       return nil if types.empty?
 
       generator = Generators::TypeGenerator.new(config)
-      lines = ['-- Custom Types']
-      lines += types.filter_map { |type| generator.generate(type) }
-      lines.join("\n")
+      lines = types.filter_map { |type| generator.generate(type) }
+      return nil if lines.empty?
+
+      (['-- Custom Types'] + lines).join("\n")
     end
 
     def sequences_section
@@ -82,7 +90,13 @@ module BetterStructureSql
       return '-- Tables' if tables.empty?
 
       generator = Generators::TableGenerator.new(config)
-      lines = ['-- Tables']
+      lines = [
+        "SET default_tablespace = '';",
+        "",
+        "SET default_table_access_method = heap;",
+        "",
+        "-- Tables"
+      ]
       lines += tables.map { |table| generator.generate(table) }
       lines.join("\n\n")
     end
@@ -175,11 +189,7 @@ module BetterStructureSql
     end
 
     def footer
-      <<~FOOTER.strip
-        --
-        -- PostgreSQL database dump complete
-        --
-      FOOTER
+      ""  # Just a blank line to ensure newline at end
     end
 
     def write_to_file(content)

@@ -2,9 +2,9 @@
 
 module BetterStructureSql
   class Configuration
-    attr_accessor :output_path,
-                  :search_path,
+    attr_accessor :search_path,
                   :replace_default_dump,
+                  :replace_default_load,
                   :include_extensions,
                   :include_functions,
                   :include_triggers,
@@ -22,10 +22,17 @@ module BetterStructureSql
                   :add_section_spacing,
                   :sort_tables
 
+    attr_reader :output_path
+
+    def output_path=(value)
+      @output_path = value.to_s
+    end
+
     def initialize
       @output_path = 'db/structure.sql'
       @search_path = '"$user", public'
       @replace_default_dump = false
+      @replace_default_load = false
       @include_extensions = true
       @include_functions = true
       @include_triggers = true

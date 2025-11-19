@@ -1,40 +1,28 @@
 # frozen_string_literal: true
 
 BetterStructureSql.configure do |config|
-  # Output file path (default: "db/structure.sql")
-  # config.output_path = "db/structure.sql"
+  # Output path for structure dump
+  config.output_path = Rails.root.join('db/structure.sql')
 
-  # Search path for schema (default: '"$user", public')
-  # config.search_path = '"$user", public'
+  # Schema search path
+  config.search_path = 'public'
 
-  # Replace Rails' default db:schema:dump task (default: false)
-  # Set to true to automatically use BetterStructureSql for all schema dumps
-  # config.replace_default_dump = false
+  # Feature toggles
+  config.include_extensions = true
+  config.include_functions = true
+  config.include_triggers = true
+  config.include_views = true
+  config.include_materialized_views = true
+  config.include_sequences = true
+  config.include_custom_types = true
+  config.include_domains = true
 
-  # Include PostgreSQL extensions (default: true)
-  # config.include_extensions = true
+  # Schema versioning (stores schema history in database, similar to Rails' ar_internal_metadata)
+  config.enable_schema_versions = true
+  config.schema_versions_limit = 10
 
-  # Include functions (default: false, Phase 3 feature)
-  # config.include_functions = false
-
-  # Include triggers (default: false, Phase 3 feature)
-  # config.include_triggers = false
-
-  # Include views (default: false, Phase 3 feature)
-  # config.include_views = false
-
-  # Enable schema version storage (default: false, Phase 2 feature)
-  # config.enable_schema_versions = false
-
-  # Number of schema versions to keep (default: 10, 0 = unlimited)
-  # config.schema_versions_limit = 10
-
-  # Indentation size for SQL formatting (default: 2)
-  # config.indent_size = 2
-
-  # Add spacing between sections (default: true)
-  # config.add_section_spacing = true
-
-  # Sort tables alphabetically (default: true)
-  # config.sort_tables = true
+  # Replace default Rails schema dump/load tasks
+  # When true, db:schema:dump and db:schema:load will use BetterStructureSql automatically
+  config.replace_default_dump = true
+  config.replace_default_load = true
 end

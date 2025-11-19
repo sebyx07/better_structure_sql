@@ -59,7 +59,9 @@ module BetterStructureSql
           ORDER BY ordinal_position
         SQL
 
-        connection.exec_query(query, 'SQL', [[nil, table_name]]).map do |row|
+        connection.select_all(
+          query.gsub('$1', connection.quote(table_name))
+        ).map do |row|
           {
             name: row['column_name'],
             type: resolve_column_type(row),
@@ -82,7 +84,9 @@ module BetterStructureSql
           ORDER BY a.attnum
         SQL
 
-        result = connection.exec_query(query, 'SQL', [[nil, table_name]])
+        result = connection.select_all(
+          query.gsub('$1', connection.quote(table_name))
+        )
         result.pluck('column_name')
       end
 
@@ -98,7 +102,9 @@ module BetterStructureSql
           ORDER BY conname
         SQL
 
-        connection.exec_query(query, 'SQL', [[nil, table_name]]).map do |row|
+        connection.select_all(
+          query.gsub('$1', connection.quote(table_name))
+        ).map do |row|
           {
             name: row['name'],
             definition: row['definition'],
@@ -205,8 +211,10 @@ module BetterStructureSql
             n.nspname as schema
           FROM pg_type t
           JOIN pg_namespace n ON n.oid = t.typnamespace
+          LEFT JOIN pg_class c ON c.reltype = t.oid AND c.relkind IN ('r', 'v', 'm')
           WHERE t.typtype IN ('e', 'c', 'd')
             AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND c.oid IS NULL
           ORDER BY t.typname
         SQL
 
@@ -290,8 +298,10 @@ module BetterStructureSql
           FROM pg_proc p
           JOIN pg_namespace n ON n.oid = p.pronamespace
           JOIN pg_language l ON l.oid = p.prolang
+          LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e'
           WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
             AND p.prokind = 'f'
+            AND d.objid IS NULL
           ORDER BY n.nspname, p.proname
         SQL
 
@@ -345,7 +355,9 @@ module BetterStructureSql
           ORDER BY indexname
         SQL
 
-        connection.exec_query(query, 'SQL', [[nil, matview_name]]).pluck('indexdef')
+        connection.select_all(
+          query.gsub('$1', connection.quote(matview_name))
+        ).pluck('indexdef')
       end
 
       def volatility_code(code)
@@ -366,7 +378,9 @@ module BetterStructureSql
           ORDER BY e.enumsortorder
         SQL
 
-        connection.exec_query(query, 'SQL', [[nil, type_name]]).pluck('enumlabel')
+        connection.select_all(
+          query.gsub('$1', connection.quote(type_name))
+        ).pluck('enumlabel')
       end
 
       def fetch_composite_attributes(connection, type_name)
@@ -382,7 +396,9 @@ module BetterStructureSql
           ORDER BY a.attnum
         SQL
 
-        connection.exec_query(query, 'SQL', [[nil, type_name]]).map do |row|
+        connection.select_all(
+          query.gsub('$1', connection.quote(type_name))
+        ).map do |row|
           { name: row['name'], type: row['type'] }
         end
       end
@@ -397,7 +413,9 @@ module BetterStructureSql
           WHERE t.typname = $1
         SQL
 
-        result = connection.exec_query(query, 'SQL', [[nil, type_name]]).first
+        result = connection.select_all(
+          query.gsub('$1', connection.quote(type_name))
+        ).first
         {
           base_type: result['base_type'],
           constraint: result['constraint']
