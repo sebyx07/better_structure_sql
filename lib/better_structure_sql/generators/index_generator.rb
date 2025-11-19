@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class IndexGenerator < Base
@@ -5,7 +7,7 @@ module BetterStructureSql
         # The indexdef from pg_indexes already contains the complete CREATE INDEX statement
         # We just need to ensure it ends with a semicolon
         definition = index[:definition]
-        definition.end_with?(";") ? definition : "#{definition};"
+        definition.end_with?(';') ? definition : "#{definition};"
       end
     end
   end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   class DependencyResolver
     attr_reader :objects, :dependencies
@@ -8,7 +10,7 @@ module BetterStructureSql
     end
 
     def add_object(name, type, depends_on: [])
-      @objects << {name: name, type: type}
+      @objects << { name: name, type: type }
       @dependencies[name] = Array(depends_on)
     end
 

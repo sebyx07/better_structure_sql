@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   class Formatter
     attr_reader :config

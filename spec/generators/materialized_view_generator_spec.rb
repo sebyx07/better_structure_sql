@@ -1,15 +1,17 @@
-require "spec_helper"
+# frozen_string_literal: true
+
+require 'spec_helper'
 
 RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
   subject(:generator) { described_class.new }
 
-  describe "#generate" do
-    context "when materialized view has no indexes" do
-      it "generates CREATE MATERIALIZED VIEW statement" do
+  describe '#generate' do
+    context 'when materialized view has no indexes' do
+      it 'generates CREATE MATERIALIZED VIEW statement' do
         matview = {
-          name: "user_stats",
-          schema: "public",
-          definition: "SELECT user_id, COUNT(*) FROM events GROUP BY user_id",
+          name: 'user_stats',
+          schema: 'public',
+          definition: 'SELECT user_id, COUNT(*) FROM events GROUP BY user_id',
           indexes: []
         }
         result = generator.generate(matview)
@@ -18,15 +20,15 @@ RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
       end
     end
 
-    context "when materialized view has indexes" do
-      it "generates CREATE MATERIALIZED VIEW with indexes" do
+    context 'when materialized view has indexes' do
+      it 'generates CREATE MATERIALIZED VIEW with indexes' do
         matview = {
-          name: "user_stats",
-          schema: "public",
-          definition: "SELECT user_id, COUNT(*) FROM events GROUP BY user_id",
+          name: 'user_stats',
+          schema: 'public',
+          definition: 'SELECT user_id, COUNT(*) FROM events GROUP BY user_id',
           indexes: [
-            "CREATE INDEX idx_user_stats_user_id ON user_stats (user_id)",
-            "CREATE INDEX idx_user_stats_count ON user_stats (count)"
+            'CREATE INDEX idx_user_stats_user_id ON user_stats (user_id)',
+            'CREATE INDEX idx_user_stats_count ON user_stats (count)'
           ]
         }
         result = generator.generate(matview)
@@ -43,12 +45,12 @@ RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
       end
     end
 
-    context "when materialized view is in custom schema" do
-      it "generates with schema prefix" do
+    context 'when materialized view is in custom schema' do
+      it 'generates with schema prefix' do
         matview = {
-          name: "daily_stats",
-          schema: "analytics",
-          definition: "SELECT date, COUNT(*) FROM events GROUP BY date",
+          name: 'daily_stats',
+          schema: 'analytics',
+          definition: 'SELECT date, COUNT(*) FROM events GROUP BY date',
           indexes: []
         }
         result = generator.generate(matview)

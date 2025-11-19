@@ -1,8 +1,10 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Introspection
     class << self
       def fetch_extensions(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT extname, extversion, nspname as schema_name
           FROM pg_extension
           JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace
@@ -12,15 +14,15 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            name: row["extname"],
-            version: row["extversion"],
-            schema: row["schema_name"]
+            name: row['extname'],
+            version: row['extversion'],
+            schema: row['schema_name']
           }
         end
       end
 
       def fetch_tables(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT table_name, table_schema
           FROM information_schema.tables
           WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
@@ -29,10 +31,10 @@ module BetterStructureSql
         SQL
 
         connection.execute(query).map do |row|
-          table_name = row["table_name"]
+          table_name = row['table_name']
           {
             name: table_name,
-            schema: row["table_schema"],
+            schema: row['table_schema'],
             columns: fetch_columns(connection, table_name),
             primary_key: fetch_primary_key(connection, table_name),
             constraints: fetch_constraints(connection, table_name)
@@ -41,7 +43,7 @@ module BetterStructureSql
       end
 
       def fetch_columns(connection, table_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             column_name,
             data_type,
@@ -57,21 +59,21 @@ module BetterStructureSql
           ORDER BY ordinal_position
         SQL
 
-        connection.exec_query(query, "SQL", [[nil, table_name]]).map do |row|
+        connection.exec_query(query, 'SQL', [[nil, table_name]]).map do |row|
           {
-            name: row["column_name"],
+            name: row['column_name'],
             type: resolve_column_type(row),
-            default: row["column_default"],
-            nullable: row["is_nullable"] == "YES",
-            length: row["character_maximum_length"],
-            precision: row["numeric_precision"],
-            scale: row["numeric_scale"]
+            default: row['column_default'],
+            nullable: row['is_nullable'] == 'YES',
+            length: row['character_maximum_length'],
+            precision: row['numeric_precision'],
+            scale: row['numeric_scale']
           }
         end
       end
 
       def fetch_primary_key(connection, table_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT a.attname as column_name
           FROM pg_index i
           JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
@@ -80,12 +82,12 @@ module BetterStructureSql
           ORDER BY a.attnum
         SQL
 
-        result = connection.exec_query(query, "SQL", [[nil, table_name]])
-        result.map { |row| row["column_name"] }
+        result = connection.exec_query(query, 'SQL', [[nil, table_name]])
+        result.pluck('column_name')
       end
 
       def fetch_constraints(connection, table_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             conname as name,
             pg_get_constraintdef(oid) as definition,
@@ -96,17 +98,17 @@ module BetterStructureSql
           ORDER BY conname
         SQL
 
-        connection.exec_query(query, "SQL", [[nil, table_name]]).map do |row|
+        connection.exec_query(query, 'SQL', [[nil, table_name]]).map do |row|
           {
-            name: row["name"],
-            definition: row["definition"],
-            type: constraint_type(row["type"])
+            name: row['name'],
+            definition: row['definition'],
+            type: constraint_type(row['type'])
           }
         end
       end
 
       def fetch_indexes(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             schemaname,
             tablename,
@@ -119,16 +121,16 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            schema: row["schemaname"],
-            table: row["tablename"],
-            name: row["indexname"],
-            definition: row["indexdef"]
+            schema: row['schemaname'],
+            table: row['tablename'],
+            name: row['indexname'],
+            definition: row['indexdef']
           }
-        end.reject { |idx| idx[:name].end_with?("_pkey") }
+        end.reject { |idx| idx[:name].end_with?('_pkey') }
       end
 
       def fetch_foreign_keys(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             tc.table_name,
             tc.constraint_name,
@@ -154,19 +156,19 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            table: row["table_name"],
-            name: row["constraint_name"],
-            column: row["column_name"],
-            foreign_table: row["foreign_table_name"],
-            foreign_column: row["foreign_column_name"],
-            on_update: row["update_rule"],
-            on_delete: row["delete_rule"]
+            table: row['table_name'],
+            name: row['constraint_name'],
+            column: row['column_name'],
+            foreign_table: row['foreign_table_name'],
+            foreign_column: row['foreign_column_name'],
+            on_update: row['update_rule'],
+            on_delete: row['delete_rule']
           }
         end
       end
 
       def fetch_sequences(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             sequencename,
             schemaname,
@@ -183,20 +185,20 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            name: row["sequencename"],
-            schema: row["schemaname"],
-            start_value: row["start_value"],
-            increment: row["increment_by"],
-            min_value: row["min_value"],
-            max_value: row["max_value"],
-            cache_size: row["cache_size"],
-            cycle: row["cycle"]
+            name: row['sequencename'],
+            schema: row['schemaname'],
+            start_value: row['start_value'],
+            increment: row['increment_by'],
+            min_value: row['min_value'],
+            max_value: row['max_value'],
+            cache_size: row['cache_size'],
+            cycle: row['cycle']
           }
         end
       end
 
       def fetch_custom_types(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             t.typname as name,
             t.typtype as type,
@@ -210,18 +212,18 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           type_data = {
-            name: row["schema"] == "public" ? row["name"] : "#{row['schema']}.#{row['name']}",
-            schema: row["schema"],
-            type: type_category(row["type"])
+            name: row['schema'] == 'public' ? row['name'] : "#{row['schema']}.#{row['name']}",
+            schema: row['schema'],
+            type: type_category(row['type'])
           }
 
-          case row["type"]
-          when "e"
-            type_data[:values] = fetch_enum_values(connection, row["name"])
-          when "c"
-            type_data[:attributes] = fetch_composite_attributes(connection, row["name"])
-          when "d"
-            type_data.merge!(fetch_domain_details(connection, row["name"]))
+          case row['type']
+          when 'e'
+            type_data[:values] = fetch_enum_values(connection, row['name'])
+          when 'c'
+            type_data[:attributes] = fetch_composite_attributes(connection, row['name'])
+          when 'd'
+            type_data.merge!(fetch_domain_details(connection, row['name']))
           end
 
           type_data
@@ -229,11 +231,11 @@ module BetterStructureSql
       end
 
       def fetch_enums(connection)
-        fetch_custom_types(connection).select { |t| t[:type] == "enum" }
+        fetch_custom_types(connection).select { |t| t[:type] == 'enum' }
       end
 
       def fetch_views(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             schemaname,
             viewname,
@@ -245,15 +247,15 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            schema: row["schemaname"],
-            name: row["viewname"],
-            definition: row["definition"]
+            schema: row['schemaname'],
+            name: row['viewname'],
+            definition: row['definition']
           }
         end
       end
 
       def fetch_materialized_views(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             schemaname,
             matviewname,
@@ -265,16 +267,16 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            schema: row["schemaname"],
-            name: row["matviewname"],
-            definition: row["definition"],
-            indexes: fetch_materialized_view_indexes(connection, row["matviewname"])
+            schema: row['schemaname'],
+            name: row['matviewname'],
+            definition: row['definition'],
+            indexes: fetch_materialized_view_indexes(connection, row['matviewname'])
           }
         end
       end
 
       def fetch_functions(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             n.nspname as schema,
             p.proname as name,
@@ -295,21 +297,21 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            schema: row["schema"],
-            name: row["name"],
-            definition: row["definition"],
-            arguments: row["arguments"],
-            return_type: row["return_type"],
-            language: row["language"],
-            volatility: volatility_code(row["volatility"]),
-            strict: row["strict"],
-            security_definer: row["security_definer"]
+            schema: row['schema'],
+            name: row['name'],
+            definition: row['definition'],
+            arguments: row['arguments'],
+            return_type: row['return_type'],
+            language: row['language'],
+            volatility: volatility_code(row['volatility']),
+            strict: row['strict'],
+            security_definer: row['security_definer']
           }
         end
       end
 
       def fetch_triggers(connection)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             n.nspname as schema,
             t.tgname as name,
@@ -325,10 +327,10 @@ module BetterStructureSql
 
         connection.execute(query).map do |row|
           {
-            schema: row["schema"],
-            name: row["name"],
-            table_name: row["table_name"],
-            definition: row["definition"]
+            schema: row['schema'],
+            name: row['name'],
+            table_name: row['table_name'],
+            definition: row['definition']
           }
         end
       end
@@ -336,29 +338,27 @@ module BetterStructureSql
       private
 
       def fetch_materialized_view_indexes(connection, matview_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT indexdef
           FROM pg_indexes
           WHERE tablename = $1
           ORDER BY indexname
         SQL
 
-        connection.exec_query(query, "SQL", [[nil, matview_name]]).map do |row|
-          row["indexdef"]
-        end
+        connection.exec_query(query, 'SQL', [[nil, matview_name]]).pluck('indexdef')
       end
 
       def volatility_code(code)
         case code
-        when "i" then "IMMUTABLE"
-        when "s" then "STABLE"
-        when "v" then "VOLATILE"
-        else "VOLATILE"
+        when 'i' then 'IMMUTABLE'
+        when 's' then 'STABLE'
+        when 'v' then 'VOLATILE'
+        else 'VOLATILE'
         end
       end
 
       def fetch_enum_values(connection, type_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT e.enumlabel
           FROM pg_enum e
           JOIN pg_type t ON t.oid = e.enumtypid
@@ -366,11 +366,11 @@ module BetterStructureSql
           ORDER BY e.enumsortorder
         SQL
 
-        connection.exec_query(query, "SQL", [[nil, type_name]]).map { |row| row["enumlabel"] }
+        connection.exec_query(query, 'SQL', [[nil, type_name]]).pluck('enumlabel')
       end
 
       def fetch_composite_attributes(connection, type_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             a.attname as name,
             format_type(a.atttypid, a.atttypmod) as type
@@ -382,13 +382,13 @@ module BetterStructureSql
           ORDER BY a.attnum
         SQL
 
-        connection.exec_query(query, "SQL", [[nil, type_name]]).map do |row|
-          { name: row["name"], type: row["type"] }
+        connection.exec_query(query, 'SQL', [[nil, type_name]]).map do |row|
+          { name: row['name'], type: row['type'] }
         end
       end
 
       def fetch_domain_details(connection, type_name)
-        query = <<~SQL
+        query = <<~SQL.squish
           SELECT
             format_type(t.typbasetype, t.typtypmod) as base_type,
             pg_get_constraintdef(c.oid) as constraint
@@ -397,51 +397,51 @@ module BetterStructureSql
           WHERE t.typname = $1
         SQL
 
-        result = connection.exec_query(query, "SQL", [[nil, type_name]]).first
+        result = connection.exec_query(query, 'SQL', [[nil, type_name]]).first
         {
-          base_type: result["base_type"],
-          constraint: result["constraint"]
+          base_type: result['base_type'],
+          constraint: result['constraint']
         }
       end
 
       def type_category(type_code)
         case type_code
-        when "e" then "enum"
-        when "c" then "composite"
-        when "d" then "domain"
-        else "unknown"
+        when 'e' then 'enum'
+        when 'c' then 'composite'
+        when 'd' then 'domain'
+        else 'unknown'
         end
       end
 
       def resolve_column_type(row)
-        case row["data_type"]
-        when "character varying"
-          row["character_maximum_length"] ? "varchar(#{row['character_maximum_length']})" : "varchar"
-        when "character"
-          row["character_maximum_length"] ? "char(#{row['character_maximum_length']})" : "char"
-        when "numeric"
-          if row["numeric_precision"] && row["numeric_scale"]
+        case row['data_type']
+        when 'character varying'
+          row['character_maximum_length'] ? "varchar(#{row['character_maximum_length']})" : 'varchar'
+        when 'character'
+          row['character_maximum_length'] ? "char(#{row['character_maximum_length']})" : 'char'
+        when 'numeric'
+          if row['numeric_precision'] && row['numeric_scale']
             "numeric(#{row['numeric_precision']},#{row['numeric_scale']})"
           else
-            "numeric"
+            'numeric'
           end
-        when "timestamp without time zone"
-          "timestamp"
-        when "timestamp with time zone"
-          "timestamptz"
-        when "time without time zone"
-          "time"
-        when "USER-DEFINED"
-          row["udt_name"]
+        when 'timestamp without time zone'
+          'timestamp'
+        when 'timestamp with time zone'
+          'timestamptz'
+        when 'time without time zone'
+          'time'
+        when 'USER-DEFINED'
+          row['udt_name']
         else
-          row["data_type"]
+          row['data_type']
         end
       end
 
       def constraint_type(type_code)
         case type_code
-        when "c" then :check
-        when "u" then :unique
+        when 'c' then :check
+        when 'u' then :unique
         else :unknown
         end
       end

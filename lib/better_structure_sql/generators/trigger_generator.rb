@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class TriggerGenerator < Base
@@ -6,7 +8,7 @@ module BetterStructureSql
         definition = trigger[:definition].strip
 
         # Ensure definition ends with semicolon
-        definition += ";" unless definition.end_with?(";")
+        definition += ';' unless definition.end_with?(';')
 
         definition
       end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class SequenceGenerator < Base
@@ -9,11 +11,9 @@ module BetterStructureSql
         parts << "MINVALUE #{sequence[:min_value]}" if sequence[:min_value]
         parts << "MAXVALUE #{sequence[:max_value]}" if sequence[:max_value]
 
-        if sequence[:cache_size] && sequence[:cache_size] > 1
-          parts << "CACHE #{sequence[:cache_size]}"
-        end
+        parts << "CACHE #{sequence[:cache_size]}" if sequence[:cache_size] && sequence[:cache_size] > 1
 
-        parts << "CYCLE" if sequence[:cycle]
+        parts << 'CYCLE' if sequence[:cycle]
 
         "#{parts.join("\n  ")};"
       end

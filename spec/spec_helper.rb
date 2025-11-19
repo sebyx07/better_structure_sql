@@ -1,5 +1,7 @@
-require "bundler/setup"
-require "better_structure_sql"
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require 'better_structure_sql'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -12,11 +14,11 @@ RSpec.configure do |config|
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = "spec/examples.txt"
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.warnings = true
 
-  config.default_formatter = "doc" if config.files_to_run.one?
+  config.default_formatter = 'doc' if config.files_to_run.one?
 
   config.profile_examples = 10
   config.order = :random

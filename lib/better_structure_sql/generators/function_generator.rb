@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class FunctionGenerator < Base
@@ -6,7 +8,7 @@ module BetterStructureSql
         definition = function[:definition].strip
 
         # Ensure definition ends with semicolon
-        definition += ";" unless definition.end_with?(";")
+        definition += ';' unless definition.end_with?(';')
 
         definition
       end

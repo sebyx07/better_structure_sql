@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   class Dumper
     attr_reader :config, :connection
@@ -32,9 +34,7 @@ module BetterStructureSql
 
       # Store version if requested and enabled
       store_version = config.enable_schema_versions if store_version.nil?
-      if store_version && config.enable_schema_versions
-        store_schema_version(formatted_output)
-      end
+      store_schema_version(formatted_output) if store_version && config.enable_schema_versions
 
       formatted_output
     end
@@ -50,7 +50,7 @@ module BetterStructureSql
       return nil if extensions.empty?
 
       generator = Generators::ExtensionGenerator.new(config)
-      lines = ["-- Extensions"]
+      lines = ['-- Extensions']
       lines += extensions.map { |ext| generator.generate(ext) }
       lines.join("\n")
     end
@@ -60,8 +60,8 @@ module BetterStructureSql
       return nil if types.empty?
 
       generator = Generators::TypeGenerator.new(config)
-      lines = ["-- Custom Types"]
-      lines += types.map { |type| generator.generate(type) }.compact
+      lines = ['-- Custom Types']
+      lines += types.filter_map { |type| generator.generate(type) }
       lines.join("\n")
     end
 
@@ -70,7 +70,7 @@ module BetterStructureSql
       return nil if sequences.empty?
 
       generator = Generators::SequenceGenerator.new(config)
-      lines = ["-- Sequences"]
+      lines = ['-- Sequences']
       lines += sequences.map { |seq| generator.generate(seq) }
       lines.join("\n")
     end
@@ -79,10 +79,10 @@ module BetterStructureSql
       tables = Introspection.fetch_tables(connection)
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
 
-      return "-- Tables" if tables.empty?
+      return '-- Tables' if tables.empty?
 
       generator = Generators::TableGenerator.new(config)
-      lines = ["-- Tables"]
+      lines = ['-- Tables']
       lines += tables.map { |table| generator.generate(table) }
       lines.join("\n\n")
     end
@@ -92,7 +92,7 @@ module BetterStructureSql
       return nil if indexes.empty?
 
       generator = Generators::IndexGenerator.new(config)
-      lines = ["-- Indexes"]
+      lines = ['-- Indexes']
       lines += indexes.map { |idx| generator.generate(idx) }
       lines.join("\n")
     end
@@ -102,17 +102,17 @@ module BetterStructureSql
       return nil if foreign_keys.empty?
 
       generator = Generators::ForeignKeyGenerator.new(config)
-      lines = ["-- Foreign Keys"]
+      lines = ['-- Foreign Keys']
       lines += foreign_keys.map { |fk| generator.generate(fk) }
       lines.join("\n")
     end
 
     def domains_section
-      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == "domain" }
+      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == 'domain' }
       return nil if domains.empty?
 
       generator = Generators::DomainGenerator.new(config)
-      lines = ["-- Domains"]
+      lines = ['-- Domains']
       lines += domains.map { |domain| generator.generate(domain) }
       lines.join("\n")
     end
@@ -122,7 +122,7 @@ module BetterStructureSql
       return nil if functions.empty?
 
       generator = Generators::FunctionGenerator.new(config)
-      lines = ["-- Functions"]
+      lines = ['-- Functions']
       lines += functions.map { |func| generator.generate(func) }
       lines.join("\n\n")
     end
@@ -132,7 +132,7 @@ module BetterStructureSql
       return nil if views.empty?
 
       generator = Generators::ViewGenerator.new(config)
-      lines = ["-- Views"]
+      lines = ['-- Views']
       lines += views.map { |view| generator.generate(view) }
       lines.join("\n\n")
     end
@@ -142,7 +142,7 @@ module BetterStructureSql
       return nil if matviews.empty?
 
       generator = Generators::MaterializedViewGenerator.new(config)
-      lines = ["-- Materialized Views"]
+      lines = ['-- Materialized Views']
       lines += matviews.map { |mv| generator.generate(mv) }
       lines.join("\n\n")
     end
@@ -152,21 +152,21 @@ module BetterStructureSql
       return nil if triggers.empty?
 
       generator = Generators::TriggerGenerator.new(config)
-      lines = ["-- Triggers"]
+      lines = ['-- Triggers']
       lines += triggers.map { |trigger| generator.generate(trigger) }
       lines.join("\n\n")
     end
 
     def schema_migrations_section
-      return nil unless table_exists?("schema_migrations")
+      return nil unless table_exists?('schema_migrations')
 
       versions = fetch_schema_migration_versions
       return nil if versions.empty?
 
-      lines = ["-- Schema Migrations"]
-      lines << "INSERT INTO \"schema_migrations\" (version) VALUES"
+      lines = ['-- Schema Migrations']
+      lines << 'INSERT INTO "schema_migrations" (version) VALUES'
       lines << versions.map { |v| "('#{v}')" }.join(",\n")
-      lines << "ON CONFLICT DO NOTHING;"
+      lines << 'ON CONFLICT DO NOTHING;'
       lines.join("\n")
     end
 
@@ -193,7 +193,7 @@ module BetterStructureSql
     end
 
     def fetch_schema_migration_versions
-      connection.select_values("SELECT version FROM schema_migrations ORDER BY version")
+      connection.select_values('SELECT version FROM schema_migrations ORDER BY version')
     rescue ActiveRecord::StatementInvalid
       []
     end
@@ -203,11 +203,11 @@ module BetterStructureSql
 
       SchemaVersions.store(
         content: content,
-        format_type: "sql",
+        format_type: 'sql',
         pg_version: pg_version,
         connection: connection
       )
-    rescue => e
+    rescue StandardError => e
       # Log error but don't fail the dump
       warn "Warning: Failed to store schema version: #{e.message}"
     end

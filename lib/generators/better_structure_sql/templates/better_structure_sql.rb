@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 BetterStructureSql.configure do |config|
   # Output file path (default: "db/structure.sql")
   # config.output_path = "db/structure.sql"

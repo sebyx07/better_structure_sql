@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   class SchemaVersion < ActiveRecord::Base
-    self.table_name = "better_structure_sql_schema_versions"
+    self.table_name = 'better_structure_sql_schema_versions'
 
     # Validations
     validates :content, presence: true

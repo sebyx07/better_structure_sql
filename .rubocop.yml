@@ -1,34 +1,260 @@
-require:
-  - rubocop-rails
-  - rubocop-rspec
-
 AllCops:
   TargetRubyVersion: 2.7
   NewCops: enable
   Exclude:
     - 'vendor/**/*'
-    - 'spec/dummy/**/*'
-    - 'bin/**/*'
+    - 'node_modules/**/*'
+
+plugins:
+  - rubocop-rspec
+  - rubocop-rails
+  - rubocop-performance
+
+Layout/LineLength:
+  Max: 180
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
 
 Metrics/BlockLength:
-  Exclude:
-    - 'spec/**/*'
-    - '*.gemspec'
+  Enabled: false
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+Metrics/PerceivedComplexity:
+  Enabled: false
 
 Style/Documentation:
   Enabled: false
 
-Layout/LineLength:
-  Max: 120
+Gemspec/DevelopmentDependencies:
+  Enabled: false
 
-Metrics/MethodLength:
-  Max: 20
+Style/FormatStringToken:
+  Enabled: false
 
-Metrics/AbcSize:
-  Max: 20
+Metrics/ModuleLength:
+  Enabled: false
+
+Lint/EmptyWhen:
+  Enabled: false
+
+Style/EmptyElse:
+  Enabled: false
+
+Style/MultilineBlockChain:
+  Enabled: false
+
+Lint/DuplicateBranch:
+  Enabled: false
+
+Layout/AssignmentIndentation:
+  Enabled: true
+
+Layout/DefEndAlignment:
+  Enabled: true
+  EnforcedStyleAlignWith: def
+  AutoCorrect: true
+
+Layout/EmptyLineBetweenDefs:
+  Enabled: true
+  NumberOfEmptyLines: 1
+  AllowAdjacentOneLineDefs: false
+
+Layout/EmptyLinesAroundArguments:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/FirstArrayElementIndentation:
+  Enabled: true
+  EnforcedStyle: consistent
+
+Layout/ArrayAlignment:
+  Enabled: true
+  EnforcedStyle: with_fixed_indentation
+  AutoCorrect: true
+
+Layout/FirstArrayElementLineBreak:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/MultilineArrayBraceLayout:
+  Enabled: true
+  EnforcedStyle: symmetrical
+  AutoCorrect: true
+
+Layout/HeredocIndentation:
+  Enabled: true
+
+Layout/IndentationConsistency:
+  Enabled: true
+  EnforcedStyle: normal
+
+Layout/IndentationStyle:
+  Enabled: true
+
+Layout/IndentationWidth:
+  Enabled: true
+  Width: 2
+
+Layout/BlockAlignment:
+  Enabled: true
+  EnforcedStyleAlignWith: start_of_block
+  AutoCorrect: true
+
+Layout/BlockEndNewline:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/MultilineBlockLayout:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/EmptyLinesAroundBlockBody:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/SpaceBeforeBlockBraces:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/SpaceInsideBlockBraces:
+  Enabled: true
+  AutoCorrect: true
+
+Layout/SpaceAroundBlockParameters:
+  Enabled: true
+  AutoCorrect: true
+
+Style/ClassAndModuleChildren:
+  Enabled: true
+  EnforcedStyle: nested
+
+Lint/Debugger:
+  Enabled: true
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: single_quotes
+
+Style/HashSyntax:
+  Enabled: true
+  EnforcedShorthandSyntax: always
+
+# RSpec cops
+
+RSpec/AlignLeftLetBrace:
+  Enabled: true
+  AutoCorrect: true
+
+RSpec/AnyInstance:
+  Enabled: false
+
+RSpec/VerifiedDoubles:
+  Enabled: false
 
 RSpec/ExampleLength:
-  Max: 15
+  Enabled: false
 
 RSpec/MultipleExpectations:
-  Max: 5
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Enabled: false
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/LetSetup:
+  Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/InstanceVariable:
+  Enabled: false
+
+RSpec/PendingWithoutReason:
+  Enabled: false
+
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/DescribeClass:
+  Enabled: false
+
+RSpec/ExampleWording:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Enabled: false
+
+RSpec/StubbedMock:
+  Enabled: false
+
+RSpec/ChangeByZero:
+  Enabled: false
+
+RSpec/SubjectStub:
+  Enabled: false
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/VariableName:
+  Enabled: false
+
+RSpec/ExpectInHook:
+  Enabled: false
+
+RSpec/NoExpectationExample:
+  Enabled: false
+
+RSpec/RepeatedExample:
+  Enabled: false
+
+RSpec/RepeatedExampleGroupDescription:
+  Enabled: false
+
+RSpec/IteratedExpectation:
+  Enabled: false
+
+RSpec/MessageChain:
+  Enabled: false
+
+RSpec/DescribeMethod:
+  Enabled: false
+
+RSpec/LeakyConstantDeclaration:
+  Enabled: false
+
+RSpec/RepeatedExampleGroupBody:
+  Enabled: false
+
+RSpec/SpecFilePathSuffix:
+  Enabled: false
+
+RSpec/MultipleDescribes:
+  Enabled: false
+
+RSpec/RepeatedSubjectCall:
+  Enabled: false
+
+RSpec/SubjectDeclaration:
+  Enabled: false

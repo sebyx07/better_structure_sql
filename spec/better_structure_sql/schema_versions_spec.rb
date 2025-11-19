@@ -1,22 +1,24 @@
-require "spec_helper"
+# frozen_string_literal: true
+
+require 'spec_helper'
 
 RSpec.describe BetterStructureSql::SchemaVersions do
-  let(:connection) { double("connection") }
+  let(:connection) { double('connection') }
 
   before do
     # Stub ActiveRecord::Base.connection to return our mock connection
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
   end
 
-  describe ".store" do
-    it "stores a schema version with given parameters" do
-      content = "CREATE TABLE users (id serial);"
-      format_type = "sql"
-      pg_version = "14.5"
+  describe '.store' do
+    it 'stores a schema version with given parameters' do
+      content = 'CREATE TABLE users (id serial);'
+      format_type = 'sql'
+      pg_version = '14.5'
 
       # Mock the table existence check
       allow(connection).to receive(:table_exists?)
-        .with("better_structure_sql_schema_versions")
+        .with('better_structure_sql_schema_versions')
         .and_return(true)
 
       # Mock the create
@@ -37,29 +39,29 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       expect(result).to eq(version)
     end
 
-    it "raises error when table does not exist" do
+    it 'raises error when table does not exist' do
       allow(connection).to receive(:table_exists?)
-        .with("better_structure_sql_schema_versions")
+        .with('better_structure_sql_schema_versions')
         .and_return(false)
 
-      expect {
+      expect do
         described_class.store(
-          content: "CREATE TABLE users",
-          format_type: "sql",
-          pg_version: "14.5",
+          content: 'CREATE TABLE users',
+          format_type: 'sql',
+          pg_version: '14.5',
           connection: connection
         )
-      }.to raise_error(BetterStructureSql::Error, /Schema versions table does not exist/)
+      end.to raise_error(BetterStructureSql::Error, /Schema versions table does not exist/)
     end
   end
 
-  describe ".latest" do
-    it "returns nil when table does not exist" do
+  describe '.latest' do
+    it 'returns nil when table does not exist' do
       allow(described_class).to receive(:table_exists?).and_return(false)
       expect(described_class.latest).to be_nil
     end
 
-    it "returns latest version when table exists" do
+    it 'returns latest version when table exists' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       version = instance_double(BetterStructureSql::SchemaVersion)
       allow(BetterStructureSql::SchemaVersion).to receive(:latest).and_return(version)
@@ -68,19 +70,19 @@ RSpec.describe BetterStructureSql::SchemaVersions do
     end
   end
 
-  describe ".all_versions" do
-    it "returns empty array when table does not exist" do
+  describe '.all_versions' do
+    it 'returns empty array when table does not exist' do
       allow(described_class).to receive(:table_exists?).and_return(false)
       expect(described_class.all_versions).to eq([])
     end
 
-    it "returns all versions ordered by created_at DESC" do
+    it 'returns all versions ordered by created_at DESC' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       versions = [
         instance_double(BetterStructureSql::SchemaVersion),
         instance_double(BetterStructureSql::SchemaVersion)
       ]
-      relation = double("relation")
+      relation = double('relation')
       allow(BetterStructureSql::SchemaVersion).to receive(:order).with(created_at: :desc).and_return(relation)
       allow(relation).to receive(:to_a).and_return(versions)
 
@@ -88,13 +90,13 @@ RSpec.describe BetterStructureSql::SchemaVersions do
     end
   end
 
-  describe ".count" do
-    it "returns 0 when table does not exist" do
+  describe '.count' do
+    it 'returns 0 when table does not exist' do
       allow(described_class).to receive(:table_exists?).and_return(false)
       expect(described_class.count).to eq(0)
     end
 
-    it "returns count when table exists" do
+    it 'returns count when table exists' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       allow(BetterStructureSql::SchemaVersion).to receive(:count).and_return(5)
 
@@ -102,33 +104,33 @@ RSpec.describe BetterStructureSql::SchemaVersions do
     end
   end
 
-  describe ".by_format" do
-    it "returns empty array when table does not exist" do
+  describe '.by_format' do
+    it 'returns empty array when table does not exist' do
       allow(described_class).to receive(:table_exists?).and_return(false)
-      expect(described_class.by_format("sql")).to eq([])
+      expect(described_class.by_format('sql')).to eq([])
     end
 
-    it "returns versions filtered by format_type" do
+    it 'returns versions filtered by format_type' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       versions = [instance_double(BetterStructureSql::SchemaVersion)]
-      scope = double("scope")
-      relation = double("relation")
+      scope = double('scope')
+      relation = double('relation')
 
-      allow(BetterStructureSql::SchemaVersion).to receive(:by_format).with("sql").and_return(scope)
+      allow(BetterStructureSql::SchemaVersion).to receive(:by_format).with('sql').and_return(scope)
       allow(scope).to receive(:order).with(created_at: :desc).and_return(relation)
       allow(relation).to receive(:to_a).and_return(versions)
 
-      expect(described_class.by_format("sql")).to eq(versions)
+      expect(described_class.by_format('sql')).to eq(versions)
     end
   end
 
-  describe ".cleanup!" do
-    it "returns 0 when table does not exist" do
+  describe '.cleanup!' do
+    it 'returns 0 when table does not exist' do
       allow(described_class).to receive(:table_exists?).and_return(false)
       expect(described_class.cleanup!(connection)).to eq(0)
     end
 
-    it "returns 0 when limit is 0 (unlimited)" do
+    it 'returns 0 when limit is 0 (unlimited)' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       config = instance_double(BetterStructureSql::Configuration, schema_versions_limit: 0)
       allow(BetterStructureSql).to receive(:configuration).and_return(config)
@@ -136,7 +138,7 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       expect(described_class.cleanup!(connection)).to eq(0)
     end
 
-    it "returns 0 when count is within limit" do
+    it 'returns 0 when count is within limit' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       config = instance_double(BetterStructureSql::Configuration, schema_versions_limit: 10)
       allow(BetterStructureSql).to receive(:configuration).and_return(config)
@@ -145,17 +147,16 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       expect(described_class.cleanup!(connection)).to eq(0)
     end
 
-    it "deletes oldest versions beyond limit" do
+    it 'deletes oldest versions beyond limit' do
       allow(described_class).to receive(:table_exists?).and_return(true)
       config = instance_double(BetterStructureSql::Configuration, schema_versions_limit: 3)
       allow(BetterStructureSql).to receive(:configuration).and_return(config)
-      allow(BetterStructureSql::SchemaVersion).to receive(:count).and_return(5)
 
       version1 = instance_double(BetterStructureSql::SchemaVersion)
       version2 = instance_double(BetterStructureSql::SchemaVersion)
-      relation = double("relation")
+      relation = double('relation')
 
-      allow(BetterStructureSql::SchemaVersion).to receive(:oldest_first).and_return(relation)
+      allow(BetterStructureSql::SchemaVersion).to receive_messages(count: 5, oldest_first: relation)
       allow(relation).to receive(:limit).with(2).and_return([version1, version2])
       allow(version1).to receive(:destroy)
       allow(version2).to receive(:destroy)

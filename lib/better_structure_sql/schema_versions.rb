@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module SchemaVersions
     class << self
@@ -37,31 +39,36 @@ module BetterStructureSql
       # Retrieval methods
       def latest
         return nil unless table_exists?
+
         SchemaVersion.latest
       end
 
       def all_versions
         return [] unless table_exists?
+
         SchemaVersion.order(created_at: :desc).to_a
       end
 
       def find(id)
         return nil unless table_exists?
+
         SchemaVersion.find_by(id: id)
       end
 
       def count
         return 0 unless table_exists?
+
         SchemaVersion.count
       end
 
       def by_format(format_type)
         return [] unless table_exists?
+
         SchemaVersion.by_format(format_type).order(created_at: :desc).to_a
       end
 
       # Retention management
-      def cleanup!(connection = ActiveRecord::Base.connection)
+      def cleanup!(_connection = ActiveRecord::Base.connection)
         return 0 unless table_exists?
 
         config = BetterStructureSql.configuration
@@ -90,27 +97,27 @@ module BetterStructureSql
 
       def read_current_schema(config)
         sql_path = Rails.root.join(config.output_path)
-        rb_path = Rails.root.join("db/schema.rb")
+        rb_path = Rails.root.join('db/schema.rb')
 
         if File.exist?(sql_path)
-          ["sql", File.read(sql_path)]
+          ['sql', File.read(sql_path)]
         elsif File.exist?(rb_path)
-          ["rb", File.read(rb_path)]
+          ['rb', File.read(rb_path)]
         else
           [nil, nil]
         end
       end
 
-      def ensure_table_exists!(connection)
-        unless table_exists?
-          raise Error, "Schema versions table does not exist. Run migration first:\n" \
-                      "  rails generate better_structure_sql:migration\n" \
-                      "  rails db:migrate"
-        end
+      def ensure_table_exists!(_connection)
+        return if table_exists?
+
+        raise Error, "Schema versions table does not exist. Run migration first:\n  " \
+                     "rails generate better_structure_sql:migration\n  " \
+                     'rails db:migrate'
       end
 
       def table_exists?
-        ActiveRecord::Base.connection.table_exists?("better_structure_sql_schema_versions")
+        ActiveRecord::Base.connection.table_exists?('better_structure_sql_schema_versions')
       rescue ActiveRecord::NoDatabaseError
         false
       end

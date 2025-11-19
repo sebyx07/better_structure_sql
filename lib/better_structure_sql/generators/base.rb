@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class Base
@@ -8,13 +10,13 @@ module BetterStructureSql
       end
 
       def generate(object)
-        raise NotImplementedError, "Subclasses must implement #generate"
+        raise NotImplementedError, 'Subclasses must implement #generate'
       end
 
       private
 
       def indent(text, level = 1)
-        spaces = " " * (config.indent_size * level)
+        spaces = ' ' * (config.indent_size * level)
         text.split("\n").map { |line| "#{spaces}#{line}" }.join("\n")
       end
     end

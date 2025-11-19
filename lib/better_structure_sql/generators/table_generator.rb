@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module BetterStructureSql
   module Generators
     class TableGenerator < Base
@@ -7,7 +9,7 @@ module BetterStructureSql
         column_defs = table[:columns].map { |col| column_definition(col) }
 
         if table[:primary_key]&.any?
-          pk_cols = table[:primary_key].join(", ")
+          pk_cols = table[:primary_key].join(', ')
           column_defs << "PRIMARY KEY (#{pk_cols})"
         end
 
@@ -16,7 +18,7 @@ module BetterStructureSql
         end
 
         lines << column_defs.map { |def_line| indent(def_line) }.join(",\n")
-        lines << ");"
+        lines << ');'
 
         lines.join("\n")
       end
@@ -26,35 +28,32 @@ module BetterStructureSql
       def column_definition(column)
         parts = [column[:name], column[:type]]
 
-        parts << "NOT NULL" unless column[:nullable]
+        parts << 'NOT NULL' unless column[:nullable]
 
         if column[:default]
           default_value = format_default(column[:default])
           parts << "DEFAULT #{default_value}"
         end
 
-        parts.join(" ")
+        parts.join(' ')
       end
 
       def constraint_definition(constraint)
         case constraint[:type]
         when :check
-          "CONSTRAINT #{constraint[:name]} #{constraint[:definition]}"
         when :unique
-          "CONSTRAINT #{constraint[:name]} #{constraint[:definition]}"
-        else
-          "CONSTRAINT #{constraint[:name]} #{constraint[:definition]}"
         end
+        "CONSTRAINT #{constraint[:name]} #{constraint[:definition]}"
       end
 
       def format_default(default_value)
         return default_value if default_value.nil?
 
         # Handle nextval for sequences
-        return default_value if default_value.start_with?("nextval(")
+        return default_value if default_value.start_with?('nextval(')
 
         # Handle NULL
-        return "NULL" if default_value.upcase == "NULL"
+        return 'NULL' if default_value.upcase == 'NULL'
 
         # Handle boolean values
         return default_value if %w[true false].include?(default_value.downcase)
@@ -63,7 +62,7 @@ module BetterStructureSql
         return default_value if default_value.match?(/\A-?\d+(\.\d+)?\z/)
 
         # Handle functions and expressions
-        return default_value if default_value.include?("(") || default_value.upcase.start_with?("CURRENT_")
+        return default_value if default_value.include?('(') || default_value.upcase.start_with?('CURRENT_')
 
         # Otherwise, assume it's a string and quote it if not already quoted
         default_value.start_with?("'") ? default_value : "'#{default_value}'"
