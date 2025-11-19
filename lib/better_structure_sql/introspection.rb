@@ -11,6 +11,10 @@ require_relative 'introspection/functions'
 require_relative 'introspection/triggers'
 
 module BetterStructureSql
+  # Introspection facade for database metadata extraction
+  #
+  # Provides a unified interface for querying database objects across
+  # all supported adapters (PostgreSQL, MySQL, SQLite).
   module Introspection
     class << self
       include Extensions

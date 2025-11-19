@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE DOMAIN statements for custom types with constraints
     class DomainGenerator < Base
+      # Generates CREATE DOMAIN statement
+      #
+      # @param domain [Hash] Domain metadata
+      # @return [String] SQL statement
       def generate(domain)
         schema_prefix = domain[:schema] == 'public' ? '' : "#{domain[:schema]}."
 

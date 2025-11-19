@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Configuration management for BetterStructureSql
+  #
+  # Provides centralized settings for dump behavior, feature toggles,
+  # file output options, and schema versioning settings.
   class Configuration
     attr_accessor :search_path,
                   :replace_default_dump,
@@ -28,6 +32,10 @@ module BetterStructureSql
 
     attr_reader :output_path, :postgresql
 
+    # Sets the output path for schema dump
+    #
+    # @param value [String, Pathname] Path to output file or directory
+    # @return [String] The configured path as a string
     def output_path=(value)
       @output_path = value.to_s
     end
@@ -60,6 +68,10 @@ module BetterStructureSql
       @postgresql = Adapters::PostgresqlConfig.new
     end
 
+    # Validates configuration settings
+    #
+    # @raise [Error] If any configuration setting is invalid
+    # @return [void]
     def validate!
       validate_output_path!
       validate_schema_versions_limit!

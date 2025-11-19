@@ -2,17 +2,29 @@
 
 module BetterStructureSql
   module Adapters
-    # SQLite adapter implementing introspection via sqlite_master and PRAGMA statements.
+    # SQLite adapter implementing introspection via sqlite_master and PRAGMA statements
+    #
     # Provides SQLite-specific SQL generation with proper dialect support.
+    # This adapter handles SQLite's unique features including PRAGMA settings,
+    # inline foreign keys, AUTOINCREMENT, and type affinities.
     class SqliteAdapter < BaseAdapter
       # Introspection methods using sqlite_master and PRAGMA
 
+      # Fetch extensions (PRAGMA settings for SQLite)
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of PRAGMA setting hashes with :name, :value, :sql
+      # @note SQLite doesn't support extensions like PostgreSQL, but returns important PRAGMA settings
       def fetch_extensions(connection)
         # SQLite doesn't support extensions like PostgreSQL, but we can fetch PRAGMA settings
         # Return them in a format compatible with the extensions section
         fetch_pragma_settings(connection)
       end
 
+      # Fetch important PRAGMA settings for SQLite
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of PRAGMA hashes with :name, :value, :sql
       def fetch_pragma_settings(connection)
         # List of important PRAGMAs to preserve in schema dump
         important_pragmas = %w[
@@ -51,6 +63,11 @@ module BetterStructureSql
         pragmas
       end
 
+      # Format PRAGMA value for SQL statement
+      #
+      # @param pragma_name [String] Name of the PRAGMA
+      # @param value [Object] Value of the PRAGMA
+      # @return [String] Formatted value (quoted if string, unquoted if numeric)
       def format_pragma_value(pragma_name, value)
         # String values need quotes, numeric values don't
         case pragma_name
@@ -61,11 +78,19 @@ module BetterStructureSql
         end
       end
 
+      # Fetch custom types (not supported in SQLite)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as SQLite doesn't support custom types
       def fetch_custom_types(_connection)
         # SQLite doesn't support custom types
         []
       end
 
+      # Fetch all tables from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of table hashes with :name, :schema, :sql, :columns, :primary_key, :constraints
       def fetch_tables(connection)
         query = <<~SQL.squish
           SELECT name, sql
@@ -90,6 +115,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all indexes from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of index hashes with :table, :name, :columns, :unique, :type, :definition
       def fetch_indexes(connection)
         tables = fetch_table_names(connection)
         indexes = []
@@ -131,6 +160,10 @@ module BetterStructureSql
         indexes
       end
 
+      # Fetch all foreign keys from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :column, :foreign_table, :foreign_column, :on_update, :on_delete
       def fetch_foreign_keys(connection)
         tables = fetch_table_names(connection)
         foreign_keys = []
@@ -158,6 +191,10 @@ module BetterStructureSql
         foreign_keys
       end
 
+      # Fetch all views from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition, :updatable
       def fetch_views(connection)
         query = <<~SQL.squish
           SELECT name, sql
@@ -185,21 +222,38 @@ module BetterStructureSql
         end
       end
 
+      # Fetch materialized views (not supported in SQLite)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as SQLite doesn't support materialized views
       def fetch_materialized_views(_connection)
         # SQLite doesn't support materialized views
         []
       end
 
+      # Fetch functions (not supported in SQLite)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as SQLite doesn't support stored procedures/functions
+      # @note SQLite only supports user-defined functions in C/Ruby, not SQL stored procedures
       def fetch_functions(_connection)
         # SQLite doesn't support stored procedures/functions (only user-defined functions in C/Ruby)
         []
       end
 
+      # Fetch sequences (not supported in SQLite)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as SQLite doesn't support sequences (uses AUTOINCREMENT instead)
       def fetch_sequences(_connection)
         # SQLite doesn't have sequences (uses AUTOINCREMENT)
         []
       end
 
+      # Fetch all triggers from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of trigger hashes with :schema, :name, :table_name, :timing, :event, :definition
       def fetch_triggers(connection)
         query = <<~SQL.squish
           SELECT name, tbl_name, sql
@@ -230,34 +284,58 @@ module BetterStructureSql
 
       # Capability methods - SQLite feature support
 
+      # Indicates whether SQLite supports extensions
+      #
+      # @return [Boolean] Always false for SQLite
       def supports_extensions?
         false
       end
 
+      # Indicates whether SQLite supports materialized views
+      #
+      # @return [Boolean] Always false for SQLite
       def supports_materialized_views?
         false
       end
 
+      # Indicates whether SQLite supports custom types
+      #
+      # @return [Boolean] Always false for SQLite
       def supports_custom_types?
         false
       end
 
+      # Indicates whether SQLite supports domains
+      #
+      # @return [Boolean] Always false for SQLite
       def supports_domains?
         false
       end
 
+      # Indicates whether SQLite supports stored procedures/functions
+      #
+      # @return [Boolean] Always false (no stored procedures/functions in SQLite)
       def supports_functions?
         false # No stored procedures/functions
       end
 
+      # Indicates whether SQLite supports triggers
+      #
+      # @return [Boolean] Always true for SQLite
       def supports_triggers?
         true
       end
 
+      # Indicates whether SQLite supports sequences
+      #
+      # @return [Boolean] Always false (uses AUTOINCREMENT instead)
       def supports_sequences?
         false # Uses AUTOINCREMENT instead
       end
 
+      # Indicates whether SQLite supports check constraints
+      #
+      # @return [Boolean] Always true (SQLite has always supported CHECK constraints)
       def supports_check_constraints?
         true # SQLite has always supported CHECK constraints
       end
@@ -265,7 +343,8 @@ module BetterStructureSql
       # SQL Generation methods - SQLite-specific syntax
 
       # Generate CREATE TABLE statement for SQLite
-      # @param table [Hash] Table hash with name, columns, primary_key
+      #
+      # @param table [Hash] Table hash with :name, :columns, :primary_key, :foreign_keys
       # @return [String] CREATE TABLE SQL statement
       def generate_table(table)
         sql = table[:sql]
@@ -290,7 +369,8 @@ module BetterStructureSql
       end
 
       # Generate CREATE INDEX statement for SQLite
-      # @param index [Hash] Index hash with name, table, columns, unique
+      #
+      # @param index [Hash] Index hash with :name, :table, :columns, :unique
       # @return [String] CREATE INDEX SQL statement
       def generate_index(index)
         unique = index[:unique] ? 'UNIQUE ' : ''
@@ -301,8 +381,10 @@ module BetterStructureSql
       end
 
       # Generate foreign key constraint (inline with table definition)
-      # @param fk [Hash] Foreign key hash
+      #
+      # @param fk [Hash] Foreign key hash with :column, :foreign_table, :foreign_column, :on_delete, :on_update
       # @return [String] FOREIGN KEY constraint SQL
+      # @note SQLite requires foreign keys inline with CREATE TABLE
       # rubocop:disable Naming/MethodParameterName
       def generate_foreign_key(fk)
         # SQLite requires foreign keys inline with CREATE TABLE
@@ -311,7 +393,8 @@ module BetterStructureSql
       end
 
       # Generate CREATE VIEW statement for SQLite
-      # @param view [Hash] View hash with name, definition
+      #
+      # @param view [Hash] View hash with :name, :definition
       # @return [String] CREATE VIEW SQL statement
       def generate_view(view)
         definition = view[:definition]
@@ -321,7 +404,8 @@ module BetterStructureSql
       end
 
       # Generate CREATE TRIGGER statement for SQLite
-      # @param trigger [Hash] Trigger hash with name, timing, event, table_name, definition
+      #
+      # @param trigger [Hash] Trigger hash with :name, :timing, :event, :table_name, :definition, :body
       # @return [String] CREATE TRIGGER SQL statement
       def generate_trigger(trigger)
         definition = trigger[:definition]
@@ -344,6 +428,9 @@ module BetterStructureSql
 
       # Version detection
 
+      # Get the current SQLite database version
+      #
+      # @return [String] Normalized version string (e.g., "3.45.1")
       def database_version
         @database_version ||= begin
           version_string = connection.select_value('SELECT sqlite_version()')
@@ -351,6 +438,10 @@ module BetterStructureSql
         end
       end
 
+      # Parse SQLite version string into normalized format
+      #
+      # @param version_string [String] Raw version string from SQLite (e.g., "3.45.1")
+      # @return [String] Normalized version (e.g., "3.45.1") or "unknown" if parsing fails
       def parse_version(version_string)
         # Example: "3.45.1"
         match = version_string.match(/(\d+\.\d+\.\d+)/)
@@ -363,6 +454,10 @@ module BetterStructureSql
 
       # Helper methods for introspection
 
+      # Fetch table names from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<String>] Array of table names
       def fetch_table_names(connection)
         query = <<~SQL.squish
           SELECT name
@@ -377,6 +472,11 @@ module BetterStructureSql
         connection.execute(query).map { |row| row['name'] || row[0] }
       end
 
+      # Fetch columns for a specific table using PRAGMA table_info
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of column hashes with :name, :type, :nullable, :default, :primary_key
       def fetch_columns(connection, table_name)
         table_info = connection.execute("PRAGMA table_info(#{quote_identifier(table_name)})")
 
@@ -391,6 +491,11 @@ module BetterStructureSql
         end
       end
 
+      # Fetch primary key columns for a specific table using PRAGMA table_info
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<String>] Array of primary key column names in pk order
       def fetch_primary_key(connection, table_name)
         table_info = connection.execute("PRAGMA table_info(#{quote_identifier(table_name)})")
 
@@ -400,6 +505,11 @@ module BetterStructureSql
           .map { |row| row['name'] || row[1] }
       end
 
+      # Fetch CHECK constraints for a specific table by parsing table SQL
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of constraint hashes with :name, :definition, :type
       def fetch_constraints(connection, table_name)
         # SQLite stores CHECK constraints in the table SQL
         # Parse from sqlite_master
@@ -430,6 +540,10 @@ module BetterStructureSql
         checks
       end
 
+      # Resolve SQLite column type into normalized format using type affinity
+      #
+      # @param type_string [String] Raw column type from PRAGMA table_info
+      # @return [String] Normalized column type based on SQLite type affinity rules
       def resolve_column_type(type_string)
         # SQLite type affinity mapping
         # Normalize common types
@@ -460,7 +574,8 @@ module BetterStructureSql
       end
 
       # Generate column definition for CREATE TABLE
-      # @param col [Hash] Column hash with name, type, nullable, default, primary_key
+      #
+      # @param col [Hash] Column hash with :name, :type, :nullable, :default, :primary_key, :extra
       # @param primary_keys [Array<String>] List of primary key column names
       # @return [String] Column definition SQL
       def generate_column_definition(col, primary_keys = [])
@@ -479,7 +594,8 @@ module BetterStructureSql
       end
 
       # Generate inline foreign key constraint
-      # @param fk [Hash] Foreign key hash with column, foreign_table, foreign_column, on_delete, on_update
+      #
+      # @param fk [Hash] Foreign key hash with :column, :foreign_table, :foreign_column, :on_delete, :on_update
       # @return [String] FOREIGN KEY constraint SQL
       def generate_foreign_key_inline(fk)
         parts = ["FOREIGN KEY (#{quote_identifier(fk[:column])})"]
@@ -491,16 +607,18 @@ module BetterStructureSql
       end
       # rubocop:enable Naming/MethodParameterName
 
-      # Quote identifier (table/column name)
+      # Quote identifier (table/column name) with double quotes
+      #
       # @param name [String] Identifier to quote
-      # @return [String] Quoted identifier
+      # @return [String] Quoted identifier (e.g., "table_name")
       def quote_identifier(name)
         "\"#{name}\""
       end
 
-      # Format default value for SQL
-      # @param value [Object] Default value
-      # @return [String] Formatted default value
+      # Format default value for SQL statement
+      #
+      # @param value [Object] Default value (can be nil, String, Boolean, or other)
+      # @return [String] Formatted default value for SQL
       def format_default_value(value)
         case value
         when nil

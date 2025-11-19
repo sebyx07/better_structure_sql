@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # ActiveRecord model for stored schema versions
+  #
+  # Stores schema snapshots with metadata for versioning, comparison,
+  # and restoration. Supports both single-file and multi-file formats
+  # with optional ZIP archive storage.
   class SchemaVersion < ActiveRecord::Base
     self.table_name = 'better_structure_sql_schema_versions'
 
@@ -30,6 +35,9 @@ module BetterStructureSql
       end
     end
 
+    # Returns human-readable size string
+    #
+    # @return [String] Formatted size (e.g., "1.5 MB", "250 KB")
     def formatted_size
       bytes = size
       if bytes < 1024
@@ -41,14 +49,24 @@ module BetterStructureSql
       end
     end
 
+    # Checks if this version uses multi-file format
+    #
+    # @return [Boolean] True if multi-file format
     def multi_file?
       output_mode == 'multi_file'
     end
 
+    # Checks if this version has a ZIP archive
+    #
+    # @return [Boolean] True if ZIP archive exists
     def zip_archive?
       zip_archive.present?
     end
 
+    # Extracts ZIP archive to target directory
+    #
+    # @param target_dir [String, Pathname] Target directory path
+    # @return [String, nil] Target directory path or nil if no archive
     def extract_zip_to_directory(target_dir)
       return nil unless zip_archive?
 

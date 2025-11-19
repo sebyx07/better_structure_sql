@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE SEQUENCE statements
     class SequenceGenerator < Base
+      # Generates CREATE SEQUENCE statement
+      #
+      # @param sequence [Hash] Sequence metadata
+      # @return [String] SQL statement
       def generate(sequence)
         parts = ["CREATE SEQUENCE #{sequence[:name]}"]
 

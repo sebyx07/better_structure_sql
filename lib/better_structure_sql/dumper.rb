@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Orchestrates database schema dumping to SQL files
+  #
+  # Coordinates introspection, SQL generation, formatting, and file output.
+  # Supports both single-file and multi-file dump modes with optional
+  # schema version storage.
   class Dumper
     attr_reader :config, :connection, :adapter
 
@@ -10,6 +15,11 @@ module BetterStructureSql
       @adapter = Adapters::Registry.adapter_for(connection)
     end
 
+    # Dumps database schema to configured output path
+    #
+    # @param store_version [Boolean, nil] Whether to store version (nil uses config default)
+    # @return [String, Hash] Single file content or multi-file map
+    # @raise [Error] If configuration is invalid
     def dump(store_version: nil)
       config.validate!
 
@@ -142,7 +152,7 @@ module BetterStructureSql
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
       unless tables.empty?
         # For SQLite, attach foreign keys to each table for inline generation
-        if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+        if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
           all_foreign_keys = Introspection.fetch_foreign_keys(connection)
           tables.each do |table|
             table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
@@ -162,7 +172,7 @@ module BetterStructureSql
 
       # Foreign keys
       # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      unless adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      unless adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
         foreign_keys = Introspection.fetch_foreign_keys(connection)
         unless foreign_keys.empty?
           generator = Generators::ForeignKeyGenerator.new(config)
@@ -276,7 +286,7 @@ module BetterStructureSql
 
       generator = Generators::ExtensionGenerator.new(config)
       # Use appropriate section name based on adapter
-      section_name = adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter' ? 'PRAGMAs' : 'Extensions'
+      section_name = adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter) ? 'PRAGMAs' : 'Extensions'
       lines = ["-- #{section_name}"]
       lines += extensions.map { |ext| generator.generate(ext) }
       lines.join("\n")
@@ -323,7 +333,7 @@ module BetterStructureSql
       return '-- Tables' if tables.empty?
 
       # For SQLite, attach foreign keys to each table for inline generation
-      if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
         all_foreign_keys = Introspection.fetch_foreign_keys(connection)
         tables.each do |table|
           table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
@@ -358,7 +368,7 @@ module BetterStructureSql
 
     def foreign_keys_section
       # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
 
       foreign_keys = Introspection.fetch_foreign_keys(connection)
       return nil if foreign_keys.empty?
@@ -422,7 +432,7 @@ module BetterStructureSql
     def schema_migrations_section
       # SQLite doesn't include schema_migrations in structure.sql
       # Rails manages this table separately
-      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
 
       return nil unless table_exists?('schema_migrations')
 

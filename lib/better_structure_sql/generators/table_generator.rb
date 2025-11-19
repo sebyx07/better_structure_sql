@@ -2,6 +2,10 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE TABLE statements with columns and constraints
+    #
+    # Handles column definitions, primary keys, constraints, and
+    # inline foreign keys for SQLite.
     class TableGenerator < Base
       attr_reader :adapter
 
@@ -10,6 +14,10 @@ module BetterStructureSql
         @adapter = adapter
       end
 
+      # Generates CREATE TABLE statement
+      #
+      # @param table [Hash] Table metadata with columns and constraints
+      # @return [String] SQL statement
       def generate(table)
         lines = ["CREATE TABLE #{table[:name]} ("]
 
@@ -89,11 +97,11 @@ module BetterStructureSql
         adapter&.class&.name == 'BetterStructureSql::Adapters::SqliteAdapter'
       end
 
-      def foreign_key_definition(fk)
-        parts = ["FOREIGN KEY (#{fk[:column]})"]
-        parts << "REFERENCES #{fk[:foreign_table]} (#{fk[:foreign_column]})"
-        parts << "ON DELETE #{fk[:on_delete]}" if fk[:on_delete] && fk[:on_delete] != 'NO ACTION'
-        parts << "ON UPDATE #{fk[:on_update]}" if fk[:on_update] && fk[:on_update] != 'NO ACTION'
+      def foreign_key_definition(foreign_key)
+        parts = ["FOREIGN KEY (#{foreign_key[:column]})"]
+        parts << "REFERENCES #{foreign_key[:foreign_table]} (#{foreign_key[:foreign_column]})"
+        parts << "ON DELETE #{foreign_key[:on_delete]}" if foreign_key[:on_delete] && foreign_key[:on_delete] != 'NO ACTION'
+        parts << "ON UPDATE #{foreign_key[:on_update]}" if foreign_key[:on_update] && foreign_key[:on_update] != 'NO ACTION'
 
         parts.join(' ')
       end

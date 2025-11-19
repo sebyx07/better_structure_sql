@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Introspection
+    # Introspection module for database triggers
     module Triggers
+      # Fetches database triggers
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of trigger metadata hashes
       def fetch_triggers(connection)
         adapter = get_adapter(connection)
         adapter.fetch_triggers(connection)

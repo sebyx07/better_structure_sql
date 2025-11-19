@@ -5,6 +5,7 @@ require 'rails/generators/active_record'
 
 module BetterStructureSql
   module Generators
+    # Rails generator for creating schema_versions table migration
     class MigrationGenerator < Rails::Generators::Base
       include ActiveRecord::Generators::Migration
 
@@ -12,6 +13,9 @@ module BetterStructureSql
 
       desc 'Creates migration for BetterStructureSql schema versions table'
 
+      # Creates migration file for schema_versions table
+      #
+      # @return [void]
       def create_migration_file
         migration_template(
           'migration.rb.erb',

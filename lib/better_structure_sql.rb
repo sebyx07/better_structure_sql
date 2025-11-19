@@ -33,20 +33,39 @@ require_relative 'better_structure_sql/dumper'
 require_relative 'better_structure_sql/railtie' if defined?(Rails::Railtie)
 require_relative 'better_structure_sql/engine' if defined?(Rails::Engine)
 
+# BetterStructureSql - Clean PostgreSQL schema dumps for Rails applications
+#
+# Replaces noisy structure.sql files with deterministic, maintainable output
+# using pure Ruby database introspection. Supports PostgreSQL, MySQL, and SQLite.
 module BetterStructureSql
+  # Base error class for all BetterStructureSql errors
   class Error < StandardError; end
 
   class << self
     attr_writer :configuration
 
+    # Returns the current configuration instance
+    #
+    # @return [Configuration] The configuration object
     def configuration
       @configuration ||= Configuration.new
     end
 
+    # Configures BetterStructureSql with a block
+    #
+    # @yield [Configuration] The configuration object
+    # @example
+    #   BetterStructureSql.configure do |config|
+    #     config.output_path = 'db/structure'
+    #     config.include_extensions = true
+    #   end
     def configure
       yield(configuration)
     end
 
+    # Resets configuration to default values
+    #
+    # @return [Configuration] A new configuration instance
     def reset_configuration
       @configuration = Configuration.new
     end

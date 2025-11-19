@@ -2,11 +2,18 @@
 
 module BetterStructureSql
   module Adapters
-    # PostgreSQL adapter implementing all introspection and generation methods.
+    # PostgreSQL adapter implementing all introspection and generation methods
+    #
+    # Provides full PostgreSQL support including extensions, custom types, materialized views,
+    # functions, triggers, sequences, and all standard database objects.
     # Preserves existing query logic for backward compatibility.
     class PostgresqlAdapter < BaseAdapter
       # Introspection methods - migrated from Introspection modules
 
+      # Fetch all extensions from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of extension hashes with :name, :version, :schema
       def fetch_extensions(connection)
         query = <<~SQL.squish
           SELECT extname, extversion, nspname as schema_name
@@ -25,6 +32,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all custom types (enums, composite types, domains) from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of type hashes with :name, :schema, :type, and type-specific attributes
       def fetch_custom_types(connection)
         query = <<~SQL.squish
           SELECT
@@ -60,6 +71,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all tables from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of table hashes with :name, :schema, :columns, :primary_key, :constraints
       def fetch_tables(connection)
         query = <<~SQL.squish
           SELECT table_name, table_schema
@@ -81,6 +96,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all indexes from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of index hashes with :schema, :table, :name, :definition
       def fetch_indexes(connection)
         query = <<~SQL.squish
           SELECT
@@ -105,6 +124,10 @@ module BetterStructureSql
         end.reject { |idx| idx[:name].end_with?('_pkey') }
       end
 
+      # Fetch all foreign keys from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :column, :foreign_table, :foreign_column, :on_update, :on_delete
       def fetch_foreign_keys(connection)
         query = <<~SQL.squish
           SELECT
@@ -143,6 +166,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all views from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition
       def fetch_views(connection)
         query = <<~SQL.squish
           SELECT
@@ -163,6 +190,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all materialized views from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of materialized view hashes with :schema, :name, :definition, :indexes
       def fetch_materialized_views(connection)
         query = <<~SQL.squish
           SELECT
@@ -184,6 +215,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all functions from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of function hashes with :schema, :name, :definition, :arguments, :return_type, :language, :volatility, :strict, :security_definer
       def fetch_functions(connection)
         query = <<~SQL.squish
           SELECT
@@ -221,6 +256,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all sequences from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of sequence hashes with :name, :schema, :start_value, :increment, :min_value, :max_value, :cache_size, :cycle
       def fetch_sequences(connection)
         query = <<~SQL.squish
           SELECT
@@ -251,6 +290,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all triggers from the database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of trigger hashes with :schema, :name, :table_name, :definition
       def fetch_triggers(connection)
         query = <<~SQL.squish
           SELECT
@@ -278,36 +321,60 @@ module BetterStructureSql
 
       # Capability methods - PostgreSQL supports all features
 
+      # Indicates whether PostgreSQL supports extensions
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_extensions?
         true
       end
 
+      # Indicates whether PostgreSQL supports materialized views
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_materialized_views?
         true
       end
 
+      # Indicates whether PostgreSQL supports custom types
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_custom_types?
         true
       end
 
+      # Indicates whether PostgreSQL supports domains
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_domains?
         true
       end
 
+      # Indicates whether PostgreSQL supports functions
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_functions?
         true
       end
 
+      # Indicates whether PostgreSQL supports triggers
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_triggers?
         true
       end
 
+      # Indicates whether PostgreSQL supports sequences
+      #
+      # @return [Boolean] Always true for PostgreSQL
       def supports_sequences?
         true
       end
 
       # Version detection
 
+      # Get the current PostgreSQL database version
+      #
+      # @return [String] Normalized version string (e.g., "14.5")
       def database_version
         @database_version ||= begin
           version_string = connection.select_value('SELECT version()')
@@ -315,6 +382,10 @@ module BetterStructureSql
         end
       end
 
+      # Parse PostgreSQL version string into normalized format
+      #
+      # @param version_string [String] Raw version string from PostgreSQL (e.g., "PostgreSQL 14.5...")
+      # @return [String] Normalized version (e.g., "14.5") or "unknown" if parsing fails
       def parse_version(version_string)
         # Example: "PostgreSQL 14.5 (Ubuntu 14.5-1.pgdg20.04+1) on x86_64-pc-linux-gnu..."
         # Extract major.minor version
@@ -328,6 +399,11 @@ module BetterStructureSql
 
       # Helper methods for introspection
 
+      # Fetch columns for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of column hashes with :name, :type, :default, :nullable, etc.
       def fetch_columns(connection, table_name)
         query = <<~SQL.squish
           SELECT
@@ -360,6 +436,11 @@ module BetterStructureSql
         end
       end
 
+      # Fetch primary key columns for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<String>] Array of primary key column names
       def fetch_primary_key(connection, table_name)
         query = <<~SQL.squish
           SELECT a.attname as column_name
@@ -376,6 +457,11 @@ module BetterStructureSql
         result.pluck('column_name')
       end
 
+      # Fetch constraints (CHECK, UNIQUE) for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of constraint hashes with :name, :definition, :type
       def fetch_constraints(connection, table_name)
         query = <<~SQL.squish
           SELECT
@@ -399,6 +485,11 @@ module BetterStructureSql
         end
       end
 
+      # Fetch enum values for a specific enum type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_name [String] Name of the enum type
+      # @return [Array<String>] Array of enum values in sort order
       def fetch_enum_values(connection, type_name)
         query = <<~SQL.squish
           SELECT e.enumlabel
@@ -413,6 +504,11 @@ module BetterStructureSql
         ).pluck('enumlabel')
       end
 
+      # Fetch attributes for a composite type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_name [String] Name of the composite type
+      # @return [Array<Hash>] Array of attribute hashes with :name, :type
       def fetch_composite_attributes(connection, type_name)
         query = <<~SQL.squish
           SELECT
@@ -433,6 +529,11 @@ module BetterStructureSql
         end
       end
 
+      # Fetch details for a domain type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_name [String] Name of the domain type
+      # @return [Hash] Domain details with :base_type, :constraint
       def fetch_domain_details(connection, type_name)
         query = <<~SQL.squish
           SELECT
@@ -452,6 +553,11 @@ module BetterStructureSql
         }
       end
 
+      # Fetch indexes for a materialized view
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param matview_name [String] Name of the materialized view
+      # @return [Array<String>] Array of index definition SQL strings
       def fetch_materialized_view_indexes(connection, matview_name)
         query = <<~SQL.squish
           SELECT indexdef
@@ -465,6 +571,10 @@ module BetterStructureSql
         ).pluck('indexdef')
       end
 
+      # Resolve PostgreSQL column type into normalized format
+      #
+      # @param row [Hash] Column information row from information_schema.columns
+      # @return [String] Normalized column type with length/precision if applicable
       def resolve_column_type(row)
         case row['data_type']
         when 'ARRAY'
@@ -494,6 +604,10 @@ module BetterStructureSql
         end
       end
 
+      # Convert PostgreSQL constraint type code to symbol
+      #
+      # @param type_code [String] PostgreSQL constraint type code ('c' = check, 'u' = unique)
+      # @return [Symbol] Constraint type (:check, :unique, :unknown)
       def constraint_type(type_code)
         case type_code
         when 'c' then :check
@@ -502,6 +616,10 @@ module BetterStructureSql
         end
       end
 
+      # Convert PostgreSQL type code to category string
+      #
+      # @param type_code [String] PostgreSQL type code ('e' = enum, 'c' = composite, 'd' = domain)
+      # @return [String] Type category ('enum', 'composite', 'domain', 'unknown')
       def type_category(type_code)
         case type_code
         when 'e' then 'enum'
@@ -511,6 +629,10 @@ module BetterStructureSql
         end
       end
 
+      # Convert PostgreSQL volatility code to string
+      #
+      # @param code [String] PostgreSQL volatility code ('i' = immutable, 's' = stable, 'v' = volatile)
+      # @return [String] Volatility string ('IMMUTABLE', 'STABLE', 'VOLATILE')
       def volatility_code(code)
         case code
         when 'i' then 'IMMUTABLE'

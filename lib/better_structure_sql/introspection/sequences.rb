@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Introspection
+    # Introspection module for database sequences
     module Sequences
+      # Fetches database sequences
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of sequence metadata hashes
       def fetch_sequences(connection)
         adapter = get_adapter(connection)
         adapter.fetch_sequences(connection)

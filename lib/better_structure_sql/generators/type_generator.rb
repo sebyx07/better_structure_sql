@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE TYPE statements for enums and composite types
     class TypeGenerator < Base
+      # Generates CREATE TYPE statement
+      #
+      # @param type [Hash] Type metadata (enum or composite)
+      # @return [String, nil] SQL statement or nil if unsupported
       def generate(type)
         case type[:type]
         when 'enum'

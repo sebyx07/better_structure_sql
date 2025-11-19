@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE MATERIALIZED VIEW statements for PostgreSQL
     class MaterializedViewGenerator < Base
+      # Generates CREATE MATERIALIZED VIEW statement
+      #
+      # @param matview [Hash] Materialized view metadata
+      # @return [String] SQL statement
       def generate(matview)
         schema_prefix = matview[:schema] == 'public' ? '' : "#{matview[:schema]}."
         definition = matview[:definition].strip

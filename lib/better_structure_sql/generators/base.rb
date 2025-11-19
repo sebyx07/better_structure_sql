@@ -2,6 +2,10 @@
 
 module BetterStructureSql
   module Generators
+    # Base class for all SQL generators
+    #
+    # Provides common functionality for generating SQL statements
+    # from database object metadata.
     class Base
       attr_reader :config
 
@@ -9,6 +13,11 @@ module BetterStructureSql
         @config = config
       end
 
+      # Generates SQL for a database object
+      #
+      # @param object [Hash] Object metadata from introspection
+      # @return [String] SQL statement
+      # @raise [NotImplementedError] Must be implemented by subclasses
       def generate(object)
         raise NotImplementedError, 'Subclasses must implement #generate'
       end

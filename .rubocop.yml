@@ -33,7 +33,21 @@ Metrics/PerceivedComplexity:
   Enabled: false
 
 Style/Documentation:
-  Enabled: false
+  Enabled: true
+  Exclude:
+    - 'integration/**/*'
+    - 'integration_mysql/**/*'
+    - 'integration_sqlite/**/*'
+    - 'spec/**/*'
+
+Style/DocumentationMethod:
+  Enabled: true
+  RequireForNonPublicMethods: false
+  Exclude:
+    - 'integration/**/*'
+    - 'integration_mysql/**/*'
+    - 'integration_sqlite/**/*'
+    - 'spec/**/*'
 
 Gemspec/DevelopmentDependencies:
   Enabled: false

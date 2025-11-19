@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE EXTENSION statements for PostgreSQL
     class ExtensionGenerator < Base
+      # Generates CREATE EXTENSION or PRAGMA statement
+      #
+      # @param extension [Hash] Extension metadata
+      # @return [String] SQL statement
       def generate(extension)
         # Handle SQLite PRAGMAs (which are stored as "extensions")
         return extension[:sql] if extension[:sql]

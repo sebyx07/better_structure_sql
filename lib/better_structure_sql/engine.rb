@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Rails Engine for mountable web UI
+  #
+  # Provides controllers and views for browsing stored schema versions
+  # through a web interface. Uses Bootstrap 5 from CDN for styling.
   class Engine < ::Rails::Engine
     isolate_namespace BetterStructureSql
 

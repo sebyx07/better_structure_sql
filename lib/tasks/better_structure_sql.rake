@@ -39,6 +39,10 @@ namespace :db do
       end
     end
 
+    # Formats byte count as human-readable string
+    #
+    # @param bytes [Integer] Byte count
+    # @return [String] Formatted string (e.g., "1.5 MB")
     def format_bytes(bytes)
       units = %w[B KB MB GB]
       return "#{bytes} B" if bytes < 1024

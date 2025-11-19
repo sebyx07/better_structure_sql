@@ -2,7 +2,12 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE VIEW statements
     class ViewGenerator < Base
+      # Generates CREATE VIEW statement
+      #
+      # @param view [Hash] View metadata with definition
+      # @return [String] SQL statement
       def generate(view)
         # Only add schema prefix for non-default schemas
         # PostgreSQL default: 'public'

@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Schema version storage and retrieval operations
+  #
+  # Provides class methods for storing, querying, and managing
+  # schema versions with automatic retention cleanup.
   module SchemaVersions
     class << self
       # Store current schema from file
@@ -59,24 +63,38 @@ module BetterStructureSql
         SchemaVersion.latest
       end
 
+      # Returns all stored schema versions
+      #
+      # @return [Array<SchemaVersion>] All versions ordered by creation date (newest first)
       def all_versions
         return [] unless table_exists?
 
         SchemaVersion.order(created_at: :desc).to_a
       end
 
+      # Finds schema version by ID
+      #
+      # @param id [Integer] Version ID
+      # @return [SchemaVersion, nil] Found version or nil
       def find(id)
         return nil unless table_exists?
 
         SchemaVersion.find_by(id: id)
       end
 
+      # Returns total count of stored versions
+      #
+      # @return [Integer] Version count
       def count
         return 0 unless table_exists?
 
         SchemaVersion.count
       end
 
+      # Returns versions filtered by format type
+      #
+      # @param format_type [String] Format type ('sql' or 'rb')
+      # @return [Array<SchemaVersion>] Matching versions
       def by_format(format_type)
         return [] unless table_exists?
 

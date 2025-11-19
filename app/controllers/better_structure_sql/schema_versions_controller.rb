@@ -1,12 +1,25 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Controller for browsing and downloading stored schema versions
+  #
+  # Provides web UI actions for listing, viewing, and downloading schema
+  # versions stored in the database. Implements memory-efficient streaming
+  # for large files and multi-file ZIP archive support.
+  #
+  # @see SchemaVersion
   class SchemaVersionsController < ApplicationController
     # Maximum file size to load into memory (2MB)
     MAX_MEMORY_SIZE = 2.megabytes
     # Maximum file size to display in browser (200KB)
     MAX_DISPLAY_SIZE = 200.kilobytes
 
+    # Lists stored schema versions with pagination
+    #
+    # Loads only metadata (no content or zip_archive) for performance.
+    # Displays up to 100 most recent versions ordered by creation date.
+    #
+    # @return [void]
     # GET /better_structure_sql/schema_versions
     def index
       # Load only metadata for listing (no content or zip_archive)
@@ -17,6 +30,14 @@ module BetterStructureSql
                          .limit(100)
     end
 
+    # Displays details of a specific schema version
+    #
+    # Loads metadata first for performance. For small single-file versions
+    # (under 200KB), loads content for inline display. For multi-file versions,
+    # extracts and parses the embedded manifest JSON.
+    #
+    # @return [void]
+    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id
     def show
       # Load metadata first
@@ -37,6 +58,13 @@ module BetterStructureSql
       render plain: 'Schema version not found', status: :not_found
     end
 
+    # Downloads raw content of a schema version as plain text
+    #
+    # Streams large files (>2MB) in chunks to avoid memory issues.
+    # Smaller files are sent directly using send_data.
+    #
+    # @return [void]
+    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id/raw
     def raw
       version = SchemaVersion.select(:id, :format_type, :content_size).find(params[:id])
@@ -58,6 +86,13 @@ module BetterStructureSql
       render plain: 'Schema version not found', status: :not_found
     end
 
+    # Downloads schema version in appropriate format
+    #
+    # Multi-file versions with ZIP archives are sent as .zip files.
+    # Single-file versions are sent as .sql or .rb files based on format_type.
+    #
+    # @return [void]
+    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id/download
     def download
       version = SchemaVersion.find(params[:id])
@@ -73,6 +108,13 @@ module BetterStructureSql
 
     private
 
+    # Sends ZIP archive download for multi-file schema versions
+    #
+    # Validates ZIP archive before sending to prevent corrupted downloads.
+    # Filename includes version ID and timestamp.
+    #
+    # @param version [SchemaVersion] the schema version to download
+    # @return [void]
     def send_zip_download(version)
       # Validate ZIP
       BetterStructureSql::ZipGenerator.validate_zip!(version.zip_archive)
@@ -85,6 +127,13 @@ module BetterStructureSql
                 disposition: 'attachment'
     end
 
+    # Sends single-file schema version download
+    #
+    # Streams large files (>2MB) to avoid memory issues. Filename is
+    # structure.sql or structure.rb based on format_type.
+    #
+    # @param version [SchemaVersion] the schema version to download
+    # @return [void]
     def send_file_download(version)
       extension = version.format_type == 'rb' ? 'rb' : 'sql'
       filename = "structure.#{extension}"
@@ -100,6 +149,14 @@ module BetterStructureSql
       end
     end
 
+    # Streams large content in 64KB chunks to avoid memory issues
+    #
+    # Sets response headers for streaming and disables proxy buffering.
+    # Fetches content from database and yields chunks via Enumerator.
+    #
+    # @param version [SchemaVersion] the schema version to stream
+    # @param filename [String] the filename for Content-Disposition header
+    # @return [void]
     def stream_large_content(version, filename)
       response.headers['Content-Type'] = 'text/plain'
       response.headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
@@ -119,6 +176,13 @@ module BetterStructureSql
       end
     end
 
+    # Extracts embedded manifest JSON from multi-file schema content
+    #
+    # Manifest is stored between MANIFEST_JSON_START and MANIFEST_JSON_END markers
+    # as SQL comments. Parses and returns the manifest hash.
+    #
+    # @param content [String] the schema content containing embedded manifest
+    # @return [Hash, nil] parsed manifest hash or nil if not found/invalid
     def extract_manifest_from_content(content)
       # Manifest is embedded in content between MANIFEST_JSON_START and MANIFEST_JSON_END markers
       return nil unless content.include?('MANIFEST_JSON_START')
@@ -143,6 +207,14 @@ module BetterStructureSql
       nil
     end
 
+    # Streams large file content from database in chunks
+    #
+    # Sets appropriate headers for streaming downloads and disables proxy buffering.
+    # Fetches content from database and streams in 64KB chunks via Enumerator.
+    #
+    # @param version_id [Integer] the schema version ID
+    # @param filename [String] the filename for Content-Disposition header
+    # @return [void]
     def stream_large_file(version_id, filename)
       # Set headers for streaming
       response.headers['Content-Type'] = 'text/plain'

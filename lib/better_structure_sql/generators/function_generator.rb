@@ -2,7 +2,14 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE FUNCTION statements
+    #
+    # Supports PL/pgSQL, SQL, and other procedural languages.
     class FunctionGenerator < Base
+      # Generates CREATE FUNCTION or CREATE PROCEDURE statement
+      #
+      # @param function [Hash] Function metadata with definition
+      # @return [String] SQL statement
       def generate(function)
         # PostgreSQL's pg_get_functiondef and MySQL's SHOW CREATE both return
         # complete CREATE FUNCTION/PROCEDURE statements

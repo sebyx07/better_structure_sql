@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module BetterStructureSql
+  # Formats SQL output for consistency and readability
+  #
+  # Handles whitespace normalization, section spacing, and
+  # blank line management to produce clean, deterministic output.
   class Formatter
     attr_reader :config
 
@@ -8,6 +12,10 @@ module BetterStructureSql
       @config = config
     end
 
+    # Formats SQL content with consistent spacing
+    #
+    # @param content [String] Raw SQL content
+    # @return [String] Formatted SQL
     def format(content)
       sections = parse_sections(content)
       formatted = sections.map { |section| format_section(section) }
@@ -19,6 +27,10 @@ module BetterStructureSql
       end
     end
 
+    # Formats an individual SQL section
+    #
+    # @param section [String] SQL section content
+    # @return [String] Formatted section
     def format_section(section)
       # Normalize whitespace
       lines = section.split("\n").map(&:rstrip)

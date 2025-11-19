@@ -3,21 +3,37 @@
 module BetterStructureSql
   module Adapters
     # MySQL adapter implementing introspection via information_schema and MySQL system tables.
+    #
     # Provides MySQL-specific SQL generation with proper dialect support.
+    # This adapter handles MySQL's unique features including stored procedures, triggers,
+    # ENUM/SET types, and AUTO_INCREMENT sequences.
     class MysqlAdapter < BaseAdapter
       # Introspection methods using information_schema
 
+      # Fetch database extensions (not supported in MySQL)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as MySQL doesn't support extensions like PostgreSQL
       def fetch_extensions(_connection)
         # MySQL doesn't support extensions like PostgreSQL
         []
       end
 
+      # Fetch custom types (not supported in MySQL)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as MySQL doesn't support standalone custom types
+      # @note MySQL has ENUM and SET types, but they are defined inline with columns, not as custom types
       def fetch_custom_types(_connection)
         # MySQL has limited support for custom types (ENUM and SET are inline)
         # Return empty array since ENUMs/SETs are defined per-column
         []
       end
 
+      # Fetch all tables from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of table hashes with :name, :schema, :columns, :primary_key, :constraints
       def fetch_tables(connection)
         query = <<~SQL.squish
           SELECT
@@ -41,6 +57,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all indexes from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of index hashes with :table, :name, :columns, :unique, :type
       def fetch_indexes(connection)
         query = <<~SQL.squish
           SELECT
@@ -81,6 +101,10 @@ module BetterStructureSql
         indexes_by_key.values
       end
 
+      # Fetch all foreign keys from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :column, :foreign_table, :foreign_column, :on_update, :on_delete
       def fetch_foreign_keys(connection)
         query = <<~SQL.squish
           SELECT
@@ -113,6 +137,10 @@ module BetterStructureSql
         end
       end
 
+      # Fetch all views from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition, :check_option, :updatable
       def fetch_views(connection)
         query = <<~SQL.squish
           SELECT
@@ -136,11 +164,19 @@ module BetterStructureSql
         end
       end
 
+      # Fetch materialized views (not supported in MySQL)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as MySQL doesn't support materialized views
       def fetch_materialized_views(_connection)
         # MySQL doesn't support materialized views
         []
       end
 
+      # Fetch all stored procedures and functions from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of routine hashes with :schema, :name, :definition
       def fetch_functions(connection)
         query = <<~SQL.squish
           SELECT
@@ -175,11 +211,19 @@ module BetterStructureSql
         end
       end
 
+      # Fetch sequences (not supported in MySQL)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Array] Empty array as MySQL doesn't support sequences (uses AUTO_INCREMENT instead)
       def fetch_sequences(_connection)
         # MySQL doesn't have sequences (uses AUTO_INCREMENT)
         []
       end
 
+      # Fetch all triggers from the current database
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of trigger hashes with :table, :name, :event, :timing, :definition
       def fetch_triggers(connection)
         query = <<~SQL.squish
           SELECT
@@ -212,42 +256,67 @@ module BetterStructureSql
 
       # Capability methods - MySQL feature support
 
+      # Indicates whether MySQL supports extensions
+      #
+      # @return [Boolean] Always false for MySQL
       def supports_extensions?
         false
       end
 
+      # Indicates whether MySQL supports materialized views
+      #
+      # @return [Boolean] Always false for MySQL
       def supports_materialized_views?
         false
       end
 
+      # Indicates whether MySQL supports custom types
+      #
+      # @return [Boolean] Always false (ENUM/SET are inline with columns, not custom types)
       def supports_custom_types?
         false # ENUM/SET are inline with columns, not custom types
       end
 
+      # Indicates whether MySQL supports domains
+      #
+      # @return [Boolean] Always false for MySQL
       def supports_domains?
         false
       end
 
+      # Indicates whether MySQL supports stored procedures and functions
+      #
+      # @return [Boolean] Always true for MySQL
       def supports_functions?
         true # Stored procedures and functions
       end
 
+      # Indicates whether MySQL supports triggers
+      #
+      # @return [Boolean] Always true for MySQL
       def supports_triggers?
         true
       end
 
+      # Indicates whether MySQL supports sequences
+      #
+      # @return [Boolean] Always false (uses AUTO_INCREMENT instead)
       def supports_sequences?
         false # Uses AUTO_INCREMENT instead
       end
 
-      # Does this database support check constraints?
-      # @return [Boolean] True for MySQL 8.0.16+
+      # Indicates whether MySQL supports check constraints
+      #
+      # @return [Boolean] True for MySQL 8.0.16+, false for earlier versions
       def supports_check_constraints?
         version_at_least?(database_version, '8.0.16')
       end
 
       # Version detection
 
+      # Get the current MySQL database version
+      #
+      # @return [String] Normalized version string (e.g., "8.0.35")
       def database_version
         @database_version ||= begin
           version_string = connection.select_value('SELECT VERSION()')
@@ -255,6 +324,10 @@ module BetterStructureSql
         end
       end
 
+      # Parse MySQL version string into normalized format
+      #
+      # @param version_string [String] Raw version string from MySQL (e.g., "8.0.35" or "5.7.44-log")
+      # @return [String] Normalized version (e.g., "8.0.35") or "unknown" if parsing fails
       def parse_version(version_string)
         # Example: "8.0.35" or "5.7.44-log"
         # Extract major.minor.patch version
@@ -268,6 +341,11 @@ module BetterStructureSql
 
       # Helper methods for introspection
 
+      # Fetch columns for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of column hashes with :name, :type, :nullable, :default, etc.
       def fetch_columns(connection, table_name)
         query = <<~SQL.squish
           SELECT
@@ -301,6 +379,11 @@ module BetterStructureSql
         end
       end
 
+      # Fetch primary key columns for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<String>] Array of primary key column names
       def fetch_primary_key(connection, table_name)
         query = <<~SQL.squish
           SELECT COLUMN_NAME
@@ -314,6 +397,11 @@ module BetterStructureSql
         connection.execute(query).pluck(0)
       end
 
+      # Fetch check constraints for a specific table (MySQL 8.0.16+)
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Name of the table
+      # @return [Array<Hash>] Array of constraint hashes with :name, :definition, :type
       def fetch_constraints(connection, table_name)
         # MySQL 8.0.16+ supports check constraints
         return [] unless supports_check_constraints?
@@ -340,6 +428,10 @@ module BetterStructureSql
         []
       end
 
+      # Resolve MySQL column type into normalized format
+      #
+      # @param row [Array] Column information row from information_schema.COLUMNS
+      # @return [String] Normalized column type with length/precision if applicable
       def resolve_column_type(row)
         data_type = row[1]
         column_type = row[7] # Full type definition

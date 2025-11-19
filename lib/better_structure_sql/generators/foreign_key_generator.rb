@@ -2,7 +2,14 @@
 
 module BetterStructureSql
   module Generators
+    # Generates ALTER TABLE ADD CONSTRAINT for foreign keys
+    #
+    # Handles CASCADE, RESTRICT, SET NULL actions.
     class ForeignKeyGenerator < Base
+      # Generates ALTER TABLE ADD CONSTRAINT for foreign key
+      #
+      # @param foreign_key [Hash] Foreign key metadata
+      # @return [String] SQL statement
       def generate(foreign_key)
         parts = [
           "ALTER TABLE #{foreign_key[:table]}",

@@ -3,6 +3,10 @@
 require 'rails/railtie'
 
 module BetterStructureSql
+  # Rails integration for BetterStructureSql
+  #
+  # Registers rake tasks, initializers, and optionally replaces
+  # default Rails schema dump/load tasks with BetterStructureSql versions.
   class Railtie < Rails::Railtie
     railtie_name :better_structure_sql
 
@@ -38,8 +42,13 @@ module BetterStructureSql
       end
     end
 
-    # Override schema_dump_path to return our configured path (both dump and load)
+    # Extension to override schema_dump_path for BetterStructureSql
     module DatabaseTasksPathExtension
+      # Returns schema dump path based on configuration
+      #
+      # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
+      # @param format [Symbol] Schema format (:sql or :ruby)
+      # @return [Pathname] Path to schema file
       def schema_dump_path(db_config, format = ActiveRecord.schema_format)
         if format.to_sym == :sql && !BetterStructureSql.configuration.output_path.to_s.end_with?('.rb')
           # Return our configured path for SQL format
@@ -51,7 +60,13 @@ module BetterStructureSql
       end
     end
 
+    # Extension to override DatabaseTasks#dump_schema for SQL format
     module DatabaseTasksExtension
+      # Dumps schema using BetterStructureSql for SQL format
+      #
+      # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
+      # @param format [Symbol] Schema format
+      # @return [void]
       def dump_schema(db_config, format = db_config.schema_format)
         # Only override SQL format dumps
         if format.to_sym == :sql
@@ -77,6 +92,7 @@ module BetterStructureSql
       # This module is kept for backward compatibility but is no longer used
     end
 
+    # Extension to override DatabaseTasks#load_schema for multi-file support
     module DatabaseTasksLoadExtension
       # Override load_schema to handle both file and directory schemas
       def load_schema(db_config, format = ActiveRecord.schema_format, *_args)

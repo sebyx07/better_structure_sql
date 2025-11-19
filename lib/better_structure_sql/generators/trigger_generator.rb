@@ -2,7 +2,14 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE TRIGGER statements
+    #
+    # Supports BEFORE, AFTER, INSTEAD OF triggers with row/statement timing.
     class TriggerGenerator < Base
+      # Generates CREATE TRIGGER statement
+      #
+      # @param trigger [Hash] Trigger metadata
+      # @return [String] SQL statement
       def generate(trigger)
         # PostgreSQL's pg_get_triggerdef returns complete CREATE TRIGGER statement
         # MySQL SHOW CREATE TRIGGER also returns complete statement

@@ -2,7 +2,14 @@
 
 module BetterStructureSql
   module Generators
+    # Generates CREATE INDEX statements
+    #
+    # Supports unique indexes, partial indexes, and expression indexes.
     class IndexGenerator < Base
+      # Generates CREATE INDEX statement
+      #
+      # @param index [Hash] Index metadata
+      # @return [String] SQL statement
       def generate(index)
         # PostgreSQL provides complete definition via pg_indexes
         if index[:definition]
