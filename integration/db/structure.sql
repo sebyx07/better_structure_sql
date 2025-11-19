@@ -151,7 +151,7 @@ CREATE TABLE better_structure_sql_schema_versions (
   created_at timestamp NOT NULL,
   updated_at timestamp NOT NULL,
   PRIMARY KEY (id),
-  CONSTRAINT format_type_check CHECK (((format_type)::text = ANY ((ARRAY['sql'::character varying, 'rb'::character varying])::text[])))
+  CONSTRAINT format_type_check CHECK (((format_type)::text = ANY (ARRAY[('sql'::character varying)::text, ('rb'::character varying)::text])))
 );
 
 CREATE TABLE categories (

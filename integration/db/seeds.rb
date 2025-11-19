@@ -284,4 +284,181 @@ puts "- Order Items: #{OrderItem.count}"
 puts "- Sessions: #{Session.count}"
 puts "- Events: #{Event.count}"
 puts "- Price History: #{ProductPriceHistory.count}"
+
+# Seed schema versions only if versioning is enabled and table exists
+if BetterStructureSql.configuration.enable_schema_versions &&
+   ActiveRecord::Base.connection.table_exists?('better_structure_sql_schema_versions')
+
+  puts "\nCreating sample schema versions..."
+
+  # Sample SQL schemas with different complexity levels
+  simple_schema_sql = <<~SQL
+    SET client_encoding = 'UTF8';
+    SET standard_conforming_strings = on;
+
+    -- Simple schema example
+    CREATE TABLE users (
+      id bigint PRIMARY KEY,
+      email character varying NOT NULL,
+      created_at timestamp without time zone NOT NULL,
+      updated_at timestamp without time zone NOT NULL
+    );
+
+    CREATE UNIQUE INDEX index_users_on_email ON users (email);
+  SQL
+
+  complex_schema_sql = <<~SQL
+    SET client_encoding = 'UTF8';
+    SET standard_conforming_strings = on;
+
+    -- Extensions
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+    -- Custom types
+    CREATE TYPE post_status AS ENUM ('draft', 'published', 'archived');
+
+    -- Tables
+    CREATE TABLE users (
+      id bigint PRIMARY KEY,
+      email character varying NOT NULL,
+      encrypted_password character varying,
+      uuid uuid DEFAULT gen_random_uuid(),
+      created_at timestamp without time zone NOT NULL,
+      updated_at timestamp without time zone NOT NULL
+    );
+
+    CREATE TABLE posts (
+      id bigint PRIMARY KEY,
+      user_id bigint NOT NULL,
+      title character varying NOT NULL,
+      body text,
+      status post_status DEFAULT 'draft'::post_status,
+      published_at timestamp without time zone,
+      created_at timestamp without time zone NOT NULL,
+      updated_at timestamp without time zone NOT NULL
+    );
+
+    -- Indexes
+    CREATE UNIQUE INDEX index_users_on_email ON users (email);
+    CREATE INDEX index_posts_on_user_id ON posts (user_id);
+    CREATE INDEX index_posts_on_published_at ON posts (published_at) WHERE (published_at IS NOT NULL);
+
+    -- Foreign Keys
+    ALTER TABLE posts ADD CONSTRAINT fk_rails_posts_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+    -- Views
+    CREATE VIEW active_posts AS
+    SELECT id, user_id, title, published_at
+    FROM posts
+    WHERE published_at IS NOT NULL
+    ORDER BY published_at DESC;
+  SQL
+
+  # Sample Ruby schema (simplified)
+  simple_schema_rb = <<~RUBY
+    ActiveRecord::Schema[8.1].define(version: 2025_01_01_000003) do
+      enable_extension "plpgsql"
+
+      create_table "users", force: :cascade do |t|
+        t.string "email", null: false
+        t.string "encrypted_password"
+        t.datetime "created_at", null: false
+        t.datetime "updated_at", null: false
+        t.index ["email"], name: "index_users_on_email", unique: true
+      end
+
+      create_table "posts", force: :cascade do |t|
+        t.bigint "user_id", null: false
+        t.string "title", null: false
+        t.text "body"
+        t.datetime "published_at"
+        t.datetime "created_at", null: false
+        t.datetime "updated_at", null: false
+        t.index ["user_id"], name: "index_posts_on_user_id"
+      end
+
+      add_foreign_key "posts", "users", on_delete: :cascade
+    end
+  RUBY
+
+  # Create sample versions with timestamps spread over time
+  versions_created = 0
+
+  # Version 1: Simple SQL schema (30 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: simple_schema_sql,
+    pg_version: 'PostgreSQL 14.10',
+    format_type: 'sql',
+    created_at: 30.days.ago
+  )
+  versions_created += 1
+
+  # Version 2: Ruby schema (25 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: simple_schema_rb,
+    pg_version: 'PostgreSQL 14.10',
+    format_type: 'rb',
+    created_at: 25.days.ago
+  )
+  versions_created += 1
+
+  # Version 3: Complex SQL schema (20 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: complex_schema_sql,
+    pg_version: 'PostgreSQL 15.0',
+    format_type: 'sql',
+    created_at: 20.days.ago
+  )
+  versions_created += 1
+
+  # Version 4: SQL schema with different PG version (15 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.1'),
+    pg_version: 'PostgreSQL 15.1',
+    format_type: 'sql',
+    created_at: 15.days.ago
+  )
+  versions_created += 1
+
+  # Version 5: Another Ruby schema (10 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: simple_schema_rb.gsub('2025_01_01_000003', '2025_01_01_000005'),
+    pg_version: 'PostgreSQL 15.1',
+    format_type: 'rb',
+    created_at: 10.days.ago
+  )
+  versions_created += 1
+
+  # Version 6: Recent SQL schema (5 days ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.2'),
+    pg_version: 'PostgreSQL 15.2',
+    format_type: 'sql',
+    created_at: 5.days.ago
+  )
+  versions_created += 1
+
+  # Version 7: Most recent (1 day ago)
+  BetterStructureSql::SchemaVersion.create!(
+    content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.3'),
+    pg_version: 'PostgreSQL 15.3',
+    format_type: 'sql',
+    created_at: 1.day.ago
+  )
+  versions_created += 1
+
+  puts "Created #{versions_created} sample schema versions"
+  puts "  - SQL versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'sql').count}"
+  puts "  - Ruby versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'rb').count}"
+  puts "  - Date range: #{BetterStructureSql::SchemaVersion.minimum(:created_at).strftime('%Y-%m-%d')} to #{BetterStructureSql::SchemaVersion.maximum(:created_at).strftime('%Y-%m-%d')}"
+
+  # Test retention limit
+  total_versions = BetterStructureSql::SchemaVersion.count
+  retention_limit = BetterStructureSql.configuration.schema_versions_limit
+  puts "  - Note: Retention limit is #{retention_limit}, but #{total_versions} versions exist (cleanup will run on next store)" if retention_limit.positive? && total_versions > retention_limit
+else
+  puts "\nSkipping schema version seeding (versioning disabled or table doesn't exist)"
+end
+
 puts "\nSeeding complete!"

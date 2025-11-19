@@ -28,11 +28,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_HOST: postgres
-      DATABASE_USERNAME: postgres
-      DATABASE_PASSWORD: postgres
-      DATABASE_NAME: better_structure_sql_development
+      # Database connection (matching database.yml ENV variables)
+      DB_HOST: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: better_structure_sql_development
+      # Rails environment
       RAILS_ENV: development
+      # Gem configuration
       BETTER_STRUCTURE_SQL_ROOT: /app
     depends_on:
       postgres:
