@@ -68,6 +68,9 @@ Rails/HasManyOrHasOneDependent:
 Rails/InverseOf:
   Enabled: false
 
+Rails/Exit:
+  Enabled: false
+
 Naming/PredicateMethod:
   Enabled: false
 
