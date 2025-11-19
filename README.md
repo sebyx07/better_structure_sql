@@ -1,6 +1,10 @@
 # BetterStructureSql 🚀
 
+**Version: 0.1.0 (Beta)**
+
 Clean, maintainable database schema dumps for Rails (PostgreSQL, MySQL, SQLite) without external tool dependencies.
+
+> **Note**: This gem is currently in beta (version 0.x). APIs may change between releases until v1.0. We welcome feedback and contributions!
 
 ## Why BetterStructureSql? 🤔
 
@@ -111,6 +115,16 @@ docker compose up
 See [DOCKER.md](DOCKER.md) for complete Docker documentation.
 
 ## Documentation 📚
+
+### 🌐 Documentation Website
+**[Visit the full documentation site →](https://YOUR_USERNAME.github.io/better_structure_sql/)**
+
+Interactive documentation with tutorials, database-specific guides, and real-world examples showing how to use SQL databases to their fullest with BetterStructureSql. Features include:
+- Step-by-step tutorials for PostgreSQL, MySQL, and SQLite
+- Real-world examples using advanced database features (triggers, views, functions)
+- Production deployment guides with automatic schema versioning
+- API reference and configuration examples
+- AI-friendly multi-file schema benefits
 
 ### General Documentation
 - [Installation](docs/installation.md) - Setup and configuration
