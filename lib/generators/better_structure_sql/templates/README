@@ -1,0 +1,36 @@
+===============================================================================
+
+BetterStructureSql has been installed!
+
+Configuration file created at:
+  config/initializers/better_structure_sql.rb
+
+To generate a clean schema dump, run:
+  rails db:schema:dump_better
+
+To replace Rails' default schema dump task, set in the initializer:
+  config.replace_default_dump = true
+
+Then you can use the standard command:
+  rails db:schema:dump
+
+Phase 1 features available:
+  ✓ Tables with columns, primary keys, and constraints
+  ✓ Indexes (including unique and partial)
+  ✓ Foreign keys with CASCADE/RESTRICT/SET NULL
+  ✓ PostgreSQL extensions
+  ✓ Clean, deterministic output
+
+Coming in Phase 2:
+  - Schema version storage
+  - Version retention management
+
+Coming in Phase 3:
+  - Views and materialized views
+  - Functions and triggers
+  - Advanced PostgreSQL features
+
+For more information, visit:
+  https://github.com/example/better_structure_sql
+
+===============================================================================

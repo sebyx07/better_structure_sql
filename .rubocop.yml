@@ -1,0 +1,34 @@
+require:
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  TargetRubyVersion: 2.7
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'spec/dummy/**/*'
+    - 'bin/**/*'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'
+
+Style/Documentation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 20
+
+Metrics/AbcSize:
+  Max: 20
+
+RSpec/ExampleLength:
+  Max: 15
+
+RSpec/MultipleExpectations:
+  Max: 5
