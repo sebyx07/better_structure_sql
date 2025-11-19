@@ -55,6 +55,12 @@ Style/MultilineBlockChain:
 Lint/DuplicateBranch:
   Enabled: false
 
+Rails/ApplicationRecord:
+  Enabled: false
+
+Rails/SquishedSQLHeredocs:
+  Enabled: false
+
 Layout/AssignmentIndentation:
   Enabled: true
 
