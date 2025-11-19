@@ -44,7 +44,7 @@ function Footer() {
             <ul className="list-unstyled small">
               <li className="mb-1">
                 <a
-                  href="https://github.com/YOUR_USERNAME/better_structure_sql"
+                  href="https://github.com/sebyx07/better_structure_sql"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted text-decoration-none"
@@ -66,7 +66,7 @@ function Footer() {
               </li>
               <li className="mb-1">
                 <a
-                  href="https://github.com/YOUR_USERNAME/better_structure_sql/issues"
+                  href="https://github.com/sebyx07/better_structure_sql/issues"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted text-decoration-none"

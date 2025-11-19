@@ -17,8 +17,8 @@ function Home() {
         <div className="container">
           <h1 className="display-4 fw-bold">Use SQL Databases to the Fullest</h1>
           <p className="lead mb-4">
-            Clean, maintainable schema dumps for Rails with support for thousands of tables,
-            triggers, views, and functions.
+            Clean, maintainable schema dumps for Rails with support for thousands of tables, triggers,
+            views, and functions.
           </p>
           <div className="d-flex gap-3 justify-content-center flex-wrap">
             <Link to="/install" className="btn btn-primary btn-lg">
@@ -26,7 +26,7 @@ function Home() {
               Get Started
             </Link>
             <a
-              href="https://github.com/YOUR_USERNAME/better_structure_sql"
+              href="https://github.com/sebyx07/better_structure_sql"
               className="btn btn-outline-light btn-lg"
               target="_blank"
               rel="noopener noreferrer"
@@ -61,9 +61,9 @@ function Home() {
             <div className="col-lg-8 mx-auto text-center">
               <h2 className="mb-4">Why BetterStructureSql?</h2>
               <p className="lead mb-4">
-                Rails' default schema dump tools create noisy files with version-specific
-                comments and inconsistent formatting that pollute git diffs. BetterStructureSql
-                uses pure Ruby introspection to generate clean, deterministic output.
+                Rails&apos; default schema dump tools create noisy files with version-specific comments
+                and inconsistent formatting that pollute git diffs. BetterStructureSql uses pure Ruby
+                introspection to generate clean, deterministic output.
               </p>
             </div>
           </div>
@@ -175,8 +175,8 @@ function Home() {
             <div className="col-lg-6">
               <h2 className="mb-4">AI-Friendly Schema Organization</h2>
               <p className="lead">
-                Stop overwhelming LLMs with 10,000+ line structure.sql files. Multi-file output
-                creates organized, navigable schemas perfect for AI-assisted development.
+                Stop overwhelming LLMs with 10,000+ line structure.sql files. Multi-file output creates
+                organized, navigable schemas perfect for AI-assisted development.
               </p>
               <ul className="list-unstyled">
                 <li className="mb-2">
@@ -189,7 +189,7 @@ function Home() {
                 </li>
                 <li className="mb-2">
                   <i className="bi bi-check-circle-fill text-success me-2" />
-                  Easy references: "Check 4_tables/000015.sql for users table"
+                  Easy references: &quot;Check 4_tables/000015.sql for users table&quot;
                 </li>
                 <li className="mb-2">
                   <i className="bi bi-check-circle-fill text-success me-2" />

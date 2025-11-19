@@ -36,15 +36,14 @@ function Header() {
               </Link>
             </li>
             <li className="nav-item dropdown">
-              <a
-                className="nav-link dropdown-toggle"
-                href="#"
-                role="button"
+              <button
+                type="button"
+                className="nav-link dropdown-toggle btn btn-link"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
                 Getting Started
-              </a>
+              </button>
               <ul className="dropdown-menu dropdown-menu-dark">
                 <li>
                   <Link className="dropdown-item" to="/install">
@@ -74,7 +73,7 @@ function Header() {
             <li className="nav-item">
               <a
                 className="nav-link"
-                href="https://github.com/YOUR_USERNAME/better_structure_sql"
+                href="https://github.com/sebyx07/better_structure_sql"
                 target="_blank"
                 rel="noopener noreferrer"
               >
