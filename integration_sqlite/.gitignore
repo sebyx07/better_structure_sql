@@ -1,0 +1,12 @@
+# Database files
+*.sqlite3
+*.sqlite3-*
+
+# Logs
+log/*.log
+tmp/
+
+# Debug/test files
+debug_*.rb
+test_*.rb
+load_*.rb
