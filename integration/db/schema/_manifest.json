@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "total_files": 11,
+  "total_lines": 2345,
+  "max_lines_per_file": 500,
+  "directories": {
+    "01_extensions": {
+      "files": 1,
+      "lines": 3
+    },
+    "02_types": {
+      "files": 1,
+      "lines": 13
+    },
+    "03_functions": {
+      "files": 1,
+      "lines": 332
+    },
+    "04_sequences": {
+      "files": 1,
+      "lines": 289
+    },
+    "05_tables": {
+      "files": 2,
+      "lines": 979
+    },
+    "06_indexes": {
+      "files": 1,
+      "lines": 397
+    },
+    "07_foreign_keys": {
+      "files": 1,
+      "lines": 67
+    },
+    "08_views": {
+      "files": 1,
+      "lines": 217
+    },
+    "09_triggers": {
+      "files": 1,
+      "lines": 35
+    },
+    "10_migrations": {
+      "files": 1,
+      "lines": 13
+    }
+  }
+}
