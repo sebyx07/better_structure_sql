@@ -7,6 +7,8 @@ module BetterStructureSql
                   :include_functions,
                   :include_triggers,
                   :include_views,
+                  :include_sequences,
+                  :include_custom_types,
                   :enable_schema_versions,
                   :schema_versions_limit,
                   :indent_size,
@@ -21,6 +23,8 @@ module BetterStructureSql
       @include_functions = false
       @include_triggers = false
       @include_views = false
+      @include_sequences = true
+      @include_custom_types = true
       @enable_schema_versions = false
       @schema_versions_limit = 10
       @indent_size = 2

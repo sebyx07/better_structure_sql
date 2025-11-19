@@ -13,6 +13,8 @@ module BetterStructureSql
       output = []
       output << header
       output << extensions_section if config.include_extensions
+      output << custom_types_section if config.include_custom_types
+      output << sequences_section if config.include_sequences
       output << tables_section
       output << indexes_section
       output << foreign_keys_section
@@ -39,6 +41,26 @@ module BetterStructureSql
       generator = Generators::ExtensionGenerator.new(config)
       lines = ["-- Extensions"]
       lines += extensions.map { |ext| generator.generate(ext) }
+      lines.join("\n")
+    end
+
+    def custom_types_section
+      types = Introspection.fetch_custom_types(connection)
+      return nil if types.empty?
+
+      generator = Generators::TypeGenerator.new(config)
+      lines = ["-- Custom Types"]
+      lines += types.map { |type| generator.generate(type) }.compact
+      lines.join("\n")
+    end
+
+    def sequences_section
+      sequences = Introspection.fetch_sequences(connection)
+      return nil if sequences.empty?
+
+      generator = Generators::SequenceGenerator.new(config)
+      lines = ["-- Sequences"]
+      lines += sequences.map { |seq| generator.generate(seq) }
       lines.join("\n")
     end
 
