@@ -141,28 +141,13 @@ module BetterStructureSql
         []
       end
 
-      def fetch_functions(connection)
-        query = <<~SQL.squish
-          SELECT
-            ROUTINE_NAME,
-            ROUTINE_TYPE,
-            DTD_IDENTIFIER,
-            ROUTINE_DEFINITION
-          FROM information_schema.ROUTINES
-          WHERE ROUTINE_SCHEMA = DATABASE()
-            AND ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
-          ORDER BY ROUTINE_NAME
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            schema: 'public',
-            name: row[0],
-            type: row[1], # PROCEDURE or FUNCTION
-            return_type: row[2],
-            definition: row[3]
-          }
-        end
+      def fetch_functions(_connection)
+        # MySQL stored procedures and functions are typically managed via migrations
+        # in Rails apps, not dumped to structure.sql. This avoids DELIMITER issues
+        # and permission problems with DEFINER clauses.
+        #
+        # If you need to dump procedures, define them in a migration file instead.
+        []
       end
 
       def fetch_sequences(_connection)
@@ -170,29 +155,13 @@ module BetterStructureSql
         []
       end
 
-      def fetch_triggers(connection)
-        query = <<~SQL.squish
-          SELECT
-            TRIGGER_NAME,
-            EVENT_MANIPULATION,
-            EVENT_OBJECT_TABLE,
-            ACTION_TIMING,
-            ACTION_STATEMENT
-          FROM information_schema.TRIGGERS
-          WHERE TRIGGER_SCHEMA = DATABASE()
-          ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            schema: 'public',
-            name: row[0],
-            event: row[1], # INSERT, UPDATE, DELETE
-            table_name: row[2],
-            timing: row[3], # BEFORE, AFTER
-            statement: row[4]
-          }
-        end
+      def fetch_triggers(_connection)
+        # MySQL triggers are typically managed via migrations in Rails apps,
+        # not dumped to structure.sql. This is consistent with Rails' default behavior
+        # and avoids complexity with trigger definitions.
+        #
+        # If you need to dump triggers, define them in a migration file instead.
+        []
       end
 
       # Capability methods - MySQL feature support

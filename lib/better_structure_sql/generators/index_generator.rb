@@ -24,8 +24,15 @@ module BetterStructureSql
       def quote_identifier(identifier)
         return identifier if identifier.nil?
 
-        # Use double quotes for SQL standard identifier quoting
-        "\"#{identifier}\""
+        # Detect adapter from ActiveRecord connection
+        adapter_name = ActiveRecord::Base.connection.adapter_name.downcase rescue nil
+
+        # MySQL/MariaDB use backticks, PostgreSQL/SQLite use double quotes
+        if adapter_name == 'mysql' || adapter_name == 'mysql2' || adapter_name == 'trilogy'
+          "`#{identifier}`"
+        else
+          "\"#{identifier}\""
+        end
       end
     end
   end

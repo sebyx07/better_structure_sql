@@ -142,7 +142,7 @@ module BetterStructureSql
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
       unless tables.empty?
         # For SQLite, attach foreign keys to each table for inline generation
-        if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+        if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
           all_foreign_keys = Introspection.fetch_foreign_keys(connection)
           tables.each do |table|
             table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
@@ -162,7 +162,7 @@ module BetterStructureSql
 
       # Foreign keys
       # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      unless adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+      unless adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
         foreign_keys = Introspection.fetch_foreign_keys(connection)
         unless foreign_keys.empty?
           generator = Generators::ForeignKeyGenerator.new(config)
@@ -200,7 +200,7 @@ module BetterStructureSql
       # Schema migrations - create batch INSERT statements
       # Each batch INSERT is a complete SQL statement, chunked into groups
       # SQLite doesn't include schema_migrations in structure.sql (Rails manages it separately)
-      if !adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter) && table_exists?('schema_migrations')
+      if adapter.class.name != 'BetterStructureSql::Adapters::SqliteAdapter' && table_exists?('schema_migrations')
         versions = fetch_schema_migration_versions
         unless versions.empty?
           # Chunk versions into groups (each group will be one batch INSERT)
@@ -276,7 +276,7 @@ module BetterStructureSql
 
       generator = Generators::ExtensionGenerator.new(config)
       # Use appropriate section name based on adapter
-      section_name = adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter) ? 'PRAGMAs' : 'Extensions'
+      section_name = adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter' ? 'PRAGMAs' : 'Extensions'
       lines = ["-- #{section_name}"]
       lines += extensions.map { |ext| generator.generate(ext) }
       lines.join("\n")
@@ -323,7 +323,7 @@ module BetterStructureSql
       return '-- Tables' if tables.empty?
 
       # For SQLite, attach foreign keys to each table for inline generation
-      if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+      if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
         all_foreign_keys = Introspection.fetch_foreign_keys(connection)
         tables.each do |table|
           table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
@@ -334,7 +334,7 @@ module BetterStructureSql
       lines = []
 
       # Add PostgreSQL-specific SET commands only for PostgreSQL
-      if adapter.instance_of?(::BetterStructureSql::Adapters::PostgresqlAdapter)
+      if adapter.class.name == 'BetterStructureSql::Adapters::PostgresqlAdapter'
         lines << "SET default_tablespace = '';"
         lines << ''
         lines << 'SET default_table_access_method = heap;'
@@ -358,7 +358,7 @@ module BetterStructureSql
 
     def foreign_keys_section
       # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
 
       foreign_keys = Introspection.fetch_foreign_keys(connection)
       return nil if foreign_keys.empty?
@@ -422,17 +422,35 @@ module BetterStructureSql
     def schema_migrations_section
       # SQLite doesn't include schema_migrations in structure.sql
       # Rails manages this table separately
-      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
 
       return nil unless table_exists?('schema_migrations')
 
       versions = fetch_schema_migration_versions
       return nil if versions.empty?
 
+      # Use adapter-specific quoting
+      table_quote = quote_table_name('schema_migrations')
+
       lines = ['-- Schema Migrations']
-      lines << 'INSERT INTO "schema_migrations" (version) VALUES'
-      lines << versions.map { |v| "('#{v}')" }.join(",\n")
-      lines << 'ON CONFLICT DO NOTHING;'
+
+      # Use adapter-specific conflict resolution and quoting
+      case adapter.class.name
+      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
+        lines << "INSERT INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << 'ON CONFLICT DO NOTHING;'
+      when 'BetterStructureSql::Adapters::MysqlAdapter'
+        # MySQL uses INSERT IGNORE and backticks
+        lines << "INSERT IGNORE INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << ';'
+      else
+        lines << "INSERT INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << ';'
+      end
+
       lines.join("\n")
     end
 
@@ -463,13 +481,40 @@ module BetterStructureSql
     def generate_migrations_batch(versions)
       return '' if versions.empty?
 
+      # Use adapter-specific quoting
+      table_quote = quote_table_name('schema_migrations')
+
       # Generate single batch INSERT with all versions
       # This will be chunked by FileWriter if it exceeds max_lines_per_file
       lines = []
-      lines << 'INSERT INTO "schema_migrations" (version) VALUES'
-      lines << versions.map { |v| "('#{v}')" }.join(",\n")
-      lines << 'ON CONFLICT DO NOTHING;'
+
+      # Use adapter-specific conflict resolution and quoting
+      case adapter.class.name
+      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
+        lines << "INSERT INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << 'ON CONFLICT DO NOTHING;'
+      when 'BetterStructureSql::Adapters::MysqlAdapter'
+        # MySQL uses INSERT IGNORE and backticks
+        lines << "INSERT IGNORE INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << ';'
+      else
+        lines << "INSERT INTO #{table_quote} (version) VALUES"
+        lines << versions.map { |v| "('#{v}')" }.join(",\n")
+        lines << ';'
+      end
+
       lines.join("\n")
+    end
+
+    def quote_table_name(table_name)
+      case adapter.class.name
+      when 'BetterStructureSql::Adapters::MysqlAdapter'
+        "`#{table_name}`"
+      else
+        "\"#{table_name}\""
+      end
     end
 
     def store_schema_version(content)
