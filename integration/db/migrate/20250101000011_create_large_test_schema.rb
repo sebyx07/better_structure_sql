@@ -2,7 +2,7 @@
 
 class CreateLargeTestSchema < ActiveRecord::Migration[7.0]
   def up
-    puts 'Generating large schema to demonstrate multi-file feature...'
+    Rails.logger.debug 'Generating large schema to demonstrate multi-file feature...'
 
     # Generate 50 tables with realistic structure
     50.times do |i|
@@ -95,19 +95,19 @@ class CreateLargeTestSchema < ActiveRecord::Migration[7.0]
       SQL
     end
 
-    puts '✓ Large schema generated successfully!'
-    puts ''
-    puts 'Statistics:'
-    puts '  - 50 tables (each with ~10 columns)'
-    puts '  - 150 indexes (3 per table)'
-    puts '  - 50 check constraints'
-    puts '  - 25 foreign keys'
-    puts '  - 20 views'
-    puts '  - 10 functions'
-    puts '  - 15 triggers'
-    puts ''
-    puts 'Total database objects: ~270'
-    puts 'Expected structure.sql size: ~3,000-5,000 lines'
+    Rails.logger.debug '✓ Large schema generated successfully!'
+    Rails.logger.debug ''
+    Rails.logger.debug 'Statistics:'
+    Rails.logger.debug '  - 50 tables (each with ~10 columns)'
+    Rails.logger.debug '  - 150 indexes (3 per table)'
+    Rails.logger.debug '  - 50 check constraints'
+    Rails.logger.debug '  - 25 foreign keys'
+    Rails.logger.debug '  - 20 views'
+    Rails.logger.debug '  - 10 functions'
+    Rails.logger.debug '  - 15 triggers'
+    Rails.logger.debug ''
+    Rails.logger.debug 'Total database objects: ~270'
+    Rails.logger.debug 'Expected structure.sql size: ~3,000-5,000 lines'
   end
 
   def down

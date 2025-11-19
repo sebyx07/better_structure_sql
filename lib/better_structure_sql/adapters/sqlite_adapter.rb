@@ -29,25 +29,23 @@ module BetterStructureSql
 
         pragmas = []
         important_pragmas.each do |pragma_name|
-          begin
-            result = connection.execute("PRAGMA #{pragma_name}").first
-            next unless result
+          result = connection.execute("PRAGMA #{pragma_name}").first
+          next unless result
 
-            value = result.is_a?(Hash) ? (result[pragma_name] || result.values.first) : result[0]
+          value = result.is_a?(Hash) ? (result[pragma_name] || result.values.first) : result[0]
 
-            # Only include non-default values that make sense to preserve
-            next if value.nil? || value.to_s.empty?
-            next if pragma_name == 'foreign_keys' && value.to_i.zero? # Skip if FK disabled
+          # Only include non-default values that make sense to preserve
+          next if value.nil? || value.to_s.empty?
+          next if pragma_name == 'foreign_keys' && value.to_i.zero? # Skip if FK disabled
 
-            pragmas << {
-              name: pragma_name,
-              value: value,
-              sql: "PRAGMA #{pragma_name} = #{format_pragma_value(pragma_name, value)};"
-            }
-          rescue StandardError => e
-            # Skip PRAGMAs that fail (might not be supported in this SQLite version)
-            Rails.logger.debug("Skipping PRAGMA #{pragma_name}: #{e.message}") if defined?(Rails)
-          end
+          pragmas << {
+            name: pragma_name,
+            value: value,
+            sql: "PRAGMA #{pragma_name} = #{format_pragma_value(pragma_name, value)};"
+          }
+        rescue StandardError => e
+          # Skip PRAGMAs that fail (might not be supported in this SQLite version)
+          Rails.logger.debug { "Skipping PRAGMA #{pragma_name}: #{e.message}" } if defined?(Rails)
         end
 
         pragmas
@@ -117,7 +115,7 @@ module BetterStructureSql
             unique_clause = is_unique ? 'UNIQUE ' : ''
             columns_clause = columns.map { |col| quote_identifier(col) }.join(', ')
             definition = "CREATE #{unique_clause}INDEX #{quote_identifier(index_name)} " \
-                        "ON #{quote_identifier(table_name)} (#{columns_clause})"
+                         "ON #{quote_identifier(table_name)} (#{columns_clause})"
 
             indexes << {
               table: table_name,
@@ -225,7 +223,7 @@ module BetterStructureSql
             table_name: row['tbl_name'] || row[1],
             timing: timing,
             event: event,
-            definition: sql  # Use 'definition' to match PostgreSQL adapter
+            definition: sql # Use 'definition' to match PostgreSQL adapter
           }
         end
       end

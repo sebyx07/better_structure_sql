@@ -20,6 +20,6 @@ class CreateOrders < ActiveRecord::Migration[8.1]
     end
 
     add_index :orders, :status
-    add_index :order_items, [:order_id, :product_id], unique: true
+    add_index :order_items, %i[order_id product_id], unique: true
   end
 end

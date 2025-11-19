@@ -5,7 +5,7 @@ require_relative '../../lib/better_structure_sql/adapters/mysql_adapter'
 
 RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   let(:connection) { double('ActiveRecord::Connection') }
-  let(:adapter) { described_class.new(connection) }
+  let(:adapter)    { described_class.new(connection) }
 
   describe '#fetch_extensions' do
     it 'returns empty array (MySQL does not support extensions)' do
@@ -22,15 +22,13 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   describe '#fetch_tables' do
     it 'fetches tables using information_schema' do
       query_result = [
-        ['users', 'public'],
-        ['posts', 'public']
+        %w[users public],
+        %w[posts public]
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)
       allow(connection).to receive(:quote).and_return("'users'", "'posts'")
-      allow(adapter).to receive(:fetch_columns).and_return([])
-      allow(adapter).to receive(:fetch_primary_key).and_return([])
-      allow(adapter).to receive(:fetch_constraints).and_return([])
+      allow(adapter).to receive_messages(fetch_columns: [], fetch_primary_key: [], fetch_constraints: [])
 
       tables = adapter.fetch_tables(connection)
 
@@ -58,7 +56,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
       expect(indexes.first[:unique]).to be true
 
       expect(indexes.last[:name]).to eq('idx_user_status')
-      expect(indexes.last[:columns]).to eq(['user_id', 'status'])
+      expect(indexes.last[:columns]).to eq(%w[user_id status])
       expect(indexes.last[:unique]).to be false
     end
   end
@@ -66,7 +64,7 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
   describe '#fetch_foreign_keys' do
     it 'fetches foreign keys using information_schema' do
       query_result = [
-        ['posts', 'fk_posts_user', 'user_id', 'users', 'id', 'CASCADE', 'CASCADE']
+        %w[posts fk_posts_user user_id users id CASCADE CASCADE]
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)

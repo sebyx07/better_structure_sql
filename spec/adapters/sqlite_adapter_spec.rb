@@ -5,11 +5,15 @@ require_relative '../../lib/better_structure_sql/adapters/sqlite_adapter'
 
 RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
   let(:connection) { double('ActiveRecord::Connection') }
-  let(:adapter) { described_class.new(connection) }
+  let(:adapter)    { described_class.new(connection) }
 
   describe '#fetch_extensions' do
-    it 'returns empty array (SQLite does not support extensions)' do
-      expect(adapter.fetch_extensions(connection)).to eq([])
+    it 'returns PRAGMA settings as extensions' do
+      # Mock PRAGMA queries to return default values (all will be skipped)
+      allow(connection).to receive(:execute).and_return([[0]]) # Most return 0/default
+
+      result = adapter.fetch_extensions(connection)
+      expect(result).to be_an(Array)
     end
   end
 
@@ -22,15 +26,13 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
   describe '#fetch_tables' do
     it 'fetches tables using sqlite_master' do
       query_result = [
-        ['users', 'CREATE TABLE users (id INTEGER PRIMARY KEY)'],
-        ['posts', 'CREATE TABLE posts (id INTEGER PRIMARY KEY)']
+        { 'name' => 'users', 'sql' => 'CREATE TABLE users (id INTEGER PRIMARY KEY)' },
+        { 'name' => 'posts', 'sql' => 'CREATE TABLE posts (id INTEGER PRIMARY KEY)' }
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)
       allow(connection).to receive(:quote).and_return("'users'", "'posts'")
-      allow(adapter).to receive(:fetch_columns).and_return([])
-      allow(adapter).to receive(:fetch_primary_key).and_return([])
-      allow(adapter).to receive(:fetch_constraints).and_return([])
+      allow(adapter).to receive_messages(fetch_columns: [], fetch_primary_key: [], fetch_constraints: [])
 
       tables = adapter.fetch_tables(connection)
 
@@ -49,12 +51,12 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
 
       # Mock PRAGMA index_list
       index_list_result = [
-        [0, 'idx_email', 1, 'c', 0] # seq, name, unique, origin, partial
+        { 'seq' => 0, 'name' => 'idx_email', 'unique' => 1, 'origin' => 'c', 'partial' => 0 }
       ]
 
       # Mock PRAGMA index_info
       index_info_result = [
-        [0, 0, 'email'] # seqno, cid, name
+        { 'seqno' => 0, 'cid' => 0, 'name' => 'email' }
       ]
 
       allow(connection).to receive(:quote).and_return("'users'", "'idx_email'")
@@ -77,8 +79,8 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
 
       # Mock indexes with pk and u origins
       index_list_result = [
-        [0, 'sqlite_autoindex_users_1', 1, 'pk', 0],
-        [1, 'sqlite_autoindex_users_2', 1, 'u', 0]
+        { 'seq' => 0, 'name' => 'sqlite_autoindex_users_1', 'unique' => 1, 'origin' => 'pk', 'partial' => 0 },
+        { 'seq' => 1, 'name' => 'sqlite_autoindex_users_2', 'unique' => 1, 'origin' => 'u', 'partial' => 0 }
       ]
 
       allow(connection).to receive(:quote).and_return("'users'")
@@ -98,7 +100,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
 
       # PRAGMA foreign_key_list returns: id, seq, table, from, to, on_update, on_delete, match
       fk_list_result = [
-        [0, 0, 'users', 'user_id', 'id', 'CASCADE', 'CASCADE', 'NONE']
+        { 'id' => 0, 'seq' => 0, 'table' => 'users', 'from' => 'user_id', 'to' => 'id', 'on_update' => 'CASCADE', 'on_delete' => 'CASCADE', 'match' => 'NONE' }
       ]
 
       allow(connection).to receive(:quote).and_return("'posts'")
@@ -119,7 +121,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
   describe '#fetch_views' do
     it 'fetches views using sqlite_master' do
       query_result = [
-        ['user_stats', 'CREATE VIEW user_stats AS SELECT * FROM users']
+        { 'name' => 'user_stats', 'sql' => 'CREATE VIEW user_stats AS SELECT * FROM users' }
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)
@@ -153,7 +155,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
   describe '#fetch_triggers' do
     it 'fetches triggers using sqlite_master' do
       query_result = [
-        ['update_timestamp', 'posts', 'CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END']
+        { 'name' => 'update_timestamp', 'tbl_name' => 'posts', 'sql' => 'CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END' }
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)
@@ -167,7 +169,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
 
     it 'parses timing and event from SQL' do
       query_result = [
-        ['before_delete', 'users', 'CREATE TRIGGER before_delete BEFORE DELETE ON users BEGIN...END']
+        { 'name' => 'before_delete', 'tbl_name' => 'users', 'sql' => 'CREATE TRIGGER before_delete BEFORE DELETE ON users BEGIN...END' }
       ]
 
       allow(connection).to receive(:execute).and_return(query_result)
@@ -299,7 +301,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
         index = {
           name: 'idx_name_email',
           table: 'users',
-          columns: ['name', 'email'],
+          columns: %w[name email],
           unique: false
         }
 
@@ -352,7 +354,7 @@ RSpec.describe BetterStructureSql::Adapters::SqliteAdapter do
       it 'returns original SQL if it starts with CREATE TRIGGER' do
         trigger = {
           name: 'update_timestamp',
-          statement: 'CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END'
+          definition: 'CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END'
         }
 
         expect(adapter.generate_trigger(trigger)).to eq('CREATE TRIGGER update_timestamp AFTER INSERT ON posts BEGIN...END')

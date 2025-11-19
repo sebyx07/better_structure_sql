@@ -3,7 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe BetterStructureSql::Generators::TableGenerator do
-  subject(:generator) { described_class.new }
+  subject(:generator) { described_class.new(config) }
+
+  let(:config) { BetterStructureSql::Configuration.new }
 
   describe '#generate' do
     context 'with simple table' do

@@ -141,7 +141,15 @@ module BetterStructureSql
       tables = Introspection.fetch_tables(connection)
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
       unless tables.empty?
-        generator = Generators::TableGenerator.new(config)
+        # For SQLite, attach foreign keys to each table for inline generation
+        if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+          all_foreign_keys = Introspection.fetch_foreign_keys(connection)
+          tables.each do |table|
+            table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
+          end
+        end
+
+        generator = Generators::TableGenerator.new(config, adapter)
         sections[:tables] = tables.map { |table| generator.generate(table) }
       end
 
@@ -153,10 +161,13 @@ module BetterStructureSql
       end
 
       # Foreign keys
-      foreign_keys = Introspection.fetch_foreign_keys(connection)
-      unless foreign_keys.empty?
-        generator = Generators::ForeignKeyGenerator.new(config)
-        sections[:foreign_keys] = foreign_keys.map { |fk| generator.generate(fk) }
+      # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
+      unless adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+        foreign_keys = Introspection.fetch_foreign_keys(connection)
+        unless foreign_keys.empty?
+          generator = Generators::ForeignKeyGenerator.new(config)
+          sections[:foreign_keys] = foreign_keys.map { |fk| generator.generate(fk) }
+        end
       end
 
       # Views
@@ -188,7 +199,8 @@ module BetterStructureSql
 
       # Schema migrations - create batch INSERT statements
       # Each batch INSERT is a complete SQL statement, chunked into groups
-      if table_exists?('schema_migrations')
+      # SQLite doesn't include schema_migrations in structure.sql (Rails manages it separately)
+      if !adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter) && table_exists?('schema_migrations')
         versions = fetch_schema_migration_versions
         unless versions.empty?
           # Chunk versions into groups (each group will be one batch INSERT)
@@ -264,7 +276,7 @@ module BetterStructureSql
 
       generator = Generators::ExtensionGenerator.new(config)
       # Use appropriate section name based on adapter
-      section_name = adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter' ? 'PRAGMAs' : 'Extensions'
+      section_name = adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter) ? 'PRAGMAs' : 'Extensions'
       lines = ["-- #{section_name}"]
       lines += extensions.map { |ext| generator.generate(ext) }
       lines.join("\n")
@@ -311,7 +323,7 @@ module BetterStructureSql
       return '-- Tables' if tables.empty?
 
       # For SQLite, attach foreign keys to each table for inline generation
-      if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
         all_foreign_keys = Introspection.fetch_foreign_keys(connection)
         tables.each do |table|
           table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
@@ -322,7 +334,7 @@ module BetterStructureSql
       lines = []
 
       # Add PostgreSQL-specific SET commands only for PostgreSQL
-      if adapter.class.name == 'BetterStructureSql::Adapters::PostgresqlAdapter'
+      if adapter.instance_of?(::BetterStructureSql::Adapters::PostgresqlAdapter)
         lines << "SET default_tablespace = '';"
         lines << ''
         lines << 'SET default_table_access_method = heap;'
@@ -346,7 +358,7 @@ module BetterStructureSql
 
     def foreign_keys_section
       # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
 
       foreign_keys = Introspection.fetch_foreign_keys(connection)
       return nil if foreign_keys.empty?
@@ -408,6 +420,10 @@ module BetterStructureSql
     end
 
     def schema_migrations_section
+      # SQLite doesn't include schema_migrations in structure.sql
+      # Rails manages this table separately
+      return nil if adapter.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
+
       return nil unless table_exists?('schema_migrations')
 
       versions = fetch_schema_migration_versions

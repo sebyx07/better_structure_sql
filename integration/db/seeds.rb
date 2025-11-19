@@ -4,19 +4,19 @@
 # development, test). The code here should be idempotent so that it can be executed at any point in every environment.
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
-puts 'Cleaning up existing data...'
+Rails.logger.debug 'Cleaning up existing data...'
 ActiveRecord::Base.connection.execute('TRUNCATE TABLE events, sessions, order_items, orders, product_price_history, posts, products, categories, users RESTART IDENTITY CASCADE') if ActiveRecord::Base.connection.table_exists?('events')
 
-puts 'Creating sample users...'
+Rails.logger.debug 'Creating sample users...'
 users = []
 users << User.create!(email: 'alice@example.com', encrypted_password: 'password123')
 users << User.create!(email: 'bob@example.com', encrypted_password: 'password123')
 users << User.create!(email: 'charlie@example.com', encrypted_password: 'password123')
 users << User.create!(email: 'david@example.com', encrypted_password: 'password123')
 users << User.create!(email: 'eve@example.com', encrypted_password: 'password123')
-puts "Created #{users.count} users"
+Rails.logger.debug { "Created #{users.count} users" }
 
-puts 'Creating sample posts...'
+Rails.logger.debug 'Creating sample posts...'
 posts = []
 posts << Post.create!(user: users[0], title: 'Getting Started with Rails', body: 'Rails is a web application framework running on the Ruby programming language.',
                       published_at: 2.days.ago)
@@ -25,9 +25,9 @@ posts << Post.create!(user: users[1], title: 'Docker for Development', body: 'Do
 posts << Post.create!(user: users[1], title: 'Draft Post', body: "This is a draft post that hasn't been published yet.", published_at: nil)
 posts << Post.create!(user: users[2], title: 'Ruby Best Practices', body: 'Writing clean, maintainable Ruby code requires following best practices.', published_at: 5.days.ago)
 posts << Post.create!(user: users[3], title: 'Advanced PostgreSQL Features', body: 'Learn about JSONB, arrays, and custom types in PostgreSQL.', published_at: 4.days.ago)
-puts "Created #{posts.count} posts"
+Rails.logger.debug { "Created #{posts.count} posts" }
 
-puts 'Creating sample categories...'
+Rails.logger.debug 'Creating sample categories...'
 categories = []
 categories << Category.create!(name: 'Electronics', slug: 'electronics', description: 'Electronic devices and accessories', position: 1)
 categories << Category.create!(name: 'Books', slug: 'books', description: 'Physical and digital books', position: 2)
@@ -37,9 +37,9 @@ categories << Category.create!(name: 'Home & Garden', slug: 'home-garden', descr
 # Create subcategories
 electronics_sub = Category.create!(name: 'Smartphones', slug: 'smartphones', description: 'Mobile phones and accessories', parent_id: categories[0].id, position: 1)
 books_sub = Category.create!(name: 'Programming', slug: 'programming', description: 'Programming and computer science books', parent_id: categories[1].id, position: 1)
-puts "Created #{Category.count} categories"
+Rails.logger.debug { "Created #{Category.count} categories" }
 
-puts 'Creating sample products...'
+Rails.logger.debug 'Creating sample products...'
 products = []
 
 # Electronics products
@@ -149,9 +149,9 @@ products << Product.create!(
   specifications: {}
 )
 
-puts "Created #{products.count} products"
+Rails.logger.debug { "Created #{products.count} products" }
 
-puts 'Creating sample orders...'
+Rails.logger.debug 'Creating sample orders...'
 orders = []
 
 order1 = Order.create!(
@@ -225,9 +225,9 @@ OrderItem.create!(
   product_snapshot: products[4].attributes.slice('name', 'sku')
 )
 
-puts "Created #{orders.count} orders with #{OrderItem.count} items"
+Rails.logger.debug { "Created #{orders.count} orders with #{OrderItem.count} items" }
 
-puts 'Creating sample sessions...'
+Rails.logger.debug 'Creating sample sessions...'
 sessions = []
 users.each_with_index do |user, index|
   sessions << Session.create!(
@@ -239,9 +239,9 @@ users.each_with_index do |user, index|
     last_accessed_at: rand(1..60).minutes.ago
   )
 end
-puts "Created #{sessions.count} sessions"
+Rails.logger.debug { "Created #{sessions.count} sessions" }
 
-puts 'Creating sample events...'
+Rails.logger.debug 'Creating sample events...'
 event_types = ['user.login', 'user.logout', 'product.view', 'product.purchase', 'cart.add', 'cart.remove']
 event_names = ['User Login', 'User Logout', 'Product Viewed', 'Product Purchased', 'Added to Cart', 'Removed from Cart']
 
@@ -262,34 +262,34 @@ event_names = ['User Login', 'User Logout', 'Product Viewed', 'Product Purchased
     occurred_at: rand(1..30).days.ago
   )
 end
-puts "Created #{Event.count} events"
+Rails.logger.debug { "Created #{Event.count} events" }
 
-puts 'Triggering product price change to test audit...'
+Rails.logger.debug 'Triggering product price change to test audit...'
 old_price = products[0].price
 products[0].update!(price: 1099.99)
-puts "Updated product price from $#{old_price} to $#{products[0].price}"
-puts "Price history records: #{ProductPriceHistory.count}"
+Rails.logger.debug { "Updated product price from $#{old_price} to $#{products[0].price}" }
+Rails.logger.debug { "Price history records: #{ProductPriceHistory.count}" }
 
-puts 'Refreshing materialized view...'
+Rails.logger.debug 'Refreshing materialized view...'
 ActiveRecord::Base.connection.execute('REFRESH MATERIALIZED VIEW product_category_summary')
-puts 'Materialized view refreshed'
+Rails.logger.debug 'Materialized view refreshed'
 
-puts "\nSeed data summary:"
-puts "- Users: #{User.count}"
-puts "- Posts: #{Post.count} (#{Post.where.not(published_at: nil).count} published)"
-puts "- Categories: #{Category.count}"
-puts "- Products: #{Product.count} (#{Product.where(is_active: true).count} active)"
-puts "- Orders: #{Order.count}"
-puts "- Order Items: #{OrderItem.count}"
-puts "- Sessions: #{Session.count}"
-puts "- Events: #{Event.count}"
-puts "- Price History: #{ProductPriceHistory.count}"
+Rails.logger.debug "\nSeed data summary:"
+Rails.logger.debug { "- Users: #{User.count}" }
+Rails.logger.debug { "- Posts: #{Post.count} (#{Post.where.not(published_at: nil).count} published)" }
+Rails.logger.debug { "- Categories: #{Category.count}" }
+Rails.logger.debug { "- Products: #{Product.count} (#{Product.where(is_active: true).count} active)" }
+Rails.logger.debug { "- Orders: #{Order.count}" }
+Rails.logger.debug { "- Order Items: #{OrderItem.count}" }
+Rails.logger.debug { "- Sessions: #{Session.count}" }
+Rails.logger.debug { "- Events: #{Event.count}" }
+Rails.logger.debug { "- Price History: #{ProductPriceHistory.count}" }
 
 # Seed schema versions only if versioning is enabled and table exists
 if BetterStructureSql.configuration.enable_schema_versions &&
    ActiveRecord::Base.connection.table_exists?('better_structure_sql_schema_versions')
 
-  puts "\nCreating sample schema versions..."
+  Rails.logger.debug "\nCreating sample schema versions..."
 
   # Sample SQL schemas with different complexity levels
   simple_schema_sql = <<~SQL
@@ -448,17 +448,17 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   )
   versions_created += 1
 
-  puts "Created #{versions_created} sample schema versions"
-  puts "  - SQL versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'sql').count}"
-  puts "  - Ruby versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'rb').count}"
-  puts "  - Date range: #{BetterStructureSql::SchemaVersion.minimum(:created_at).strftime('%Y-%m-%d')} to #{BetterStructureSql::SchemaVersion.maximum(:created_at).strftime('%Y-%m-%d')}"
+  Rails.logger.debug { "Created #{versions_created} sample schema versions" }
+  Rails.logger.debug { "  - SQL versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'sql').count}" }
+  Rails.logger.debug { "  - Ruby versions: #{BetterStructureSql::SchemaVersion.where(format_type: 'rb').count}" }
+  Rails.logger.debug { "  - Date range: #{BetterStructureSql::SchemaVersion.minimum(:created_at).strftime('%Y-%m-%d')} to #{BetterStructureSql::SchemaVersion.maximum(:created_at).strftime('%Y-%m-%d')}" }
 
   # Test retention limit
   total_versions = BetterStructureSql::SchemaVersion.count
   retention_limit = BetterStructureSql.configuration.schema_versions_limit
-  puts "  - Note: Retention limit is #{retention_limit}, but #{total_versions} versions exist (cleanup will run on next store)" if retention_limit.positive? && total_versions > retention_limit
+  Rails.logger.debug { "  - Note: Retention limit is #{retention_limit}, but #{total_versions} versions exist (cleanup will run on next store)" } if retention_limit.positive? && total_versions > retention_limit
 else
-  puts "\nSkipping schema version seeding (versioning disabled or table doesn't exist)"
+  Rails.logger.debug "\nSkipping schema version seeding (versioning disabled or table doesn't exist)"
 end
 
-puts "\nSeeding complete!"
+Rails.logger.debug "\nSeeding complete!"

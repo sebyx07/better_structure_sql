@@ -3,7 +3,7 @@
 # Configure BetterStructureSql for SQLite
 BetterStructureSql.configure do |config|
   # Output paths
-  config.output_path = 'db/structure.sql'
+  config.output_path = 'db/structure' # Multi-file directory output
 
   # Feature toggles (SQLite limitations)
   config.include_extensions = true # Include PRAGMA settings as "extensions"
@@ -19,6 +19,7 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
   config.schema_versions_limit = 10
 
-  # Replace default Rails schema dump
+  # Replace default Rails schema dump and load
   config.replace_default_dump = true
+  config.replace_default_load = true
 end

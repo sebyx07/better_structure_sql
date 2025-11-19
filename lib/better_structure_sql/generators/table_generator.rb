@@ -83,7 +83,7 @@ module BetterStructureSql
       end
 
       def sqlite_adapter?
-        adapter && adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+        adapter&.instance_of?(::BetterStructureSql::Adapters::SqliteAdapter)
       end
 
       def foreign_key_definition(fk)

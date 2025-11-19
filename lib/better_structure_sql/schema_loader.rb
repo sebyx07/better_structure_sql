@@ -36,21 +36,23 @@ module BetterStructureSql
       connection.execute(File.read(header_path)) if File.exist?(header_path)
 
       # Load numbered directories in order (01_extensions through 10_migrations)
-      # Concatenate all files in each directory and execute as single statement
+      # Load all files in each directory and execute statements
       # Use [01]* pattern to match directories starting with 0 or 1 (covers 01-10)
       Dir.glob(File.join(dir_path, '[01]*_*')).sort.each do |dir|
         next unless File.directory?(dir)
 
         dir_name = File.basename(dir)
 
-        # Concatenate all files in this directory
-        sql = Dir.glob(File.join(dir, '*.sql')).sort.map { |f| File.read(f) }.join("\n\n")
+        # Process files in this directory
+        Dir.glob(File.join(dir, '*.sql')).sort.each do |file_path|
+          sql_content = File.read(file_path)
+          next if sql_content.strip.empty?
 
-        # Execute entire directory as single SQL statement
-        unless sql.empty?
-          connection.execute(sql)
-          Rails.logger.debug { "Loaded #{dir_name}" }
+          # Execute SQL (connection.execute can handle multiple statements for SQLite)
+          execute_sql_statements(connection, sql_content)
         end
+
+        Rails.logger.debug { "Loaded #{dir_name}" }
       end
 
       # Read manifest for file count (optional, for logging only)
@@ -71,10 +73,40 @@ module BetterStructureSql
         # Execute SQL directly for .sql files
         connection = ActiveRecord::Base.connection
         sql = File.read(file_path)
-        connection.execute(sql)
+        execute_sql_statements(connection, sql)
       end
 
       Rails.logger.debug { "Schema loaded from #{file_path}" }
+    end
+
+    # Execute SQL statements, handling adapter-specific multi-statement behavior
+    def execute_sql_statements(connection, sql)
+      adapter_name = connection.adapter_name.downcase
+
+      case adapter_name
+      when 'sqlite'
+        # SQLite's ActiveRecord execute() uses prepare() which can't handle multiple statements
+        # We need to use the raw database connection's execute_batch method
+        connection.raw_connection.execute_batch(sql)
+      when 'postgresql', 'postgis'
+        # PostgreSQL can handle multiple statements in one execute call
+        connection.execute(sql)
+      when 'mysql', 'mysql2', 'trilogy'
+        # MySQL can handle multiple statements but needs multi_statement=true in connection
+        connection.execute(sql)
+      else
+        # Fallback: Try executing as-is first
+        begin
+          connection.execute(sql)
+        rescue StandardError
+          # If that fails, split by semicolon and execute individually
+          sql.split(/;\\s*$/).each do |statement|
+            next if statement.strip.empty?
+
+            connection.execute("#{statement};")
+          end
+        end
+      end
     end
   end
 end
