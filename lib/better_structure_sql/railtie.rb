@@ -27,6 +27,10 @@ module BetterStructureSql
         # If using schema.rb format, silently skip replacement - we can still store versions
         is_ruby_format = config.output_path.to_s.end_with?('.rb')
 
+        # Always apply migration patch for directory schema support in tests
+        # This fixes maintain_test_schema! when using multi-file directory mode
+        BetterStructureSql::MigrationPatch.apply!
+
         if config.replace_default_dump && !is_ruby_format
           # Automatically set Rails to use SQL schema format
           Rails.application.config.active_record.schema_format = :sql
