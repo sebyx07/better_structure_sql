@@ -21,9 +21,22 @@ Phase 1 features available:
   ✓ PostgreSQL extensions
   ✓ Clean, deterministic output
 
-Coming in Phase 2:
-  - Schema version storage
-  - Version retention management
+Phase 2 features available:
+  ✓ Schema version storage
+  ✓ Version retention management
+  ✓ PostgreSQL version tracking
+
+To enable schema versioning:
+  1. Enable in config/initializers/better_structure_sql.rb:
+       config.enable_schema_versions = true
+  2. Run the migration (if not already generated):
+       rails db:migrate
+  3. Store current schema:
+       rails db:schema:store
+  4. List versions:
+       rails db:schema:versions
+  5. Cleanup old versions:
+       rails db:schema:cleanup
 
 Coming in Phase 3:
   - Views and materialized views

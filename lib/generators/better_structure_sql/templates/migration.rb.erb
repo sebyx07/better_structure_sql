@@ -1,0 +1,15 @@
+class CreateBetterStructureSqlSchemaVersions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    create_table :better_structure_sql_schema_versions do |t|
+      t.text :content, null: false
+      t.string :pg_version, null: false
+      t.string :format_type, null: false
+      t.timestamp :created_at, null: false
+    end
+
+    add_index :better_structure_sql_schema_versions, :created_at, order: { created_at: :desc }
+    add_check_constraint :better_structure_sql_schema_versions,
+                         "format_type IN ('sql', 'rb')",
+                         name: 'format_type_check'
+  end
+end

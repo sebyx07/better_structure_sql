@@ -7,7 +7,7 @@ module BetterStructureSql
       @connection = connection
     end
 
-    def dump
+    def dump(store_version: nil)
       config.validate!
 
       output = []
@@ -24,6 +24,12 @@ module BetterStructureSql
 
       formatted_output = Formatter.new(config).format(output.compact.join("\n\n"))
       write_to_file(formatted_output)
+
+      # Store version if requested and enabled
+      store_version = config.enable_schema_versions if store_version.nil?
+      if store_version && config.enable_schema_versions
+        store_schema_version(formatted_output)
+      end
 
       formatted_output
     end
@@ -135,6 +141,20 @@ module BetterStructureSql
       connection.select_values("SELECT version FROM schema_migrations ORDER BY version")
     rescue ActiveRecord::StatementInvalid
       []
+    end
+
+    def store_schema_version(content)
+      pg_version = PgVersion.detect(connection)
+
+      SchemaVersions.store(
+        content: content,
+        format_type: "sql",
+        pg_version: pg_version,
+        connection: connection
+      )
+    rescue => e
+      # Log error but don't fail the dump
+      warn "Warning: Failed to store schema version: #{e.message}"
     end
   end
 end
