@@ -71,6 +71,14 @@ function Header() {
                 </li>
               </ul>
             </li>
+            <li className="nav-item">
+              <Link
+                className={`nav-link ${isActive('/features') ? 'active' : ''}`}
+                to="/features"
+              >
+                Features
+              </Link>
+            </li>
             <li className="nav-item dropdown">
               <button
                 type="button"

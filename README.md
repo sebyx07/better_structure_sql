@@ -120,10 +120,15 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
 - **Developer onboarding** - Easy access to latest schema for new team members
 
 ### Rails Integration
-- Drop-in replacement: `rake db:schema:dump` → uses BetterStructureSql
-- New task: `rake db:schema:dump_better` (explicit invocation)
-- New task: `rake db:schema:store` (version storage)
+- Drop-in replacement: `rake db:schema:dump` → uses BetterStructureSql (when enabled)
 - Configuration via `config/initializers/better_structure_sql.rb`
+- **Rake Tasks**:
+  - `db:schema:dump_better` - Explicitly dump schema using BetterStructureSql
+  - `db:schema:load_better` - Load schema (supports both file and directory mode)
+  - `db:schema:store` - Store current schema as a version in database
+  - `db:schema:versions` - List all stored schema versions
+  - `db:schema:cleanup` - Remove old versions based on retention limit
+  - `db:schema:restore[VERSION_ID]` - Restore database from specific version
 
 ### Docker Development Environment
 - **Single command setup** - `docker compose up` for full environment
@@ -353,6 +358,144 @@ db/schema/
 - ✅ Easy navigation - find specific tables/triggers quickly
 - ✅ ZIP downloads - complete directory as single archive
 - ✅ Scalable - handles 50,000+ database objects
+
+## 📝 Usage & Rake Tasks
+
+### Core Schema Tasks
+
+```bash
+# Dump schema using BetterStructureSql (explicit)
+rails db:schema:dump_better
+
+# Load schema from file or directory
+rails db:schema:load_better
+```
+
+### Schema Versioning Tasks
+
+**Store Current Schema**
+```bash
+# Store the current schema as a version in the database
+rails db:schema:store
+```
+
+This command:
+- Reads your current `db/structure.sql` or `db/schema` directory
+- Stores it in the `better_structure_sql_schema_versions` table
+- Includes metadata: format type, output mode, database version, file count
+- For multi-file schemas, creates a ZIP archive of all files
+- Automatically manages retention (keeps last N versions based on config)
+
+**List Stored Versions**
+```bash
+# View all stored schema versions
+rails db:schema:versions
+```
+
+Output example:
+```
+Total versions: 5
+
+ID     Format  Mode          Files   PostgreSQL      Created              Size
+-----------------------------------------------------------------------------------------------
+5      sql     multi_file    47      15.3            2025-01-15 10:30:22  156.42 KB
+4      sql     single_file   1       15.3            2025-01-14 15:20:10  89.21 KB
+3      sql     single_file   1       15.2            2025-01-13 09:45:33  87.03 KB
+```
+
+**Restore from Version**
+```bash
+# Restore database from a specific version
+rails db:schema:restore[5]
+
+# Or using environment variable
+VERSION_ID=5 rails db:schema:restore
+```
+
+**Cleanup Old Versions**
+```bash
+# Remove old versions based on retention limit
+rails db:schema:cleanup
+```
+
+### Web UI Engine
+
+Mount the web interface to browse schema versions:
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  # With authentication (recommended for production)
+  authenticate :user, ->(user) { user.admin? } do
+    mount BetterStructureSql::Engine, at: '/schema_versions'
+  end
+
+  # Or without authentication (development only)
+  mount BetterStructureSql::Engine, at: '/schema_versions' if Rails.env.development?
+end
+```
+
+Access at `http://localhost:3000/schema_versions` to:
+- View list of all stored schema versions
+- Browse formatted schema content with syntax highlighting
+- Download raw SQL/Ruby schema files
+- Download ZIP archives for multi-file schemas
+- Compare database versions and formats
+
+**Authentication Examples**:
+
+```ruby
+# Devise with admin check
+authenticate :user, ->(user) { user.admin? } do
+  mount BetterStructureSql::Engine, at: '/admin/schema'
+end
+
+# Custom constraint class
+class AdminConstraint
+  def matches?(request)
+    user = request.env['warden']&.user
+    user&.admin?
+  end
+end
+
+constraints AdminConstraint.new do
+  mount BetterStructureSql::Engine, at: '/schema_versions'
+end
+
+# Environment-based
+if Rails.env.production?
+  # Add your production auth here
+else
+  mount BetterStructureSql::Engine, at: '/schema_versions'
+end
+```
+
+### Automatic Schema Storage Workflow
+
+**Option 1: After Each Migration (Recommended)**
+```bash
+# Run migration and store schema version
+rails db:migrate && rails db:schema:store
+```
+
+**Option 2: Git Hooks**
+```bash
+# .git/hooks/post-merge
+#!/bin/bash
+if git diff HEAD@{1} --name-only | grep -q "db/migrate"; then
+  echo "Migrations detected, storing schema version..."
+  rails db:schema:store
+fi
+```
+
+**Option 3: CI/CD Pipeline**
+```yaml
+# .github/workflows/deploy.yml
+- name: Run migrations and store schema
+  run: |
+    rails db:migrate
+    rails db:schema:store
+```
 
 ## 📋 Requirements
 

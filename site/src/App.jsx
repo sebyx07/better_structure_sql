@@ -8,6 +8,7 @@ import PostgreSQL from './pages/Databases/PostgreSQL';
 import MySQL from './pages/Databases/MySQL';
 import SQLite from './pages/Databases/SQLite';
 import Troubleshooting from './pages/Troubleshooting';
+import Features from './pages/Features';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/install" element={<Installation />} />
         <Route path="/configuration" element={<Configuration />} />
         <Route path="/quick-start" element={<QuickStart />} />
+        <Route path="/features" element={<Features />} />
         <Route path="/troubleshooting" element={<Troubleshooting />} />
         <Route path="/databases/postgresql" element={<PostgreSQL />} />
         <Route path="/databases/mysql" element={<MySQL />} />

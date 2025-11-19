@@ -29,7 +29,7 @@ function Troubleshooting() {
           </div>
           <div className="card-body">
             <p>
-              If you're already using <code>structure.sql</code>, this is the simplest approach -
+              If you&apos;re already using <code>structure.sql</code>, this is the simplest approach -
               just generate and store the current schema:
             </p>
 
@@ -109,7 +109,7 @@ BetterStructureSql::SchemaVersions.store(
           </div>
           <div className="card-body">
             <p>
-              If your development environment has schema versions but production doesn't:
+              If your development environment has schema versions but production doesn&apos;t:
             </p>
 
             <h5 className="mt-3">Step 1: Export from Development</h5>
@@ -123,7 +123,7 @@ File.write('tmp/schema_export.sql', dev_version.content)`}
             <h5 className="mt-4">Step 2: Copy to Production Server</h5>
             <CodeBlock
               language="bash"
-              code={`scp tmp/schema_export.sql production-server:/tmp/`}
+              code="scp tmp/schema_export.sql production-server:/tmp/"
             />
 
             <h5 className="mt-4">Step 3: Import in Production</h5>
@@ -249,7 +249,7 @@ BetterStructureSql::SchemaVersions.count
 
 # List versions
 BetterStructureSql::SchemaVersions.all_versions.each do |v|
-  puts "ID: \#{v.id}, Created: \#{v.created_at}, Size: \#{v.formatted_size}"
+  puts "ID: #{v.id}, Created: #{v.created_at}, Size: #{v.formatted_size}"
 end
 
 # Verify latest version content
@@ -283,8 +283,8 @@ namespace :db do
       BetterStructureSql::SchemaVersions.store_current
 
       latest = BetterStructureSql::SchemaVersions.latest
-      puts "✓ Baseline created: ID \#{latest.id}, Size \#{latest.formatted_size}"
-      puts "Total versions: \#{BetterStructureSql::SchemaVersions.count}"
+      puts "✓ Baseline created: ID #{latest.id}, Size #{latest.formatted_size}"
+      puts "Total versions: #{BetterStructureSql::SchemaVersions.count}"
     end
   end
 end`}
@@ -293,7 +293,7 @@ end`}
             <h5 className="mt-4">Usage:</h5>
             <CodeBlock
               language="bash"
-              code={`RAILS_ENV=production rails db:schema:baseline`}
+              code="RAILS_ENV=production rails db:schema:baseline"
             />
           </div>
         </div>
@@ -313,7 +313,7 @@ end`}
                 data-bs-toggle="collapse"
                 data-bs-target="#issue1"
               >
-                Table doesn't exist error
+                Table doesn&apos;t exist error
               </button>
             </h2>
             <div id="issue1" className="accordion-collapse collapse" data-bs-parent="#commonIssues">
@@ -321,7 +321,7 @@ end`}
                 <p><strong>Solution:</strong> Run migration to create the schema versions table</p>
                 <CodeBlock
                   language="bash"
-                  code={`RAILS_ENV=production rails db:migrate`}
+                  code="RAILS_ENV=production rails db:migrate"
                 />
               </div>
             </div>
@@ -344,7 +344,7 @@ end`}
                 <p><strong>Solution:</strong> Ensure Rails process has read access to the schema file</p>
                 <CodeBlock
                   language="bash"
-                  code={`chmod 644 db/structure.sql`}
+                  code="chmod 644 db/structure.sql"
                 />
               </div>
             </div>
@@ -478,7 +478,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO your_user;`}
               <div className="card-body">
                 <h5 className="card-title">💡 Already on structure.sql?</h5>
                 <p className="card-text">
-                  If you're already using <code>structure.sql</code>, the change is simple -
+                  If you&apos;re already using <code>structure.sql</code>, the change is simple -
                   just run <code>rails db:schema:store</code> to create your first version!
                 </p>
               </div>
