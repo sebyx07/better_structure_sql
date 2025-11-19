@@ -5,12 +5,17 @@ require_relative 'lib/better_structure_sql/version'
 Gem::Specification.new do |spec|
   spec.name = 'better_structure_sql'
   spec.version = BetterStructureSql::VERSION
-  spec.authors = ['Better Structure SQL Team']
-  spec.email = ['team@example.com']
+  spec.authors = ['sebyx07']
+  spec.email = ['sebyx07.pro@gmail.com']
 
   spec.summary = 'Clean PostgreSQL schema dumps for Rails without pg_dump noise'
-  spec.description = 'Generate clean, maintainable PostgreSQL schema dumps using pure Ruby introspection. No pg_dump dependency, deterministic output, optional schema versioning.'
-  spec.homepage = 'https://github.com/example/better_structure_sql'
+  spec.description = <<~DESC
+    Pure Ruby PostgreSQL schema dumper for Rails applications. Generates clean,
+    deterministic structure.sql files without pg_dump dependency. Supports both
+    single-file and multi-file output for massive schemas with tens of thousands
+    of database objects. Includes schema versioning with ZIP storage and web UI.
+  DESC
+  spec.homepage = 'https://github.com/sebyx07/better_structure_sql'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 2.7.0'
 

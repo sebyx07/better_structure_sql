@@ -2,25 +2,6 @@
 
 module BetterStructureSql
   module SchemaVersionsHelper
-    def render_directory_tree(manifest)
-      return '' unless manifest
-
-      tree = []
-      tree << '_header.sql'
-      tree << '_manifest.json'
-      tree << ''
-
-      manifest['directories']&.each do |dir_name, stats|
-        tree << "#{dir_name}/"
-        (1..stats['files']).each do |i|
-          tree << "  #{format('%06d', i)}.sql"
-        end
-        tree << ''
-      end
-
-      tree.join("\n")
-    end
-
     def format_output_mode(mode)
       case mode
       when 'multi_file'
