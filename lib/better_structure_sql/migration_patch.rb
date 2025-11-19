@@ -127,6 +127,41 @@ module BetterStructureSql
       end
     end
 
+    # Patch for DatabaseTasks to handle directory schemas in development
+    module DatabaseTasksPatch
+      # Override check_schema_file to handle directories
+      # @param filename [String] Path to schema file or directory
+      # @return [void]
+      def check_schema_file(filename)
+        # For directory mode, check if directory exists
+        if File.directory?(filename)
+          return if Dir.glob(File.join(filename, '**', '*.sql')).any?
+
+          message = +"#{filename} exists but contains no SQL files. Run `bin/rails db:migrate` to create schema files."
+          Kernel.abort message
+        end
+
+        # For file mode, use default Rails behavior
+        super
+      end
+
+      # Override schema_sha1 to handle directories
+      # @param file [String] Path to schema file or directory
+      # @return [String] SHA1 checksum
+      def schema_sha1(file)
+        if File.directory?(file)
+          # For directory mode, generate checksum from all SQL files combined
+          # Sort files to ensure deterministic ordering
+          sql_files = Dir.glob(File.join(file, '**', '*.sql')).sort
+          combined_content = sql_files.map { |f| File.read(f) }.join("\n")
+          OpenSSL::Digest::SHA1.hexdigest(combined_content)
+        else
+          # For file mode, use default Rails behavior
+          super
+        end
+      end
+    end
+
     # Apply patches when loaded
     def self.apply!
       return unless defined?(ActiveRecord::Migration)
@@ -135,9 +170,12 @@ module BetterStructureSql
       ActiveRecord::Migration.singleton_class.prepend(MaintainTestSchemaPatch) if ActiveRecord::Migration.respond_to?(:maintain_test_schema!)
 
       # Patch schema_cache handling
-      return unless defined?(ActiveRecord::MigrationContext)
+      ActiveRecord::MigrationContext.prepend(SchemaCachePatch) if defined?(ActiveRecord::MigrationContext)
 
-      ActiveRecord::MigrationContext.prepend(SchemaCachePatch)
+      # Patch DatabaseTasks for development/production use
+      return unless defined?(ActiveRecord::Tasks::DatabaseTasks)
+
+      ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksPatch)
     end
   end
 end
