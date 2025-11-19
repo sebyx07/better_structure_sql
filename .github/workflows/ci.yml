@@ -10,11 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        ruby-version: ['2.7', '3.0', '3.1', '3.2']
-        rails-version: ['7.0', '7.1', '8.0']
-
     services:
       postgres:
         image: postgres:14
@@ -32,14 +27,15 @@ jobs:
     env:
       RAILS_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
+      RAILS_VERSION: '8.1.1'
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Ruby ${{ matrix.ruby-version }}
+    - name: Set up Ruby 3.4.7
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ${{ matrix.ruby-version }}
+        ruby-version: '3.4.7'
         bundler-cache: true
 
     - name: Install dependencies
@@ -60,7 +56,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.2'
+        ruby-version: '3.4.7'
         bundler-cache: true
 
     - name: Build gem
