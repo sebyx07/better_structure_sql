@@ -232,7 +232,130 @@ module BetterStructureSql
         fetch_custom_types(connection).select { |t| t[:type] == "enum" }
       end
 
+      def fetch_views(connection)
+        query = <<~SQL
+          SELECT
+            schemaname,
+            viewname,
+            definition
+          FROM pg_views
+          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY viewname
+        SQL
+
+        connection.execute(query).map do |row|
+          {
+            schema: row["schemaname"],
+            name: row["viewname"],
+            definition: row["definition"]
+          }
+        end
+      end
+
+      def fetch_materialized_views(connection)
+        query = <<~SQL
+          SELECT
+            schemaname,
+            matviewname,
+            definition
+          FROM pg_matviews
+          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY matviewname
+        SQL
+
+        connection.execute(query).map do |row|
+          {
+            schema: row["schemaname"],
+            name: row["matviewname"],
+            definition: row["definition"],
+            indexes: fetch_materialized_view_indexes(connection, row["matviewname"])
+          }
+        end
+      end
+
+      def fetch_functions(connection)
+        query = <<~SQL
+          SELECT
+            n.nspname as schema,
+            p.proname as name,
+            pg_get_functiondef(p.oid) as definition,
+            pg_get_function_identity_arguments(p.oid) as arguments,
+            pg_get_function_result(p.oid) as return_type,
+            l.lanname as language,
+            p.provolatile as volatility,
+            p.proisstrict as strict,
+            p.prosecdef as security_definer
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          JOIN pg_language l ON l.oid = p.prolang
+          WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND p.prokind = 'f'
+          ORDER BY n.nspname, p.proname
+        SQL
+
+        connection.execute(query).map do |row|
+          {
+            schema: row["schema"],
+            name: row["name"],
+            definition: row["definition"],
+            arguments: row["arguments"],
+            return_type: row["return_type"],
+            language: row["language"],
+            volatility: volatility_code(row["volatility"]),
+            strict: row["strict"],
+            security_definer: row["security_definer"]
+          }
+        end
+      end
+
+      def fetch_triggers(connection)
+        query = <<~SQL
+          SELECT
+            n.nspname as schema,
+            t.tgname as name,
+            c.relname as table_name,
+            pg_get_triggerdef(t.oid) as definition
+          FROM pg_trigger t
+          JOIN pg_class c ON c.oid = t.tgrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE NOT t.tgisinternal
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY c.relname, t.tgname
+        SQL
+
+        connection.execute(query).map do |row|
+          {
+            schema: row["schema"],
+            name: row["name"],
+            table_name: row["table_name"],
+            definition: row["definition"]
+          }
+        end
+      end
+
       private
+
+      def fetch_materialized_view_indexes(connection, matview_name)
+        query = <<~SQL
+          SELECT indexdef
+          FROM pg_indexes
+          WHERE tablename = $1
+          ORDER BY indexname
+        SQL
+
+        connection.exec_query(query, "SQL", [[nil, matview_name]]).map do |row|
+          row["indexdef"]
+        end
+      end
+
+      def volatility_code(code)
+        case code
+        when "i" then "IMMUTABLE"
+        when "s" then "STABLE"
+        when "v" then "VOLATILE"
+        else "VOLATILE"
+        end
+      end
 
       def fetch_enum_values(connection, type_name)
         query = <<~SQL

@@ -14,10 +14,15 @@ module BetterStructureSql
       output << header
       output << extensions_section if config.include_extensions
       output << custom_types_section if config.include_custom_types
+      output << domains_section if config.include_domains
       output << sequences_section if config.include_sequences
       output << tables_section
       output << indexes_section
       output << foreign_keys_section
+      output << functions_section if config.include_functions
+      output << views_section if config.include_views
+      output << materialized_views_section if config.include_materialized_views
+      output << triggers_section if config.include_triggers
       output << schema_migrations_section
       output << search_path_section
       output << footer
@@ -100,6 +105,56 @@ module BetterStructureSql
       lines = ["-- Foreign Keys"]
       lines += foreign_keys.map { |fk| generator.generate(fk) }
       lines.join("\n")
+    end
+
+    def domains_section
+      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == "domain" }
+      return nil if domains.empty?
+
+      generator = Generators::DomainGenerator.new(config)
+      lines = ["-- Domains"]
+      lines += domains.map { |domain| generator.generate(domain) }
+      lines.join("\n")
+    end
+
+    def functions_section
+      functions = Introspection.fetch_functions(connection)
+      return nil if functions.empty?
+
+      generator = Generators::FunctionGenerator.new(config)
+      lines = ["-- Functions"]
+      lines += functions.map { |func| generator.generate(func) }
+      lines.join("\n\n")
+    end
+
+    def views_section
+      views = Introspection.fetch_views(connection)
+      return nil if views.empty?
+
+      generator = Generators::ViewGenerator.new(config)
+      lines = ["-- Views"]
+      lines += views.map { |view| generator.generate(view) }
+      lines.join("\n\n")
+    end
+
+    def materialized_views_section
+      matviews = Introspection.fetch_materialized_views(connection)
+      return nil if matviews.empty?
+
+      generator = Generators::MaterializedViewGenerator.new(config)
+      lines = ["-- Materialized Views"]
+      lines += matviews.map { |mv| generator.generate(mv) }
+      lines.join("\n\n")
+    end
+
+    def triggers_section
+      triggers = Introspection.fetch_triggers(connection)
+      return nil if triggers.empty?
+
+      generator = Generators::TriggerGenerator.new(config)
+      lines = ["-- Triggers"]
+      lines += triggers.map { |trigger| generator.generate(trigger) }
+      lines.join("\n\n")
     end
 
     def schema_migrations_section

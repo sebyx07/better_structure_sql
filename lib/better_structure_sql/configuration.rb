@@ -7,10 +7,15 @@ module BetterStructureSql
                   :include_functions,
                   :include_triggers,
                   :include_views,
+                  :include_materialized_views,
+                  :include_rules,
+                  :include_comments,
+                  :include_domains,
                   :include_sequences,
                   :include_custom_types,
                   :enable_schema_versions,
                   :schema_versions_limit,
+                  :schemas,
                   :indent_size,
                   :add_section_spacing,
                   :sort_tables
@@ -20,13 +25,18 @@ module BetterStructureSql
       @search_path = '"$user", public'
       @replace_default_dump = false
       @include_extensions = true
-      @include_functions = false
-      @include_triggers = false
-      @include_views = false
+      @include_functions = true
+      @include_triggers = true
+      @include_views = true
+      @include_materialized_views = true
+      @include_rules = false
+      @include_comments = false
+      @include_domains = true
       @include_sequences = true
       @include_custom_types = true
       @enable_schema_versions = false
       @schema_versions_limit = 10
+      @schemas = ["public"]
       @indent_size = 2
       @add_section_spacing = true
       @sort_tables = true
@@ -36,6 +46,7 @@ module BetterStructureSql
       validate_output_path!
       validate_schema_versions_limit!
       validate_indent_size!
+      validate_schemas!
     end
 
     private
@@ -53,6 +64,12 @@ module BetterStructureSql
     def validate_indent_size!
       unless indent_size.is_a?(Integer) && indent_size > 0
         raise Error, "indent_size must be a positive integer"
+      end
+    end
+
+    def validate_schemas!
+      unless schemas.is_a?(Array) && schemas.any?
+        raise Error, "schemas must be a non-empty array"
       end
     end
   end

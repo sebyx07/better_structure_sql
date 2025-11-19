@@ -20,16 +20,36 @@ RSpec.describe BetterStructureSql::Configuration do
       expect(config.include_extensions).to be true
     end
 
-    it "disables include_functions by default" do
-      expect(config.include_functions).to be false
+    it "enables include_functions by default" do
+      expect(config.include_functions).to be true
     end
 
-    it "disables include_triggers by default" do
-      expect(config.include_triggers).to be false
+    it "enables include_triggers by default" do
+      expect(config.include_triggers).to be true
     end
 
-    it "disables include_views by default" do
-      expect(config.include_views).to be false
+    it "enables include_views by default" do
+      expect(config.include_views).to be true
+    end
+
+    it "enables include_materialized_views by default" do
+      expect(config.include_materialized_views).to be true
+    end
+
+    it "disables include_rules by default" do
+      expect(config.include_rules).to be false
+    end
+
+    it "disables include_comments by default" do
+      expect(config.include_comments).to be false
+    end
+
+    it "enables include_domains by default" do
+      expect(config.include_domains).to be true
+    end
+
+    it "sets schemas to ['public'] by default" do
+      expect(config.schemas).to eq(["public"])
     end
 
     it "disables schema versioning by default" do
@@ -93,6 +113,20 @@ RSpec.describe BetterStructureSql::Configuration do
       it "raises an error" do
         config.indent_size = -2
         expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+      end
+    end
+
+    context "when schemas is empty array" do
+      it "raises an error" do
+        config.schemas = []
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /schemas must be a non-empty array/)
+      end
+    end
+
+    context "when schemas is not an array" do
+      it "raises an error" do
+        config.schemas = "public"
+        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /schemas must be a non-empty array/)
       end
     end
 
