@@ -19,7 +19,7 @@ module BetterStructureSql
       # @param table [Hash] Table metadata with columns and constraints
       # @return [String] SQL statement
       def generate(table)
-        lines = ["CREATE TABLE #{table[:name]} ("]
+        lines = ["CREATE TABLE IF NOT EXISTS #{table[:name]} ("]
 
         column_defs = table[:columns].map { |col| column_definition(col) }
 

@@ -20,7 +20,7 @@ module BetterStructureSql
         # Ensure definition ends with semicolon
         definition += ';' unless definition.end_with?(';')
 
-        "CREATE VIEW #{schema_prefix}#{view[:name]} AS\n#{definition}"
+        "CREATE OR REPLACE VIEW #{schema_prefix}#{view[:name]} AS\n#{definition}"
       end
     end
   end

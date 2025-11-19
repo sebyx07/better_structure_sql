@@ -26,7 +26,7 @@ module BetterStructureSql
 
       def generate_enum(type)
         values = type[:values].map { |v| "'#{v}'" }.join(', ')
-        "CREATE TYPE #{type[:name]} AS ENUM (#{values});"
+        "CREATE TYPE IF NOT EXISTS #{type[:name]} AS ENUM (#{values});"
       end
 
       def generate_composite(type)
@@ -34,11 +34,11 @@ module BetterStructureSql
         attrs = type[:attributes].map do |attr|
           "#{attr[:name]} #{attr[:type]}"
         end.join(', ')
-        "CREATE TYPE #{type[:name]} AS (#{attrs});"
+        "CREATE TYPE IF NOT EXISTS #{type[:name]} AS (#{attrs});"
       end
 
       def generate_domain(type)
-        parts = ["CREATE DOMAIN #{type[:name]} AS #{type[:base_type]}"]
+        parts = ["CREATE DOMAIN IF NOT EXISTS #{type[:name]} AS #{type[:base_type]}"]
         parts << type[:constraint] if type[:constraint]
         "#{parts.join(' ')};"
       end

@@ -9,7 +9,7 @@ module BetterStructureSql
       # @param sequence [Hash] Sequence metadata
       # @return [String] SQL statement
       def generate(sequence)
-        parts = ["CREATE SEQUENCE #{sequence[:name]}"]
+        parts = ["CREATE SEQUENCE IF NOT EXISTS #{sequence[:name]}"]
 
         parts << "START WITH #{sequence[:start_value]}" if sequence[:start_value]
         parts << "INCREMENT BY #{sequence[:increment]}" if sequence[:increment] && sequence[:increment] != 1

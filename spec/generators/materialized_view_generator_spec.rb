@@ -16,7 +16,7 @@ RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
         }
         result = generator.generate(matview)
 
-        expect(result).to eq("CREATE MATERIALIZED VIEW user_stats AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
+        expect(result).to eq("CREATE MATERIALIZED VIEW IF NOT EXISTS user_stats AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
       end
     end
 
@@ -34,7 +34,7 @@ RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
         result = generator.generate(matview)
 
         expected = <<~SQL.strip
-          CREATE MATERIALIZED VIEW user_stats AS
+          CREATE MATERIALIZED VIEW IF NOT EXISTS user_stats AS
           SELECT user_id, COUNT(*) FROM events GROUP BY user_id;
 
           CREATE INDEX idx_user_stats_user_id ON user_stats (user_id);
@@ -55,7 +55,7 @@ RSpec.describe BetterStructureSql::Generators::MaterializedViewGenerator do
         }
         result = generator.generate(matview)
 
-        expect(result).to eq("CREATE MATERIALIZED VIEW analytics.daily_stats AS\nSELECT date, COUNT(*) FROM events GROUP BY date;")
+        expect(result).to eq("CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.daily_stats AS\nSELECT date, COUNT(*) FROM events GROUP BY date;")
       end
     end
   end

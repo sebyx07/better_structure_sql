@@ -15,7 +15,7 @@ module BetterStructureSql
         # Ensure definition ends with semicolon
         definition += ';' unless definition.end_with?(';')
 
-        output = ["CREATE MATERIALIZED VIEW #{schema_prefix}#{matview[:name]} AS"]
+        output = ["CREATE MATERIALIZED VIEW IF NOT EXISTS #{schema_prefix}#{matview[:name]} AS"]
         output << definition
 
         # Add indexes if present

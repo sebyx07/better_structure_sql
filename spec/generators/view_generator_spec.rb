@@ -15,7 +15,7 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE VIEW active_users AS\nSELECT * FROM users WHERE active = true;")
+        expect(result).to eq("CREATE OR REPLACE VIEW active_users AS\nSELECT * FROM users WHERE active = true;")
       end
     end
 
@@ -28,7 +28,7 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE VIEW analytics.user_stats AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
+        expect(result).to eq("CREATE OR REPLACE VIEW analytics.user_stats AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
       end
     end
 
@@ -41,7 +41,7 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE VIEW simple_view AS\nSELECT 1;")
+        expect(result).to eq("CREATE OR REPLACE VIEW simple_view AS\nSELECT 1;")
       end
     end
   end

@@ -23,7 +23,7 @@ module BetterStructureSql
         table = quote_identifier(index[:table])
         name = quote_identifier(index[:name])
 
-        "CREATE #{unique_clause}INDEX #{name} ON #{table} (#{columns_list});"
+        "CREATE #{unique_clause}INDEX IF NOT EXISTS #{name} ON #{table} (#{columns_list});"
       end
 
       private

@@ -23,7 +23,7 @@ RSpec.describe BetterStructureSql::Generators::TableGenerator do
 
         result = generator.generate(table)
 
-        expect(result).to include('CREATE TABLE users (')
+        expect(result).to include('CREATE TABLE IF NOT EXISTS users (')
         expect(result).to include('"id" bigint NOT NULL DEFAULT nextval(\'users_id_seq\'::regclass)')
         expect(result).to include('"email" varchar NOT NULL')
         expect(result).to include('PRIMARY KEY ("id")')
