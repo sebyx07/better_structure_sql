@@ -184,6 +184,9 @@ Style/HashSyntax:
   Enabled: true
   EnforcedShorthandSyntax: always
 
+Style/ClassEqualityComparison:
+  Enabled: false
+
 # RSpec cops
 
 RSpec/AlignLeftLetBrace:
