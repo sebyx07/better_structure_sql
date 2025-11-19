@@ -53,11 +53,28 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
 
 ## 🗃️ Database Support
 
-| Database | Version | Feature Coverage | Highlights |
-|----------|---------|------------------|------------|
-| **PostgreSQL** | 12+ | 🟢 **100%** | Extensions, materialized views, functions, triggers, custom types |
-| **MySQL** | 8.0+ | 🟡 **80%** | Stored procedures, triggers, views, indexes |
-| **SQLite** | 3.35+ | 🟡 **60%** | Lightweight schemas, triggers, views |
+| Feature | PostgreSQL 12+ | MySQL 8.0+ | SQLite 3.35+ |
+|---------|----------------|------------|--------------|
+| **Tables & Columns** | ✅ Full | ✅ Full | ✅ Full |
+| **Indexes** | ✅ btree, gin, gist, hash, brin | ✅ btree, hash, fulltext | ✅ btree |
+| **Foreign Keys** | ✅ All actions | ✅ All actions | ✅ Inline with CREATE TABLE |
+| **Unique Constraints** | ✅ | ✅ | ✅ |
+| **Check Constraints** | ✅ | ✅ (8.0.16+) | ✅ |
+| **Extensions** | ✅ pgcrypto, uuid-ossp, pg_trgm, etc. | ❌ | ❌ (PRAGMA settings instead) |
+| **Custom Types (ENUM)** | ✅ CREATE TYPE | ❌ (inline ENUM/SET) | ❌ (CHECK constraints) |
+| **Sequences** | ✅ CREATE SEQUENCE | ❌ (AUTO_INCREMENT) | ❌ (AUTOINCREMENT) |
+| **Views** | ✅ Regular views | ✅ Regular views | ✅ Regular views |
+| **Materialized Views** | ✅ | ❌ | ❌ |
+| **Functions** | ✅ plpgsql, sql | ✅ Stored procedures | ❌ |
+| **Triggers** | ✅ BEFORE/AFTER/INSTEAD OF | ✅ BEFORE/AFTER | ✅ BEFORE/AFTER |
+| **Partitioned Tables** | ✅ RANGE/LIST/HASH | ❌ | ❌ |
+| **Domains** | ✅ | ❌ | ❌ |
+
+### Getting Started by Database
+
+- **PostgreSQL**: [Installation →](https://www.postgresql.org/download/) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-postgresql-database)
+- **MySQL**: [Installation →](https://dev.mysql.com/downloads/mysql/) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-mysql-or-mariadb-database)
+- **SQLite**: [Installation →](https://www.sqlite.org/download.html) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-sqlite3-database)
 
 📖 See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/README.md#feature-compatibility-matrix) for detailed comparison.
 

@@ -157,6 +157,233 @@ CREATE UNIQUE INDEX index_users_on_email ON users (email);`}
         </div>
       </section>
 
+      {/* Audit Logging with Triggers */}
+      <section className="mb-5">
+        <h2 className="border-bottom pb-2 mb-3">
+          <i className="bi bi-journal-text me-2" />
+          Audit Logging with Triggers
+        </h2>
+        <p className="lead">
+          Automatically track all changes to sensitive tables. Perfect for compliance,
+          debugging, and understanding your data history.
+        </p>
+
+        <h4 className="mt-4">Step 1: Create Audit Log Table</h4>
+        <CodeBlock language="ruby" filename="db/migrate/20240101000010_create_audit_logs.rb">
+          {`class CreateAuditLogs < ActiveRecord::Migration[7.0]
+  def change
+    create_table :audit_logs do |t|
+      t.string :table_name, null: false
+      t.string :operation, null: false  # INSERT, UPDATE, DELETE
+      t.bigint :record_id
+      t.jsonb :old_values
+      t.jsonb :new_values
+      t.jsonb :changed_fields
+      t.string :user_id
+      t.inet :ip_address
+      t.timestamp :created_at, null: false, default: -> { 'CURRENT_TIMESTAMP' }
+    end
+
+    add_index :audit_logs, :table_name
+    add_index :audit_logs, :record_id
+    add_index :audit_logs, :operation
+    add_index :audit_logs, :created_at
+  end
+end`}
+        </CodeBlock>
+
+        <h4 className="mt-4">Step 2: Create Generic Audit Function</h4>
+        <CodeBlock language="ruby" filename="db/migrate/20240101000011_create_audit_trigger_function.rb">
+          {`class CreateAuditTriggerFunction < ActiveRecord::Migration[7.0]
+  def up
+    execute <<-SQL
+      CREATE OR REPLACE FUNCTION audit_trigger_function()
+      RETURNS TRIGGER AS $$
+      DECLARE
+        old_data jsonb;
+        new_data jsonb;
+        changed jsonb;
+      BEGIN
+        IF (TG_OP = 'DELETE') THEN
+          old_data = to_jsonb(OLD);
+          INSERT INTO audit_logs (
+            table_name, operation, record_id,
+            old_values, created_at
+          ) VALUES (
+            TG_TABLE_NAME, TG_OP, OLD.id,
+            old_data, CURRENT_TIMESTAMP
+          );
+          RETURN OLD;
+        ELSIF (TG_OP = 'UPDATE') THEN
+          old_data = to_jsonb(OLD);
+          new_data = to_jsonb(NEW);
+
+          -- Calculate changed fields
+          SELECT jsonb_object_agg(key, value)
+          INTO changed
+          FROM jsonb_each(new_data)
+          WHERE value IS DISTINCT FROM old_data->key;
+
+          INSERT INTO audit_logs (
+            table_name, operation, record_id,
+            old_values, new_values, changed_fields, created_at
+          ) VALUES (
+            TG_TABLE_NAME, TG_OP, NEW.id,
+            old_data, new_data, changed, CURRENT_TIMESTAMP
+          );
+          RETURN NEW;
+        ELSIF (TG_OP = 'INSERT') THEN
+          new_data = to_jsonb(NEW);
+          INSERT INTO audit_logs (
+            table_name, operation, record_id,
+            new_values, created_at
+          ) VALUES (
+            TG_TABLE_NAME, TG_OP, NEW.id,
+            new_data, CURRENT_TIMESTAMP
+          );
+          RETURN NEW;
+        END IF;
+      END;
+      $$ LANGUAGE plpgsql;
+    SQL
+  end
+
+  def down
+    execute 'DROP FUNCTION IF EXISTS audit_trigger_function() CASCADE;'
+  end
+end`}
+        </CodeBlock>
+
+        <h4 className="mt-4">Step 3: Apply Trigger to Tables</h4>
+        <CodeBlock language="ruby" filename="db/migrate/20240101000012_add_audit_triggers.rb">
+          {`class AddAuditTriggers < ActiveRecord::Migration[7.0]
+  def up
+    # Audit sensitive tables
+    %w[users orders payments].each do |table_name|
+      execute <<-SQL
+        CREATE TRIGGER audit_#{table_name}
+        AFTER INSERT OR UPDATE OR DELETE ON #{table_name}
+        FOR EACH ROW
+        EXECUTE FUNCTION audit_trigger_function();
+      SQL
+    end
+  end
+
+  def down
+    %w[users orders payments].each do |table_name|
+      execute "DROP TRIGGER IF EXISTS audit_#{table_name} ON #{table_name};"
+    end
+  end
+end`}
+        </CodeBlock>
+
+        <h5>Query Audit History</h5>
+        <CodeBlock language="ruby">
+          {`# Find all changes to a user
+AuditLog.where(table_name: 'users', record_id: user.id).order(created_at: :desc)
+
+# See what changed in last update
+audit = AuditLog.where(table_name: 'users', record_id: user.id, operation: 'UPDATE').last
+audit.changed_fields
+# => {"email"=>{"new"=>"new@example.com", "old"=>"old@example.com"}}
+
+# Track who deleted records
+AuditLog.where(operation: 'DELETE').order(created_at: :desc)`}
+        </CodeBlock>
+
+        <div className="alert alert-success mt-3">
+          <strong>Benefits:</strong>
+          <ul className="mb-0">
+            <li>📝 Complete change history automatically</li>
+            <li>🔍 Debug production issues (see exact values before/after)</li>
+            <li>✅ Compliance requirements (GDPR, SOC2, HIPAA)</li>
+            <li>🔙 Rollback capability (restore old values)</li>
+            <li>⚡ Zero application code changes needed</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* Full-Text Search */}
+      <section className="mb-5">
+        <h2 className="border-bottom pb-2 mb-3">
+          <i className="bi bi-search me-2" />
+          Full-Text Search with pg_trgm
+        </h2>
+        <p className="lead">
+          Fast, fuzzy search across your text columns. Better than LIKE queries,
+          with typo tolerance and ranked results.
+        </p>
+
+        <h4 className="mt-4">Step 1: Enable pg_trgm Extension</h4>
+        <CodeBlock language="ruby" filename="db/migrate/20240101000020_enable_pg_trgm.rb">
+          {`class EnablePgTrgm < ActiveRecord::Migration[7.0]
+  def change
+    enable_extension 'pg_trgm'
+  end
+end`}
+        </CodeBlock>
+
+        <h4 className="mt-4">Step 2: Add GIN Index for Fast Searches</h4>
+        <CodeBlock language="ruby" filename="db/migrate/20240101000021_add_search_indexes.rb">
+          {`class AddSearchIndexes < ActiveRecord::Migration[7.0]
+  def change
+    # GIN index for trigram similarity search
+    add_index :products, :name, using: :gin, opclass: :gin_trgm_ops, name: 'idx_products_name_trgm'
+    add_index :products, :description, using: :gin, opclass: :gin_trgm_ops, name: 'idx_products_desc_trgm'
+
+    # GIN index for full-text search (alternative approach)
+    execute <<-SQL
+      CREATE INDEX idx_products_fulltext ON products
+      USING GIN (to_tsvector('english', name || ' ' || description));
+    SQL
+  end
+
+  def down
+    remove_index :products, name: 'idx_products_name_trgm'
+    remove_index :products, name: 'idx_products_desc_trgm'
+    execute 'DROP INDEX IF EXISTS idx_products_fulltext;'
+  end
+end`}
+        </CodeBlock>
+
+        <h4 className="mt-4">Step 3: Use in Your Rails Models</h4>
+        <CodeBlock language="ruby" filename="app/models/product.rb">
+          {`class Product < ApplicationRecord
+  # Fuzzy search with typo tolerance
+  scope :search, ->(query) {
+    where("name % ?", query)
+      .or(where("description % ?", query))
+      .order(Arel.sql("similarity(name, #{connection.quote(query)}) DESC"))
+  }
+
+  # Full-text search (more precise)
+  scope :fulltext_search, ->(query) {
+    where(
+      "to_tsvector('english', name || ' ' || description) @@ plainto_tsquery('english', ?)",
+      query
+    ).order(
+      Arel.sql("ts_rank(to_tsvector('english', name || ' ' || description), plainto_tsquery('english', #{connection.quote(query)})) DESC")
+    )
+  }
+end
+
+# Usage:
+Product.search('wireles charger')  # Finds "Wireless Charger" (typo tolerant!)
+Product.fulltext_search('fast charging cable')  # Ranked by relevance`}
+        </CodeBlock>
+
+        <div className="alert alert-success mt-3">
+          <strong>Benefits:</strong>
+          <ul className="mb-0">
+            <li>🚀 1000x faster than LIKE &apos;%query%&apos; queries</li>
+            <li>✨ Typo tolerance - finds &quot;wireles&quot; when searching for &quot;wireless&quot;</li>
+            <li>📊 Ranked results by relevance</li>
+            <li>🌍 Multi-language support</li>
+            <li>⚡ Scales to millions of records</li>
+          </ul>
+        </div>
+      </section>
+
       {/* Custom Types and Enums */}
       <section className="mb-5">
         <h2 className="border-bottom pb-2 mb-3">
