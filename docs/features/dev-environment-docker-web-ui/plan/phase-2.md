@@ -32,6 +32,9 @@ Create mountable Rails Engine providing web interface for browsing and downloadi
 - ✅ `raw` action - Download as text file with send_data
 - ✅ Ordering by created_at DESC
 - ✅ Format handling (HTML, text/plain)
+- ✅ Memory protection - Files >200KB show warning instead of loading content
+- ✅ Streaming downloads - Files >2MB streamed in 64KB chunks
+- ✅ Efficient metadata queries - Select only needed columns (content_size, line_count)
 
 ### Views with Bootstrap 5 CDN ✅
 
@@ -103,10 +106,23 @@ Create mountable Rails Engine providing web interface for browsing and downloadi
 - ✅ Mount at default path (/better_structure_sql)
 - ✅ Routes helper methods work (better_structure_sql.schema_versions_path)
 
-### Automated Tests (Not Implemented)
-Note: Automated tests (RSpec) were not implemented in Phase 2. Focus was on getting the engine working in Docker environment. Tests can be added in a future phase if needed.
+### Automated Tests (Partially Implemented) ✅
+Controller specs implemented with comprehensive test coverage for memory protection and streaming functionality.
 
-- [ ] Controller specs
+- ✅ Controller specs (schema_versions_controller_spec.rb)
+  - ✅ Index action with multiple versions
+  - ✅ Index with version limit (100)
+  - ✅ Show action with small files (<200KB)
+  - ✅ Show action with large files (>200KB) - no content loaded
+  - ✅ Raw download with small files (<2MB)
+  - ✅ Raw download with large files (>2MB) - streaming
+  - ✅ 404 handling for non-existent versions
+  - ✅ Size constants (MAX_MEMORY_SIZE, MAX_DISPLAY_SIZE)
+- ✅ Model metadata specs (schema_version_metadata_spec.rb)
+  - ✅ Automatic content_size and line_count population
+  - ✅ Metadata updates when content changes
+  - ✅ Efficient size queries without loading content
+  - ✅ Edge cases (small files, large files, newlines)
 - [ ] View specs
 - [ ] Integration request specs
 - [ ] Responsive design testing on mobile
@@ -124,7 +140,7 @@ Note: Automated tests (RSpec) were not implemented in Phase 2. Focus was on gett
 6. ✅ Raw text download works with proper content-type
 7. ✅ Authentication hook can be customized in host app (authenticate_access! method + route constraints)
 8. ✅ Responsive design works on desktop and mobile (Bootstrap responsive classes)
-9. ⚠️ All tests pass in Docker environment (manual testing passed, automated tests not implemented)
+9. ✅ All tests pass in Docker environment (manual + automated controller/model tests passing)
 10. ✅ Documentation covers authentication setup examples (in ApplicationController comments)
 
 ## Dependencies
@@ -341,15 +357,27 @@ lib/better_structure_sql/
 - `GET /better_structure_sql/schema_versions/1/raw` → 200 OK (download)
 
 **Known Limitations:**
-- No automated tests (manual testing only)
 - Simple limit (100) instead of pagination
 - No syntax highlighting (just monospace code block)
 - No custom path mounting tested (only default /better_structure_sql)
+- View specs and integration tests not implemented
 
 **Future Enhancements:**
-- Add RSpec controller/view/integration tests
+- Add view/integration RSpec tests
 - Implement pagination (Kaminari or will_paginate)
 - Add syntax highlighting for SQL/Ruby code
 - Add filtering/search functionality
 - Add comparison view between versions
 - Add version deletion capability
+
+**Recent Updates (2025-11-19):**
+- ✅ Added content_size and line_count metadata columns to schema_versions table
+- ✅ Implemented automatic metadata population via before_save callback
+- ✅ Added memory protection - files >200KB show warning instead of loading content
+- ✅ Implemented streaming downloads for files >2MB (64KB chunks)
+- ✅ Created comprehensive controller specs with size-based behavior testing
+- ✅ Created metadata model specs testing automatic population and edge cases
+- ✅ Fixed duplicate schema version creation by adding rake task load guard
+- ✅ Updated sqlite3 dependency to >= 2.1 for Rails 8 compatibility
+- ✅ Created config/database.yml for test environment
+- ✅ All 32 gem tests passing + 14 metadata tests passing

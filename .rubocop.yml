@@ -61,6 +61,9 @@ Rails/ApplicationRecord:
 Rails/SquishedSQLHeredocs:
   Enabled: false
 
+Naming/PredicateMethod:
+  Enabled: false
+
 Layout/AssignmentIndentation:
   Enabled: true
 
