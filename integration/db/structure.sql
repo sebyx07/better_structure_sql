@@ -18,6 +18,54 @@ CREATE DOMAIN email_address AS character varying(255) CHECK (((VALUE)::text ~ '^
 CREATE DOMAIN percentage AS numeric(5,2) CHECK (((VALUE >= (0)::numeric) AND (VALUE <= (100)::numeric)));
 CREATE DOMAIN positive_integer AS integer CHECK ((VALUE > 0));
 
+-- Functions
+
+CREATE OR REPLACE FUNCTION public.audit_product_price_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF OLD.price IS DISTINCT FROM NEW.price THEN
+    INSERT INTO product_price_history (product_id, old_price, new_price, changed_at)
+    VALUES (NEW.id, OLD.price, NEW.price, CURRENT_TIMESTAMP);
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.calculate_discount_price(original_price numeric, discount_percent numeric)
+ RETURNS numeric
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+BEGIN
+  IF discount_percent IS NULL OR discount_percent = 0 THEN
+    RETURN original_price;
+  END IF;
+  RETURN ROUND(original_price * (1 - discount_percent / 100), 2);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.validate_email(email_text text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+BEGIN
+  RETURN email_text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$';
+END;
+$function$;
+
 -- Sequences
 CREATE SEQUENCE better_structure_sql_schema_versions_id_seq
   START WITH 1
@@ -230,54 +278,6 @@ ALTER TABLE orders ADD CONSTRAINT fk_rails_f868b47f6a FOREIGN KEY (user_id) REFE
 ALTER TABLE posts ADD CONSTRAINT fk_rails_5b5ddfd518 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
 ALTER TABLE product_price_history ADD CONSTRAINT fk_rails_b70a9e116e FOREIGN KEY (product_id) REFERENCES products (id);
 ALTER TABLE products ADD CONSTRAINT fk_rails_fb915499a4 FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT;
-
--- Functions
-
-CREATE OR REPLACE FUNCTION public.audit_product_price_change()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-  IF OLD.price IS DISTINCT FROM NEW.price THEN
-    INSERT INTO product_price_history (product_id, old_price, new_price, changed_at)
-    VALUES (NEW.id, OLD.price, NEW.price, CURRENT_TIMESTAMP);
-  END IF;
-  RETURN NEW;
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.calculate_discount_price(original_price numeric, discount_percent numeric)
- RETURNS numeric
- LANGUAGE plpgsql
- IMMUTABLE
-AS $function$
-BEGIN
-  IF discount_percent IS NULL OR discount_percent = 0 THEN
-    RETURN original_price;
-  END IF;
-  RETURN ROUND(original_price * (1 - discount_percent / 100), 2);
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
- RETURNS trigger
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-  NEW.updated_at = CURRENT_TIMESTAMP;
-  RETURN NEW;
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.validate_email(email_text text)
- RETURNS boolean
- LANGUAGE plpgsql
- IMMUTABLE
-AS $function$
-BEGIN
-  RETURN email_text ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Z|a-z]{2,}$';
-END;
-$function$;
 
 -- Views
 

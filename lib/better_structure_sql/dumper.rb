@@ -18,11 +18,11 @@ module BetterStructureSql
       output << set_schema_section
       output << custom_types_section if config.include_custom_types
       output << domains_section if config.include_domains
+      output << functions_section if config.include_functions
       output << sequences_section if config.include_sequences
       output << tables_section
       output << indexes_section
       output << foreign_keys_section
-      output << functions_section if config.include_functions
       output << views_section if config.include_views
       output << materialized_views_section if config.include_materialized_views
       output << triggers_section if config.include_triggers
