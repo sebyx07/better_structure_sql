@@ -6,15 +6,10 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
   # Use the engine's routes
   routes { BetterStructureSql::Engine.routes }
 
-  # Helper to create test schema version
-  # The model's before_save callback will automatically set content_size and line_count
+  # Helper to create test schema version using factory
   def create_schema_version(content_size: 1000)
     content = 'A' * content_size
-    BetterStructureSql::SchemaVersion.create!(
-      content: content,
-      pg_version: 'PostgreSQL 15.1',
-      format_type: 'sql'
-    )
+    create(:schema_version, content: content)
   end
 
   describe 'GET #index' do
@@ -31,8 +26,11 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
     end
 
     context 'with schema versions' do
-      let!(:version1) { create_schema_version }
-      let!(:version2) { create_schema_version }
+      before do
+        @version1 = create(:schema_version)
+        sleep 0.01 # Ensure different created_at timestamps
+        @version2 = create(:schema_version)
+      end
 
       it 'returns success' do
         get :index
@@ -41,16 +39,16 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
 
       it 'assigns all versions ordered by created_at DESC' do
         get :index
-        versions = assigns(:schema_versions)
-        expect(versions.count).to eq(2)
-        expect(versions.first.id).to eq(version2.id) # Most recent first
+        versions = assigns(:schema_versions).to_a # Force load into array
+        expect(versions.length).to eq(2)
+        expect(versions.first.id).to eq(@version2.id) # Most recent first
       end
 
       it 'limits to 100 versions' do
-        # Create 150 versions
-        101.times { create_schema_version }
+        # Create 150 versions total (2 already exist from before block)
+        100.times { create(:schema_version) }
         get :index
-        expect(assigns(:schema_versions).count).to eq(100)
+        expect(assigns(:schema_versions).to_a.length).to eq(100)
       end
     end
   end

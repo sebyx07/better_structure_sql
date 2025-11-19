@@ -67,9 +67,9 @@ RSpec.describe BetterStructureSql::FileWriter do
     it 'creates directory structure' do
       writer.write_multi_file(base_path, sections, header)
 
-      expect(Dir.exist?(File.join(temp_dir, base_path, '1_extensions'))).to be true
-      expect(Dir.exist?(File.join(temp_dir, base_path, '2_types'))).to be true
-      expect(Dir.exist?(File.join(temp_dir, base_path, '5_tables'))).to be true
+      expect(Dir.exist?(File.join(temp_dir, base_path, '01_extensions'))).to be true
+      expect(Dir.exist?(File.join(temp_dir, base_path, '02_types'))).to be true
+      expect(Dir.exist?(File.join(temp_dir, base_path, '05_tables'))).to be true
     end
 
     it 'writes header file' do
@@ -82,17 +82,17 @@ RSpec.describe BetterStructureSql::FileWriter do
     it 'writes numbered SQL files' do
       writer.write_multi_file(base_path, sections, header)
 
-      expect(File.exist?(File.join(temp_dir, base_path, '1_extensions', '000001.sql'))).to be true
-      expect(File.exist?(File.join(temp_dir, base_path, '2_types', '000001.sql'))).to be true
-      expect(File.exist?(File.join(temp_dir, base_path, '5_tables', '000001.sql'))).to be true
+      expect(File.exist?(File.join(temp_dir, base_path, '01_extensions', '000001.sql'))).to be true
+      expect(File.exist?(File.join(temp_dir, base_path, '02_types', '000001.sql'))).to be true
+      expect(File.exist?(File.join(temp_dir, base_path, '05_tables', '000001.sql'))).to be true
     end
 
     it 'returns file map for manifest' do
       file_map = writer.write_multi_file(base_path, sections, header)
 
       expect(file_map).to be_a(Hash)
-      expect(file_map.keys).to include('1_extensions/000001.sql')
-      expect(file_map.keys).to include('2_types/000001.sql')
+      expect(file_map.keys).to include('01_extensions/000001.sql')
+      expect(file_map.keys).to include('02_types/000001.sql')
     end
 
     it 'chunks sections exceeding max lines' do
@@ -108,7 +108,7 @@ RSpec.describe BetterStructureSql::FileWriter do
       writer.write_multi_file(base_path, large_sections, header)
 
       # Should create multiple files
-      tables_dir = File.join(temp_dir, base_path, '5_tables')
+      tables_dir = File.join(temp_dir, base_path, '05_tables')
       files = Dir.glob(File.join(tables_dir, '*.sql')).sort
       expect(files.length).to be >= 2
     end

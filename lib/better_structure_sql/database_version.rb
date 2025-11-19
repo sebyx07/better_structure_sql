@@ -15,13 +15,10 @@ module BetterStructureSql
 
       # For backward compatibility with PgVersion
       def parse_version(version_string)
-        # This is kept for backward compatibility but now delegates to adapter
-        connection = ActiveRecord::Base.connection
-        adapter = Adapters::Registry.adapter_for(
-          connection,
-          adapter_override: BetterStructureSql.configuration.adapter
-        )
-        adapter.parse_version(version_string)
+        # Parse version string directly (PostgreSQL format)
+        # Example: "PostgreSQL 15.1 on x86_64" → "15.1"
+        match = version_string.match(/(\d+\.\d+(\.\d+)?)/)
+        match ? match[1] : 'unknown'
       end
 
       def major_version(version_string)

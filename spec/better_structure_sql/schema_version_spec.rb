@@ -12,6 +12,7 @@ RSpec.describe BetterStructureSql::SchemaVersion do
              content: 'CREATE TABLE users (id serial);',
              pg_version: '14.5',
              format_type: 'sql',
+             output_mode: 'single_file',
              created_at: Time.current)
     end
 

@@ -48,6 +48,7 @@ RSpec.describe BetterStructureSql::SchemaVersions do
         described_class.store(
           content: 'CREATE TABLE users',
           format_type: 'sql',
+          output_mode: 'single_file',
           pg_version: '14.5',
           connection: connection
         )

@@ -86,9 +86,7 @@ module BetterStructureSql
           schema_path = Rails.root.join(config.output_path)
 
           # Check if schema exists (file or directory)
-          unless File.exist?(schema_path)
-            abort "#{schema_path} doesn't exist yet. Run `bin/rails db:migrate` to create it, then try again."
-          end
+          abort "#{schema_path} doesn't exist yet. Run `bin/rails db:migrate` to create it, then try again." unless File.exist?(schema_path)
 
           # Use our loader which handles both file and directory
           loader = BetterStructureSql::SchemaLoader.new(config)

@@ -10,7 +10,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: content,
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         expect(version.content_size).to eq(1000)
@@ -21,7 +22,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: content,
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         expect(version.line_count).to eq(3)
@@ -31,7 +33,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: 'Original content',
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         original_size = version.content_size
@@ -47,7 +50,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: 'Test content',
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         original_size = version.content_size
@@ -68,7 +72,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: 'A' * 500,
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         # Reload to ensure content_size is from database
@@ -83,7 +88,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: 'A' * 500,
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         version.content = 'B' * 1000
@@ -98,7 +104,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: 'A' * 500,
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.formatted_size).to eq('500 bytes')
@@ -108,7 +115,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: 'A' * 2048,
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.formatted_size).to eq('2.0 KB')
@@ -118,7 +126,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: 'A' * (2 * 1024 * 1024),
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.formatted_size).to eq('2.0 MB')
@@ -129,7 +138,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         version = described_class.create!(
           content: 'A' * 2048,
           pg_version: 'PostgreSQL 15.1',
-          format_type: 'sql'
+          format_type: 'sql',
+          output_mode: 'single_file'
         )
 
         # Load only metadata, not content
@@ -145,7 +155,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: 'a',
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.content_size).to eq(1)
@@ -157,7 +168,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: 'Single line',
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.line_count).to eq(1)
@@ -167,7 +179,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: "a\n\n\n",
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.line_count).to eq(3) # "a\n", "\n", "\n"
@@ -178,7 +191,8 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       version = described_class.create!(
         content: large_content,
         pg_version: 'PostgreSQL 15.1',
-        format_type: 'sql'
+        format_type: 'sql',
+        output_mode: 'single_file'
       )
 
       expect(version.content_size).to eq(5 * 1024 * 1024)
