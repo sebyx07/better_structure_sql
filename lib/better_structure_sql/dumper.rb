@@ -244,8 +244,11 @@ module BetterStructureSql
           SET standard_conforming_strings = on;
         HEADER
       when 'BetterStructureSql::Adapters::SqliteAdapter'
-        # SQLite doesn't need any header commands
-        nil
+        # SQLite PRAGMA statements for optimal behavior and compatibility
+        <<~HEADER.strip
+          PRAGMA foreign_keys = ON;
+          PRAGMA defer_foreign_keys = ON;
+        HEADER
       when 'BetterStructureSql::Adapters::MysqlAdapter'
         # MySQL doesn't need any header commands (or could set charset, etc.)
         nil
