@@ -4,7 +4,12 @@ module BetterStructureSql
   module Generators
     class ViewGenerator < Base
       def generate(view)
-        schema_prefix = view[:schema] == 'public' ? '' : "#{view[:schema]}."
+        # Only add schema prefix for non-default schemas
+        # PostgreSQL default: 'public'
+        # SQLite default: 'main'
+        # MySQL default: current database
+        default_schemas = %w[public main]
+        schema_prefix = default_schemas.include?(view[:schema]) ? '' : "#{view[:schema]}."
         definition = view[:definition].strip
 
         # Ensure definition ends with semicolon

@@ -1,14 +1,23 @@
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+
+SET search_path TO "$user", public;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
 -- Tables
 
 CREATE TABLE better_structure_sql_schema_versions (
-  id integer,
+  id integer NOT NULL,
   content text NOT NULL,
   sqlite_version text,
   format_type text DEFAULT 'sql',
   zip_archive blob,
   output_mode text DEFAULT 'single_file',
-  created_at DATETIME NOT NULL,
-  updated_at DATETIME NOT NULL,
+  created_at datetime(6) NOT NULL,
+  updated_at datetime(6) NOT NULL,
   PRIMARY KEY (id)
 );
 
@@ -20,10 +29,7 @@ CREATE TABLE comments (
   parent_id integer,
   created_at text NOT NULL,
   updated_at text NOT NULL,
-  PRIMARY KEY (id),
-  FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL,
-  FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE posts (
@@ -36,18 +42,17 @@ CREATE TABLE posts (
   metadata text,
   created_at text NOT NULL,
   updated_at text NOT NULL,
-  PRIMARY KEY (id),
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  PRIMARY KEY (id)
 );
 
 CREATE TABLE products (
-  id integer,
+  id integer NOT NULL,
   name text NOT NULL,
   description text,
-  price DECIMAL(10,2),
+  price decimal(10,2),
   stock_quantity integer DEFAULT 0,
-  created_at DATETIME NOT NULL,
-  updated_at DATETIME NOT NULL,
+  created_at datetime(6) NOT NULL,
+  updated_at datetime(6) NOT NULL,
   PRIMARY KEY (id)
 );
 
@@ -73,9 +78,15 @@ CREATE INDEX "index_products_on_name" ON "products" ("name");
 CREATE INDEX "index_users_on_uuid" ON "users" ("uuid");
 CREATE UNIQUE INDEX "index_users_on_email" ON "users" ("email");
 
+-- Foreign Keys
+ALTER TABLE comments ADD CONSTRAINT fk_comments_comments_parent_id FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE;
+ALTER TABLE comments ADD CONSTRAINT fk_comments_users_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL;
+ALTER TABLE comments ADD CONSTRAINT fk_comments_posts_post_id FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE;
+ALTER TABLE posts ADD CONSTRAINT fk_posts_users_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
+
 -- Views
 
-CREATE VIEW user_stats AS
+CREATE VIEW main.user_stats AS
 SELECT
   u.id,
   u.email,

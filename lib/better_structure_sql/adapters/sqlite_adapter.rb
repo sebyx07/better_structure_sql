@@ -62,12 +62,19 @@ module BetterStructureSql
             index_info = connection.execute("PRAGMA index_info(#{quote_identifier(index_name)})")
             columns = index_info.map { |col_row| col_row['name'] || col_row[2] }
 
+            # Generate CREATE INDEX SQL for compatibility with Dumper/IndexGenerator
+            unique_clause = is_unique ? 'UNIQUE ' : ''
+            columns_clause = columns.map { |col| quote_identifier(col) }.join(', ')
+            definition = "CREATE #{unique_clause}INDEX #{quote_identifier(index_name)} " \
+                        "ON #{quote_identifier(table_name)} (#{columns_clause})"
+
             indexes << {
               table: table_name,
               name: index_name,
               columns: columns,
               unique: is_unique,
-              type: 'BTREE' # SQLite uses B-tree by default
+              type: 'BTREE', # SQLite uses B-tree by default
+              definition: definition # Add definition field for compatibility with IndexGenerator
             }
           end
         end
@@ -167,7 +174,7 @@ module BetterStructureSql
             table_name: row['tbl_name'] || row[1],
             timing: timing,
             event: event,
-            statement: sql
+            definition: sql  # Use 'definition' to match PostgreSQL adapter
           }
         end
       end
@@ -265,17 +272,17 @@ module BetterStructureSql
       end
 
       # Generate CREATE TRIGGER statement for SQLite
-      # @param trigger [Hash] Trigger hash with name, timing, event, table_name, statement
+      # @param trigger [Hash] Trigger hash with name, timing, event, table_name, definition
       # @return [String] CREATE TRIGGER SQL statement
       def generate_trigger(trigger)
-        statement = trigger[:statement]
-        return statement if /^CREATE\s+TRIGGER/i.match?(statement) # Already complete
+        definition = trigger[:definition]
+        return definition if /^CREATE\s+TRIGGER/i.match?(definition) # Already complete
 
         # Generate from components
         timing = trigger[:timing] || 'AFTER'
         event = trigger[:event] || 'INSERT'
         table = trigger[:table_name]
-        body = trigger[:body] || trigger[:statement]
+        body = trigger[:body] || trigger[:definition]
 
         <<~SQL.strip
           CREATE TRIGGER #{quote_identifier(trigger[:name])}
@@ -318,7 +325,7 @@ module BetterStructureSql
           ORDER BY name
         SQL
 
-        connection.execute(query).pluck(0)
+        connection.execute(query).map { |row| row['name'] || row[0] }
       end
 
       def fetch_columns(connection, table_name)

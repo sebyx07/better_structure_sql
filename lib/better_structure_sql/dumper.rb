@@ -2,11 +2,12 @@
 
 module BetterStructureSql
   class Dumper
-    attr_reader :config, :connection
+    attr_reader :config, :connection, :adapter
 
     def initialize(config = BetterStructureSql.configuration, connection = ActiveRecord::Base.connection)
       @config = config
       @connection = connection
+      @adapter = Adapters::Registry.adapter_for(connection)
     end
 
     def dump(store_version: nil)
@@ -236,10 +237,22 @@ module BetterStructureSql
     end
 
     def header
-      <<~HEADER.strip
-        SET client_encoding = 'UTF8';
-        SET standard_conforming_strings = on;
-      HEADER
+      case adapter.class.name
+      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
+        <<~HEADER.strip
+          SET client_encoding = 'UTF8';
+          SET standard_conforming_strings = on;
+        HEADER
+      when 'BetterStructureSql::Adapters::SqliteAdapter'
+        # SQLite doesn't need any header commands
+        nil
+      when 'BetterStructureSql::Adapters::MysqlAdapter'
+        # MySQL doesn't need any header commands (or could set charset, etc.)
+        nil
+      else
+        # Unknown adapter - no header
+        nil
+      end
     end
 
     def extensions_section
@@ -253,7 +266,15 @@ module BetterStructureSql
     end
 
     def set_schema_section
-      "SET search_path TO #{config.search_path};"
+      case adapter.class.name
+      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
+        "SET search_path TO #{config.search_path};"
+      when 'BetterStructureSql::Adapters::SqliteAdapter', 'BetterStructureSql::Adapters::MysqlAdapter'
+        # SQLite and MySQL don't use search_path
+        nil
+      else
+        nil
+      end
     end
 
     def custom_types_section
@@ -284,14 +305,26 @@ module BetterStructureSql
 
       return '-- Tables' if tables.empty?
 
-      generator = Generators::TableGenerator.new(config)
-      lines = [
-        "SET default_tablespace = '';",
-        '',
-        'SET default_table_access_method = heap;',
-        '',
-        '-- Tables'
-      ]
+      # For SQLite, attach foreign keys to each table for inline generation
+      if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+        all_foreign_keys = Introspection.fetch_foreign_keys(connection)
+        tables.each do |table|
+          table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
+        end
+      end
+
+      generator = Generators::TableGenerator.new(config, adapter)
+      lines = []
+
+      # Add PostgreSQL-specific SET commands only for PostgreSQL
+      if adapter.class.name == 'BetterStructureSql::Adapters::PostgresqlAdapter'
+        lines << "SET default_tablespace = '';"
+        lines << ''
+        lines << 'SET default_table_access_method = heap;'
+        lines << ''
+      end
+
+      lines << '-- Tables'
       lines += tables.map { |table| generator.generate(table) }
       lines.join("\n\n")
     end
@@ -307,6 +340,9 @@ module BetterStructureSql
     end
 
     def foreign_keys_section
+      # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
+      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+
       foreign_keys = Introspection.fetch_foreign_keys(connection)
       return nil if foreign_keys.empty?
 

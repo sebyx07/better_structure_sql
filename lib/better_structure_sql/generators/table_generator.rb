@@ -3,6 +3,13 @@
 module BetterStructureSql
   module Generators
     class TableGenerator < Base
+      attr_reader :adapter
+
+      def initialize(config, adapter = nil)
+        super(config)
+        @adapter = adapter
+      end
+
       def generate(table)
         lines = ["CREATE TABLE #{table[:name]} ("]
 
@@ -15,6 +22,13 @@ module BetterStructureSql
 
         table[:constraints]&.each do |constraint|
           column_defs << constraint_definition(constraint)
+        end
+
+        # For SQLite, add foreign keys inline
+        if sqlite_adapter? && table[:foreign_keys]&.any?
+          table[:foreign_keys].each do |fk|
+            column_defs << foreign_key_definition(fk)
+          end
         end
 
         lines << column_defs.map { |def_line| indent(def_line) }.join(",\n")
@@ -66,6 +80,19 @@ module BetterStructureSql
 
         # Otherwise, assume it's a string and quote it if not already quoted
         default_value.start_with?("'") ? default_value : "'#{default_value}'"
+      end
+
+      def sqlite_adapter?
+        adapter && adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
+      end
+
+      def foreign_key_definition(fk)
+        parts = ["FOREIGN KEY (#{fk[:column]})"]
+        parts << "REFERENCES #{fk[:foreign_table]} (#{fk[:foreign_column]})"
+        parts << "ON DELETE #{fk[:on_delete]}" if fk[:on_delete] && fk[:on_delete] != 'NO ACTION'
+        parts << "ON UPDATE #{fk[:on_update]}" if fk[:on_update] && fk[:on_update] != 'NO ACTION'
+
+        parts.join(' ')
       end
     end
   end
