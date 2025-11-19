@@ -48,7 +48,7 @@ module BetterStructureSql
 
         tables.each do |table_name|
           # Get list of indexes for this table
-          index_list = connection.execute("PRAGMA index_list(#{connection.quote(table_name)})")
+          index_list = connection.execute("PRAGMA index_list(#{quote_identifier(table_name)})")
 
           index_list.each do |index_row|
             index_name = index_row[1]
@@ -59,7 +59,7 @@ module BetterStructureSql
             next if skip_origins.include?(origin)
 
             # Get columns for this index
-            index_info = connection.execute("PRAGMA index_info(#{connection.quote(index_name)})")
+            index_info = connection.execute("PRAGMA index_info(#{quote_identifier(index_name)})")
             columns = index_info.map { |col_row| col_row[2] }
 
             indexes << {
@@ -80,7 +80,7 @@ module BetterStructureSql
         foreign_keys = []
 
         tables.each do |table_name|
-          fk_list = connection.execute("PRAGMA foreign_key_list(#{connection.quote(table_name)})")
+          fk_list = connection.execute("PRAGMA foreign_key_list(#{quote_identifier(table_name)})")
 
           fk_list.each do |fk_row|
             foreign_keys << {
@@ -107,10 +107,19 @@ module BetterStructureSql
         SQL
 
         connection.execute(query).map do |row|
+          sql = row[1]
+          # Extract just the SELECT part from CREATE VIEW statement for compatibility
+          # with existing ViewGenerator
+          definition = if sql&.match(/CREATE\s+VIEW\s+\w+\s+AS\s+(.*)/im)
+                         ::Regexp.last_match(1)
+                       else
+                         sql
+                       end
+
           {
             schema: 'main',
             name: row[0],
-            definition: row[1],
+            definition: definition || '',
             updatable: false # SQLite views are generally not updatable
           }
         end
@@ -309,7 +318,7 @@ module BetterStructureSql
       end
 
       def fetch_columns(connection, table_name)
-        table_info = connection.execute("PRAGMA table_info(#{connection.quote(table_name)})")
+        table_info = connection.execute("PRAGMA table_info(#{quote_identifier(table_name)})")
 
         table_info.map do |row|
           {
@@ -323,7 +332,7 @@ module BetterStructureSql
       end
 
       def fetch_primary_key(connection, table_name)
-        table_info = connection.execute("PRAGMA table_info(#{connection.quote(table_name)})")
+        table_info = connection.execute("PRAGMA table_info(#{quote_identifier(table_name)})")
 
         table_info
           .select { |row| row[5].to_i == 1 }
@@ -338,7 +347,7 @@ module BetterStructureSql
           SELECT sql
           FROM sqlite_master
           WHERE type = 'table'
-            AND name = #{connection.quote(table_name)}
+            AND name = '#{table_name}'
         SQL
 
         result = connection.execute(query).first
