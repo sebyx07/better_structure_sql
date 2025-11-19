@@ -37,7 +37,10 @@ module BetterStructureSql
 
       # Load numbered directories in order (01_extensions through 10_migrations)
       # Concatenate all files in each directory and execute as single statement
-      Dir.glob(File.join(dir_path, '{01..10}_*')).sort.each do |dir|
+      # Use [01]* pattern to match directories starting with 0 or 1 (covers 01-10)
+      Dir.glob(File.join(dir_path, '[01]*_*')).sort.each do |dir|
+        next unless File.directory?(dir)
+
         dir_name = File.basename(dir)
 
         # Concatenate all files in this directory
