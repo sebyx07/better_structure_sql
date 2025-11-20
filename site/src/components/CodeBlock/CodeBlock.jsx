@@ -3,11 +3,14 @@ import PropTypes from 'prop-types';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-function CodeBlock({ children, language, showLineNumbers, highlightLines, filename }) {
+function CodeBlock({ children, code, language, showLineNumbers, highlightLines, filename }) {
   const [copied, setCopied] = useState(false);
 
+  // Support both 'code' prop and 'children' for backwards compatibility
+  const codeContent = code || children;
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(children);
+    navigator.clipboard.writeText(codeContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -58,7 +61,7 @@ function CodeBlock({ children, language, showLineNumbers, highlightLines, filena
             fontSize: '0.875rem',
           }}
         >
-          {children}
+          {codeContent}
         </SyntaxHighlighter>
       </div>
     </div>
@@ -66,7 +69,8 @@ function CodeBlock({ children, language, showLineNumbers, highlightLines, filena
 }
 
 CodeBlock.propTypes = {
-  children: PropTypes.string.isRequired,
+  children: PropTypes.string,
+  code: PropTypes.string,
   language: PropTypes.string,
   showLineNumbers: PropTypes.bool,
   highlightLines: PropTypes.arrayOf(PropTypes.number),
@@ -74,6 +78,8 @@ CodeBlock.propTypes = {
 };
 
 CodeBlock.defaultProps = {
+  children: null,
+  code: null,
   language: 'javascript',
   showLineNumbers: false,
   highlightLines: [],
