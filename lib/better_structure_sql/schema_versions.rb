@@ -142,9 +142,11 @@ module BetterStructureSql
 
       # Calculates hash from multi-file schema directory using streaming
       #
-      # Streams all files in the same order as read_multi_file_content
-      # to ensure consistency with stored content hash. Uses 4MB chunks
-      # for memory efficiency with large schemas.
+      # Streams only .sql files (header + numbered directories) in order.
+      # Uses 4MB chunks for memory efficiency with large schemas.
+      #
+      # Note: Manifest JSON is excluded from hash calculation as it's metadata
+      # for tooling, not part of the actual schema content.
       #
       # @param path [String, Pathname] Path to schema directory
       # @return [String] 32-character MD5 hexdigest
@@ -155,19 +157,11 @@ module BetterStructureSql
 
         digest = Digest::MD5.new
 
-        # Stream _header.sql
+        # Stream _header.sql if exists
         header_path = full_path.join('_header.sql')
         stream_file_to_digest(digest, header_path) if File.exist?(header_path)
 
-        # Stream manifest as SQL comment
-        manifest_path = full_path.join('_manifest.json')
-        if File.exist?(manifest_path)
-          manifest_json = File.read(manifest_path)
-          manifest_comment = "-- MANIFEST_JSON_START\n-- #{manifest_json.gsub("\n", "\n-- ")}\n-- MANIFEST_JSON_END"
-          digest.update(manifest_comment)
-        end
-
-        # Stream numbered directories in order (01_ through 10_)
+        # Stream all .sql files from numbered directories in order (01_ through 10_)
         Dir.glob(File.join(full_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
           Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
             stream_file_to_digest(digest, file)
@@ -295,19 +289,12 @@ module BetterStructureSql
       def read_multi_file_content(base_path)
         content_parts = []
 
-        # Read header
+        # Read _header.sql if exists
         header_path = base_path.join('_header.sql')
         content_parts << File.read(header_path) if File.exist?(header_path)
 
-        # Read manifest and embed as SQL comment for later extraction
-        manifest_path = base_path.join('_manifest.json')
-        if File.exist?(manifest_path)
-          manifest_json = File.read(manifest_path)
-          content_parts << "-- MANIFEST_JSON_START\n-- #{manifest_json.gsub("\n", "\n-- ")}\n-- MANIFEST_JSON_END"
-        end
-
-        # Read numbered directories in order (01_ through 10_)
-        # Use pattern that works with Dir.glob
+        # Read all .sql files from numbered directories in order (01_ through 10_)
+        # Note: Manifest JSON is excluded as it's metadata, not schema content
         Dir.glob(File.join(base_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
           Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
             content_parts << File.read(file)
