@@ -42,8 +42,8 @@ RSpec.describe BetterStructureSql::Configuration do
       expect(config.include_rules).to be false
     end
 
-    it 'disables include_comments by default' do
-      expect(config.include_comments).to be false
+    it 'enables include_comments by default' do
+      expect(config.include_comments).to be true
     end
 
     it 'enables include_domains by default' do
