@@ -1,6 +1,6 @@
 {
   "name": "better-structure-sql-docs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Documentation site for BetterStructureSql gem",
   "type": "module",
   "scripts": {

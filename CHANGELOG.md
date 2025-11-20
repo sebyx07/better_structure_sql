@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.2.0] - 2025-11-20
+
+### Added
+- **Database comments support** - COMMENT ON statements for PostgreSQL and MySQL
+  - Comments on tables, columns, indexes, views, functions, and triggers
+  - CommentGenerator for generating COMMENT ON SQL statements
+  - CommentIntrospector for querying pg_description and information_schema
+  - Configurable via `include_comments` option (enabled by default)
+  - 10_comments directory in multi-file output with load order after triggers
+  - Full test coverage for PostgreSQL and MySQL comment introspection
 - **Hash-based schema version deduplication** - Automatic duplicate detection using MD5 content hashing
   - `content_hash` column (VARCHAR 32) stores MD5 hexdigest of schema content
   - Automatic skip when schema unchanged between storage attempts
@@ -30,8 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SchemaVersions.store` now requires `content_hash:` parameter
 - `SchemaVersion.latest` changed from scope to class method (returns record, not Relation)
 - Multi-file directories automatically cleaned up after ZIP archive creation
+- Integration apps configured to use multi-file schema dumps by default
+- Migration numbering scheme changed to support comments directory (20 directories)
 
 ### Fixed
+- MySQL compatibility: Removed IF NOT EXISTS from index and type creation
+- Hash calculation now excludes manifest.json to avoid circular dependencies
+- FileWriter properly maps comments directory to correct load order
+- CodeBlock component supports both code prop and children for flexibility
 
 ## [0.1.0] - 2025-11-20
 

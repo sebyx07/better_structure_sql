@@ -263,7 +263,7 @@ rails db:schema:dump_better
             <div className="col-lg-8 mx-auto text-center">
               <h5 className="mb-2">
                 <i className="bi bi-exclamation-triangle me-2" />
-                Beta Version 0.1.0
+                Beta Version 0.2.0
               </h5>
               <p className="mb-0">
                 This gem is currently in beta. APIs may change before v1.0. We welcome your
