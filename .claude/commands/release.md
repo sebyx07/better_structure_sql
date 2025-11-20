@@ -28,7 +28,7 @@ Analyze recent commits since last release to determine version bump (major/minor
 5. Update version references:
    - `site/src/pages/GettingStarted/Installation.jsx` - Gemfile examples
    - `site/src/pages/GettingStarted/Configuration.jsx` - Code examples
-   - `README.md` - Beta version notice, badges
+   - `README.md` - Beta version notice, RubyGems badge URL (https://badge.fury.io/rb/better_structure_sql.svg)
    - `lib/generators/better_structure_sql/templates/better_structure_sql.rb` - Initializer template
 6. Build: `gem build better_structure_sql.gemspec`
 7. Publish: `gem push better_structure_sql-{version}.gem`
