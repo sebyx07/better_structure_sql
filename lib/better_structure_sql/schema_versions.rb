@@ -101,6 +101,98 @@ module BetterStructureSql
         SchemaVersion.by_format(format_type).order(created_at: :desc).to_a
       end
 
+      # Hash calculation methods
+
+      # Calculates MD5 hash of schema content
+      #
+      # @param content [String] Schema content to hash
+      # @return [String] 32-character MD5 hexdigest
+      # @raise [ArgumentError] If content is nil
+      def calculate_hash(content)
+        raise ArgumentError, 'Content cannot be nil' if content.nil?
+
+        require 'digest/md5'
+        Digest::MD5.hexdigest(content)
+      end
+
+      # Calculates hash from a single schema file
+      #
+      # @param path [String, Pathname] Path to schema file
+      # @return [String] 32-character MD5 hexdigest
+      # @raise [Errno::ENOENT] If file not found
+      def calculate_hash_from_file(path)
+        full_path = Rails.root.join(path)
+        raise Errno::ENOENT, "File not found: #{path}" unless File.exist?(full_path)
+
+        content = File.read(full_path)
+        calculate_hash(content)
+      end
+
+      # Calculates hash from multi-file schema directory
+      #
+      # Combines all schema files in the same order as read_multi_file_content
+      # to ensure consistency with stored content hash.
+      #
+      # @param path [String, Pathname] Path to schema directory
+      # @return [String] 32-character MD5 hexdigest
+      # @raise [Errno::ENOENT] If directory not found
+      def calculate_hash_from_directory(path)
+        full_path = Rails.root.join(path)
+        raise Errno::ENOENT, "Directory not found: #{path}" unless Dir.exist?(full_path)
+
+        content = read_multi_file_content(full_path)
+        calculate_hash(content)
+      end
+
+      # Combined read and hash operation
+      #
+      # @param output_path [String, Pathname] Path to schema file or directory
+      # @param output_mode [String] 'single_file' or 'multi_file'
+      # @return [Array<String, String, String, Integer>] content, content_hash, zip_archive, file_count
+      def read_and_hash_content(output_path, output_mode)
+        content, zip_archive, file_count = read_schema_content(output_path, output_mode)
+        return [nil, nil, nil, nil] unless content
+
+        content_hash = calculate_hash(content)
+        [content, content_hash, zip_archive, file_count]
+      end
+
+      # Hash query methods
+
+      # Retrieves content_hash of the most recent schema version
+      #
+      # @param _connection [ActiveRecord::Connection] Database connection (optional)
+      # @return [String, nil] Hash of latest version or nil if no versions exist
+      def latest_hash(_connection = ActiveRecord::Base.connection)
+        return nil unless table_exists?
+
+        SchemaVersion.latest&.content_hash
+      end
+
+      # Checks if a content hash exists in stored versions
+      #
+      # @param hash [String] Content hash to search for
+      # @param _connection [ActiveRecord::Connection] Database connection (optional)
+      # @return [Boolean] True if hash found, false otherwise
+      def hash_exists?(hash, _connection = ActiveRecord::Base.connection)
+        return false unless table_exists?
+
+        SchemaVersion.where(content_hash: hash).exists?
+      end
+
+      # Finds schema version by content hash
+      #
+      # Returns most recent version if multiple versions have the same hash.
+      #
+      # @param hash [String] Content hash to search for
+      # @param _connection [ActiveRecord::Connection] Database connection (optional)
+      # @return [SchemaVersion, nil] Found version or nil
+      def find_by_hash(hash, _connection = ActiveRecord::Base.connection)
+        return nil unless table_exists?
+
+        SchemaVersion.where(content_hash: hash).order(created_at: :desc).first
+      end
+
       # Retention management
       def cleanup!(_connection = ActiveRecord::Base.connection)
         return 0 unless table_exists?

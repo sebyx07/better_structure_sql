@@ -268,6 +268,56 @@ end
 
 **Low-Medium** - Hash calculation straightforward, but ensuring consistency across single/multi-file modes requires careful testing. Query methods simple.
 
+## Implementation Status
+
+**Status**: ✅ **COMPLETED** (2025-01-20)
+
+### Actual Implementation Summary
+
+All Phase 2 deliverables have been successfully implemented and tested:
+
+1. **Hash Calculation Methods Implemented**:
+   - `calculate_hash(content)` - MD5 hexdigest calculation with nil validation
+   - `calculate_hash_from_file(path)` - File read and hash with error handling
+   - `calculate_hash_from_directory(path)` - Multi-file directory hash calculation
+   - `read_and_hash_content(output_path, output_mode)` - Combined read + hash operation
+
+2. **Hash Query Methods Implemented**:
+   - `latest_hash(connection)` - Retrieves most recent version's content_hash
+   - `hash_exists?(hash, connection)` - Fast indexed lookup for hash existence
+   - `find_by_hash(hash, connection)` - Retrieves version by content_hash
+
+3. **Test Coverage**:
+   - 38 unit tests for SchemaVersions module (all passing)
+   - Hash calculation tests for various content sizes
+   - Hash consistency tests (same content → same hash)
+   - Latest hash retrieval tests
+   - Hash existence check tests
+   - Error handling tests (nil content, missing files/directories)
+   - UTF-8 and large content (5MB+) tests
+   - **All 326 tests passing** ✅
+
+### Success Criteria Met
+
+1. ✅ `calculate_hash(content)` returns valid 32-char MD5 hexdigest
+2. ✅ Hash calculation deterministic (same content → same hash)
+3. ✅ Single-file and multi-file modes supported
+4. ✅ `latest_hash(connection)` queries most recent version correctly
+5. ✅ `hash_exists?(hash)` performs fast indexed lookup
+6. ✅ Error handling for missing files/directories
+7. ✅ UTF-8 content handled correctly
+8. ✅ Test coverage >95% for hash calculation logic
+9. ✅ ArgumentError raised for nil content
+
+### Files Modified
+
+- `lib/better_structure_sql/schema_versions.rb` - Added 7 new public methods
+- `spec/better_structure_sql/schema_versions_spec.rb` - Added 20 comprehensive unit tests
+
+### Next Steps
+
+Phase 2 provides the hash calculation and query infrastructure for Phase 3: Storage deduplication integration.
+
 ## Performance Testing
 
 ### Benchmark Suite
