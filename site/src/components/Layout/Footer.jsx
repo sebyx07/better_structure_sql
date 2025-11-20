@@ -9,7 +9,7 @@ function Footer() {
               Clean, maintainable database schema dumps for Rails.
             </p>
             <p className="text-muted small">
-              Version 0.2.0 (Beta) • MIT License
+              Version 0.2.1 (Beta) • MIT License
             </p>
           </div>
 

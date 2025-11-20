@@ -16,7 +16,7 @@
 
 </div>
 
-> **⚠️ Beta Notice**: Version 0.2.0 is feature-complete and production-ready for **PostgreSQL**. Multi-database support (MySQL, SQLite) is implemented but considered experimental. APIs are stable but may see minor refinements before v1.0. We welcome feedback and contributions!
+> **⚠️ Beta Notice**: Version 0.2.1 is feature-complete and production-ready for **PostgreSQL**. Multi-database support (MySQL, SQLite) is implemented but considered experimental. APIs are stable but may see minor refinements before v1.0. We welcome feedback and contributions!
 
 ## ✨ Why BetterStructureSql?
 
