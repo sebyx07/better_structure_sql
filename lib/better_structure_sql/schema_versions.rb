@@ -6,6 +6,10 @@ module BetterStructureSql
   # Provides class methods for storing, querying, and managing
   # schema versions with automatic retention cleanup.
   module SchemaVersions
+    # Chunk size for streaming file reads (4MB)
+    # Balances memory efficiency with read performance
+    STREAM_CHUNK_SIZE = 4 * 1024 * 1024
+
     class << self
       # Store current schema from file
       def store_current(connection = ActiveRecord::Base.connection)
@@ -115,7 +119,10 @@ module BetterStructureSql
         Digest::MD5.hexdigest(content)
       end
 
-      # Calculates hash from a single schema file
+      # Calculates hash from a single schema file using streaming
+      #
+      # Streams file in 4MB chunks to avoid loading entire file into memory.
+      # Efficient for large schema files (100MB+).
       #
       # @param path [String, Pathname] Path to schema file
       # @return [String] 32-character MD5 hexdigest
@@ -124,14 +131,20 @@ module BetterStructureSql
         full_path = Rails.root.join(path)
         raise Errno::ENOENT, "File not found: #{path}" unless File.exist?(full_path)
 
-        content = File.read(full_path)
-        calculate_hash(content)
+        digest = Digest::MD5.new
+        File.open(full_path, 'rb') do |file|
+          while (chunk = file.read(STREAM_CHUNK_SIZE))
+            digest.update(chunk)
+          end
+        end
+        digest.hexdigest
       end
 
-      # Calculates hash from multi-file schema directory
+      # Calculates hash from multi-file schema directory using streaming
       #
-      # Combines all schema files in the same order as read_multi_file_content
-      # to ensure consistency with stored content hash.
+      # Streams all files in the same order as read_multi_file_content
+      # to ensure consistency with stored content hash. Uses 4MB chunks
+      # for memory efficiency with large schemas.
       #
       # @param path [String, Pathname] Path to schema directory
       # @return [String] 32-character MD5 hexdigest
@@ -140,8 +153,28 @@ module BetterStructureSql
         full_path = Rails.root.join(path)
         raise Errno::ENOENT, "Directory not found: #{path}" unless Dir.exist?(full_path)
 
-        content = read_multi_file_content(full_path)
-        calculate_hash(content)
+        digest = Digest::MD5.new
+
+        # Stream _header.sql
+        header_path = full_path.join('_header.sql')
+        stream_file_to_digest(digest, header_path) if File.exist?(header_path)
+
+        # Stream manifest as SQL comment
+        manifest_path = full_path.join('_manifest.json')
+        if File.exist?(manifest_path)
+          manifest_json = File.read(manifest_path)
+          manifest_comment = "-- MANIFEST_JSON_START\n-- #{manifest_json.gsub("\n", "\n-- ")}\n-- MANIFEST_JSON_END"
+          digest.update(manifest_comment)
+        end
+
+        # Stream numbered directories in order (01_ through 10_)
+        Dir.glob(File.join(full_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
+          Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
+            stream_file_to_digest(digest, file)
+          end
+        end
+
+        digest.hexdigest
       end
 
       # Combined read and hash operation
@@ -220,6 +253,18 @@ module BetterStructureSql
       end
 
       private
+
+      # Streams a file to digest using STREAM_CHUNK_SIZE chunks
+      #
+      # @param digest [Digest::MD5] Digest instance to update
+      # @param file_path [String, Pathname] Path to file
+      def stream_file_to_digest(digest, file_path)
+        File.open(file_path, 'rb') do |file|
+          while (chunk = file.read(STREAM_CHUNK_SIZE))
+            digest.update(chunk)
+          end
+        end
+      end
 
       def read_schema_content(output_path, output_mode)
         case output_mode
