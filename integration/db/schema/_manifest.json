@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "total_files": 11,
-  "total_lines": 2350,
+  "total_files": 12,
+  "total_lines": 2369,
   "max_lines_per_file": 500,
   "directories": {
     "01_extensions": {
@@ -40,7 +40,11 @@
       "files": 1,
       "lines": 35
     },
-    "10_migrations": {
+    "10_comments": {
+      "files": 1,
+      "lines": 19
+    },
+    "11_migrations": {
       "files": 1,
       "lines": 15
     }
