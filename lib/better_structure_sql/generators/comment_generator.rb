@@ -65,7 +65,7 @@ module BetterStructureSql
           # This is a limitation - we'd need to fetch column type, which is complex
           # For now, return a comment indicating manual update needed
           "-- MySQL column comment (requires full ALTER TABLE with column definition):\n" \
-          "-- ALTER TABLE #{quote_identifier(table_name)} MODIFY COLUMN #{quote_identifier(column_name)} <type> COMMENT '#{comment}';"
+            "-- ALTER TABLE #{quote_identifier(table_name)} MODIFY COLUMN #{quote_identifier(column_name)} <type> COMMENT '#{comment}';"
         else
           # PostgreSQL supports COMMENT ON COLUMN
           "COMMENT ON COLUMN #{quote_identifier(table_name)}.#{quote_identifier(column_name)} IS '#{comment}';"
@@ -80,7 +80,7 @@ module BetterStructureSql
       def generate_index_comment(index_name, comment)
         # Only PostgreSQL supports index comments
         if mysql_adapter?(detect_adapter_name)
-          "-- MySQL does not support index comments"
+          '-- MySQL does not support index comments'
         else
           "COMMENT ON INDEX #{quote_identifier(index_name)} IS '#{comment}';"
         end
@@ -94,7 +94,7 @@ module BetterStructureSql
       def generate_view_comment(view_name, comment)
         # Only PostgreSQL supports view comments
         if mysql_adapter?(detect_adapter_name)
-          "-- MySQL does not support view comments"
+          '-- MySQL does not support view comments'
         else
           "COMMENT ON VIEW #{quote_identifier(view_name)} IS '#{comment}';"
         end
@@ -108,7 +108,7 @@ module BetterStructureSql
       def generate_function_comment(function_name, comment)
         # Only PostgreSQL supports function comments
         if mysql_adapter?(detect_adapter_name)
-          "-- MySQL does not support function comments"
+          '-- MySQL does not support function comments'
         else
           "COMMENT ON FUNCTION #{quote_identifier(function_name)} IS '#{comment}';"
         end

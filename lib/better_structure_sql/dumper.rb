@@ -253,12 +253,11 @@ module BetterStructureSql
       return nil unless adapter.supports_comments?
 
       all_comments = adapter.fetch_comments(connection)
-      comments_array = []
       generator = Generators::CommentGenerator.new(config)
 
       # Generate table comments
-      all_comments[:tables].each do |table_name, comment|
-        comments_array << generator.generate(object_type: :table, object_name: table_name, comment: comment)
+      comments_array = all_comments[:tables].map do |table_name, comment|
+        generator.generate(object_type: :table, object_name: table_name, comment: comment)
       end
 
       # Generate column comments
@@ -524,12 +523,11 @@ module BetterStructureSql
       return nil unless adapter.supports_comments?
 
       all_comments = adapter.fetch_comments(connection)
-      comments_array = []
       generator = Generators::CommentGenerator.new(config)
 
       # Generate table comments
-      all_comments[:tables].each do |table_name, comment|
-        comments_array << generator.generate(object_type: :table, object_name: table_name, comment: comment)
+      comments_array = all_comments[:tables].map do |table_name, comment|
+        generator.generate(object_type: :table, object_name: table_name, comment: comment)
       end
 
       # Generate column comments

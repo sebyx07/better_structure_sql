@@ -478,7 +478,8 @@ end`}
 ├── 07_foreign_keys/
 ├── 08_views/
 ├── 09_triggers/
-└── 10_migrations/`}
+├── 10_comments/
+└── 20_migrations/`}
                   </CodeBlock>
                 </div>
               </div>

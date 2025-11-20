@@ -46,40 +46,40 @@ class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
     SQL
 
     # Add view comments (if user_posts view exists)
-    if view_exists?('user_posts')
-      execute <<-SQL.squish
+    return unless view_exists?('user_posts')
+
+    execute <<-SQL.squish
         COMMENT ON VIEW user_posts IS 'Denormalized view joining users with their posts for reporting';
-      SQL
-    end
+    SQL
   end
 
   def down
     # Remove table comments
-    execute "COMMENT ON TABLE users IS NULL;"
-    execute "COMMENT ON TABLE posts IS NULL;"
-    execute "COMMENT ON TABLE products IS NULL;"
+    execute 'COMMENT ON TABLE users IS NULL;'
+    execute 'COMMENT ON TABLE posts IS NULL;'
+    execute 'COMMENT ON TABLE products IS NULL;'
 
     # Remove column comments
-    execute "COMMENT ON COLUMN users.email IS NULL;"
-    execute "COMMENT ON COLUMN users.encrypted_password IS NULL;"
-    execute "COMMENT ON COLUMN posts.title IS NULL;"
-    execute "COMMENT ON COLUMN posts.body IS NULL;"
-    execute "COMMENT ON COLUMN products.name IS NULL;"
-    execute "COMMENT ON COLUMN products.price IS NULL;"
+    execute 'COMMENT ON COLUMN users.email IS NULL;'
+    execute 'COMMENT ON COLUMN users.encrypted_password IS NULL;'
+    execute 'COMMENT ON COLUMN posts.title IS NULL;'
+    execute 'COMMENT ON COLUMN posts.body IS NULL;'
+    execute 'COMMENT ON COLUMN products.name IS NULL;'
+    execute 'COMMENT ON COLUMN products.price IS NULL;'
 
     # Remove index comments
-    execute "COMMENT ON INDEX index_users_on_email IS NULL;"
+    execute 'COMMENT ON INDEX index_users_on_email IS NULL;'
 
     # Remove view comments
-    if view_exists?('user_posts')
-      execute "COMMENT ON VIEW user_posts IS NULL;"
-    end
+    return unless view_exists?('user_posts')
+
+    execute 'COMMENT ON VIEW user_posts IS NULL;'
   end
 
   private
 
   def view_exists?(view_name)
-    connection.select_value(<<-SQL.squish) > 0
+    connection.select_value(<<-SQL.squish).positive?
       SELECT COUNT(*)
       FROM pg_catalog.pg_views
       WHERE schemaname = 'public'

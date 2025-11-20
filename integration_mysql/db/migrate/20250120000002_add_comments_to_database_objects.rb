@@ -9,7 +9,7 @@ class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
     execute "ALTER TABLE products COMMENT 'Product catalog with pricing and inventory'"
     execute "ALTER TABLE orders COMMENT 'Customer orders with order items'"
 
-    # Note: MySQL column comments require full column definition with MODIFY COLUMN
+    # NOTE: MySQL column comments require full column definition with MODIFY COLUMN
     # This is more complex as we'd need to fetch the current column type
     # For demonstration, we'll show the syntax in comments
 
