@@ -465,19 +465,20 @@ end`}
 {`db/schema/
 ├── _header.sql
 ├── _manifest.json
-├── 1_extensions/
+├── 01_extensions/
 │   └── 000001.sql
-├── 2_types/
-├── 3_sequences/
-├── 4_tables/
+├── 02_types/
+├── 03_functions/
+├── 04_sequences/
+├── 05_tables/
 │   ├── 000001.sql
 │   ├── 000002.sql
 │   └── 000003.sql
-├── 5_indexes/
-├── 6_foreign_keys/
-├── 7_views/
-├── 8_functions/
-└── 9_triggers/`}
+├── 06_indexes/
+├── 07_foreign_keys/
+├── 08_views/
+├── 09_triggers/
+└── 10_migrations/`}
                   </CodeBlock>
                 </div>
               </div>

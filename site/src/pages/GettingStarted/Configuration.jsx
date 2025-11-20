@@ -174,15 +174,15 @@ end`}
                 {`db/schema/
 ├── _header.sql
 ├── _manifest.json
-├── 1_extensions/
+├── 01_extensions/
 │   └── 000001.sql
-├── 2_types/
+├── 02_types/
 │   └── 000001.sql
-├── 4_tables/
+├── 05_tables/
 │   ├── 000001.sql
 │   ├── 000002.sql
 │   └── 000003.sql
-└── 9_triggers/
+└── 09_triggers/
     └── 000001.sql`}
               </CodeBlock>
             </section>

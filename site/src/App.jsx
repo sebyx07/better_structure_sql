@@ -9,6 +9,7 @@ import MySQL from './pages/Databases/MySQL';
 import SQLite from './pages/Databases/SQLite';
 import Troubleshooting from './pages/Troubleshooting';
 import Features from './pages/Features';
+import Examples from './pages/Examples';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/configuration" element={<Configuration />} />
         <Route path="/quick-start" element={<QuickStart />} />
         <Route path="/features" element={<Features />} />
+        <Route path="/examples" element={<Examples />} />
         <Route path="/troubleshooting" element={<Troubleshooting />} />
         <Route path="/databases/postgresql" element={<PostgreSQL />} />
         <Route path="/databases/mysql" element={<MySQL />} />

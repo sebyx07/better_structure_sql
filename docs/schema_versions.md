@@ -326,10 +326,23 @@ Schema versions work with both `structure.sql` and `schema.rb`:
 ```ruby
 # Store schema.rb version
 content = File.read('db/schema.rb')
+
+# Get database version (adapter-aware)
+db_version = case ActiveRecord::Base.connection.adapter_name
+             when 'PostgreSQL'
+               ActiveRecord::Base.connection.select_value('SHOW server_version')
+             when 'Mysql2', 'Trilogy'
+               ActiveRecord::Base.connection.select_value('SELECT VERSION()')
+             when 'SQLite'
+               ActiveRecord::Base.connection.select_value('SELECT sqlite_version()')
+             else
+               'unknown'
+             end
+
 BetterStructureSql::SchemaVersions.store(
   content: content,
   format_type: 'rb',
-  pg_version: ActiveRecord::Base.connection.select_value('SHOW server_version')
+  pg_version: db_version  # Note: column name is pg_version but stores any DB version
 )
 ```
 

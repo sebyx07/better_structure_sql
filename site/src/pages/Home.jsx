@@ -185,11 +185,11 @@ function Home() {
                 </li>
                 <li className="mb-2">
                   <i className="bi bi-check-circle-fill text-success me-2" />
-                  Numbered directories show load order (4_tables/, 9_triggers/)
+                  Numbered directories show load order (05_tables/, 09_triggers/)
                 </li>
                 <li className="mb-2">
                   <i className="bi bi-check-circle-fill text-success me-2" />
-                  Easy references: &quot;Check 4_tables/000015.sql for users table&quot;
+                  Easy references: &quot;Check 05_tables/000015.sql for users table&quot;
                 </li>
                 <li className="mb-2">
                   <i className="bi bi-check-circle-fill text-success me-2" />
@@ -204,15 +204,15 @@ function Home() {
                     db/schema/ (Multi-File Output)
                   </h6>
                   <pre className="text-light mb-0">
-                    {`├── 1_extensions/
+                    {`├── 01_extensions/
 │   └── 000001.sql
-├── 2_types/
+├── 02_types/
 │   └── 000001.sql
-├── 4_tables/
+├── 05_tables/
 │   ├── 000001.sql (500 lines)
 │   ├── 000002.sql (500 lines)
 │   └── 000003.sql (350 lines)
-├── 9_triggers/
+├── 09_triggers/
 │   └── 000001.sql
 └── _manifest.json`}
                   </pre>

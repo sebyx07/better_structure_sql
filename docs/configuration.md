@@ -40,17 +40,33 @@ BetterStructureSql.configure do |config|
   # Default: true
   config.include_triggers = true
 
-  # Include views (regular and materialized)
+  # Include views
   # Default: true
   config.include_views = true
 
-  # Include sequences (auto-generated sequences are always included)
+  # Include materialized views (PostgreSQL only)
+  # Default: true
+  config.include_materialized_views = true
+
+  # Include sequences (PostgreSQL only, auto-generated sequences always included)
   # Default: true
   config.include_sequences = true
 
-  # Include custom types and enums
+  # Include custom types and enums (PostgreSQL ENUM, MySQL ENUM/SET)
   # Default: true
   config.include_custom_types = true
+
+  # Include domains (PostgreSQL only)
+  # Default: true
+  config.include_domains = true
+
+  # Include rules (PostgreSQL only, experimental)
+  # Default: false
+  config.include_rules = false
+
+  # Include database object comments (PostgreSQL only)
+  # Default: false
+  config.include_comments = false
 
   # ========================================
   # Schema Versioning (Optional)
@@ -87,6 +103,34 @@ BetterStructureSql.configure do |config|
   # Sort indexes alphabetically within each table
   # Default: true
   config.sort_indexes = true
+
+  # ========================================
+  # Multi-File Output (Optional)
+  # ========================================
+
+  # Set output_path to directory for multi-file mode
+  # Example: 'db/schema' (instead of 'db/structure.sql')
+  # This enables automatic splitting into numbered directories
+
+  # Maximum lines per file in multi-file mode
+  # Default: 500
+  config.max_lines_per_file = 500
+
+  # Overflow threshold (1.1 = allow 10% overflow before splitting)
+  # Default: 1.1
+  config.overflow_threshold = 1.1
+
+  # Generate _manifest.json with metadata
+  # Default: true
+  config.generate_manifest = true
+
+  # ========================================
+  # Database Adapter (Auto-Detected)
+  # ========================================
+
+  # Adapter is automatically detected from ActiveRecord connection
+  # No configuration needed - works with PostgreSQL, MySQL, SQLite
+  # Adapter-specific features are automatically enabled/disabled
 end
 ```
 
@@ -324,6 +368,45 @@ BetterStructureSql.configure do |config|
 end
 ```
 
+### Multi-File Output Configuration
+
+For large schemas (100+ tables), use directory-based output:
+
+```ruby
+BetterStructureSql.configure do |config|
+  # Use directory instead of file
+  config.output_path = 'db/schema'
+
+  # Chunking settings
+  config.max_lines_per_file = 500      # Lines per file
+  config.overflow_threshold = 1.1      # 10% overflow allowed
+  config.generate_manifest = true      # Create _manifest.json
+
+  # Enable versioning with ZIP storage
+  config.enable_schema_versions = true
+  config.schema_versions_limit = 10
+end
+```
+
+This creates:
+```
+db/schema/
+├── _header.sql
+├── _manifest.json
+├── 01_extensions/
+├── 02_types/
+├── 03_functions/
+├── 04_sequences/
+├── 05_tables/
+│   ├── 000001.sql
+│   └── 000002.sql
+├── 06_indexes/
+├── 07_foreign_keys/
+├── 08_views/
+├── 09_triggers/
+└── 10_migrations/
+```
+
 ## Environment-Specific Configuration
 
 You can configure per environment:
@@ -343,6 +426,62 @@ BetterStructureSql.configure do |config|
   end
 end
 ```
+
+## Database-Specific Configuration
+
+### PostgreSQL (Full Feature Support)
+
+```ruby
+BetterStructureSql.configure do |config|
+  # All features available
+  config.include_extensions = true           # pgcrypto, uuid-ossp, etc.
+  config.include_materialized_views = true   # PostgreSQL only
+  config.include_domains = true              # PostgreSQL only
+  config.include_sequences = true            # PostgreSQL only
+  config.include_custom_types = true         # ENUM, composite types
+  config.include_functions = true            # plpgsql, sql
+  config.include_triggers = true
+  config.include_views = true
+end
+```
+
+### MySQL (Experimental Support)
+
+```ruby
+BetterStructureSql.configure do |config|
+  # MySQL-compatible features
+  config.include_functions = true            # Stored procedures
+  config.include_triggers = true
+  config.include_views = true
+  config.include_custom_types = true         # MySQL ENUM/SET
+
+  # PostgreSQL-only features (ignored for MySQL)
+  config.include_extensions = false          # Not supported
+  config.include_materialized_views = false  # Not supported
+  config.include_domains = false             # Not supported
+  config.include_sequences = false           # Uses AUTO_INCREMENT
+end
+```
+
+### SQLite (Experimental Support)
+
+```ruby
+BetterStructureSql.configure do |config|
+  # SQLite-compatible features
+  config.include_triggers = true             # BEFORE/AFTER only
+  config.include_views = true
+
+  # Not supported by SQLite
+  config.include_extensions = false          # Uses PRAGMA instead
+  config.include_functions = false           # No stored procedures
+  config.include_materialized_views = false  # Not supported
+  config.include_domains = false             # Not supported
+  config.include_sequences = false           # Uses AUTOINCREMENT
+  config.include_custom_types = false        # Uses CHECK constraints
+end
+```
+
+**Note**: Adapter is auto-detected from `ActiveRecord::Base.connection.adapter_name`. No manual adapter configuration needed!
 
 ## Next Steps
 

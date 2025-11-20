@@ -7,7 +7,14 @@ Add BetterStructureSql to your Rails application's Gemfile:
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
+
+# Database adapter (choose one based on your database)
+gem 'pg'       # For PostgreSQL (primary support)
+gem 'mysql2'   # For MySQL 8.0+ (experimental)
+gem 'sqlite3'  # For SQLite 3.35+ (experimental)
 ```
+
+**Note**: The gem currently requires the `pg` gem as a dependency. Multi-database adapters (MySQL, SQLite) are implemented but require manual gem installation.
 
 Install the gem:
 
@@ -103,11 +110,13 @@ After installation, generate a schema dump:
 rails db:schema:dump_better
 ```
 
-Check `db/structure.sql` - it should be clean without pg_dump noise!
+Check `db/structure.sql` - it should be clean without database-specific dump tool noise!
 
 ## Database Configuration
 
-Ensure your `config/database.yml` has the correct PostgreSQL settings:
+BetterStructureSql **auto-detects** your database adapter from ActiveRecord. Ensure your `config/database.yml` is configured correctly:
+
+### PostgreSQL (Primary Support)
 
 ```yaml
 development:
@@ -118,12 +127,36 @@ development:
   host: localhost
 ```
 
+### MySQL (Experimental)
+
+```yaml
+development:
+  adapter: mysql2
+  encoding: utf8mb4
+  collation: utf8mb4_unicode_ci
+  database: your_app_development
+  pool: 5
+  host: localhost
+```
+
+### SQLite (Experimental)
+
+```yaml
+development:
+  adapter: sqlite3
+  database: db/development.sqlite3
+  pool: 5
+```
+
 ## Requirements
 
 - **Rails**: 7.0 or higher
 - **Ruby**: 2.7 or higher
-- **PostgreSQL**: 12 or higher
-- **ActiveRecord**: PostgreSQL adapter
+- **Database**:
+  - PostgreSQL 12+ (production-ready)
+  - MySQL 8.0+ (experimental)
+  - SQLite 3.35+ (experimental)
+- **Gems**: `rubyzip >= 2.0.0` (for multi-file ZIP support)
 
 ## Troubleshooting
 
@@ -144,10 +177,21 @@ Check that you have:
 
 ### Permission Issues
 
-Ensure your database user has permissions to query:
+Ensure your database user has permissions to query metadata tables:
+
+**PostgreSQL**:
 - `information_schema` tables
-- `pg_catalog` tables
+- `pg_catalog` tables (for extensions, functions, triggers)
 - Your application schemas
+
+**MySQL**:
+- `information_schema` tables
+- `mysql.proc` table (for stored procedures)
+- `SHOW` privileges
+
+**SQLite**:
+- Read access to `sqlite_master` table
+- PRAGMA query permissions
 
 ## Next Steps
 

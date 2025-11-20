@@ -16,7 +16,7 @@
 
 </div>
 
-> **⚠️ Beta Notice**: This gem is currently in beta (version 0.1.0). APIs may change between releases until v1.0. We welcome feedback and contributions!
+> **⚠️ Beta Notice**: Version 0.1.0 is feature-complete and production-ready for **PostgreSQL**. Multi-database support (MySQL, SQLite) is implemented but considered experimental. APIs are stable but may see minor refinements before v1.0. We welcome feedback and contributions!
 
 ## ✨ Why BetterStructureSql?
 
@@ -95,12 +95,12 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
   - Custom types and enums (PostgreSQL, MySQL SET/ENUM)
 
 ### Multi-File Schema Output (Optional)
-- **Massive schema support** - Handle tens of thousands of tables effortlessly
+- **Massive schema support** - Designed to handle tens of thousands of database objects
 - **Directory-based output** - Split schema across organized, numbered directories
-- **Smart chunking** - 500 LOC per file with intelligent overflow handling
+- **Smart chunking** - 500 LOC per file (configurable) with intelligent overflow handling
 - **Better git diffs** - See only changed files, not entire schema
 - **ZIP downloads** - Download complete directory structure as archive
-- **Easy navigation** - Find tables quickly in `4_tables/`, triggers in `9_triggers/`, etc.
+- **Easy navigation** - Find tables quickly in `05_tables/`, triggers in `09_triggers/`, etc.
 
 ### Schema Versioning (Optional)
 - Store schema versions in database with metadata
@@ -141,8 +141,10 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
-gem 'pg'  # or 'mysql2' or 'sqlite3'
+gem 'pg'  # For PostgreSQL (or 'mysql2' for MySQL, or 'sqlite3' for SQLite)
 ```
+
+**Database adapter is auto-detected** from your `ActiveRecord::Base.connection.adapter_name`. No manual configuration needed!
 
 ```bash
 bundle install
@@ -284,14 +286,21 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
   config.schema_versions_limit = 10  # Keep last 10 versions (0 = unlimited)
 
-  # Customize output
+  # Customize output (feature toggles)
   config.include_extensions = true
   config.include_functions = true
   config.include_triggers = true
   config.include_views = true
+  config.include_materialized_views = true  # PostgreSQL only
+  config.include_domains = true             # PostgreSQL only
+  config.include_sequences = true           # PostgreSQL only
+  config.include_custom_types = true        # PostgreSQL ENUM, MySQL ENUM/SET
+  config.include_rules = false              # Experimental
+  config.include_comments = false           # Database object comments
 
-  # Search path
+  # Search path and schema filtering
   config.search_path = '"$user", public'
+  config.schemas = ['public']               # Which schemas to dump
 end
 ```
 
@@ -314,11 +323,20 @@ BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
   config.schema_versions_limit = 10
 
-  # Feature toggles
+  # Feature toggles (same as single-file mode)
   config.include_extensions = true
   config.include_functions = true
   config.include_triggers = true
   config.include_views = true
+  config.include_materialized_views = true
+  config.include_domains = true
+  config.include_sequences = true
+  config.include_custom_types = true
+
+  # Formatting options
+  config.indent_size = 2                    # SQL indentation (default: 2)
+  config.add_section_spacing = true         # Add blank lines between sections
+  config.sort_tables = true                 # Sort tables alphabetically
 end
 ```
 
@@ -330,34 +348,64 @@ When using `config.output_path = 'db/schema'`, your schema is organized by type 
 db/schema/
 ├── _header.sql              # SET statements and search path
 ├── _manifest.json           # Metadata and load order
-├── 1_extensions/
+├── 01_extensions/
 │   └── 000001.sql
-├── 2_types/
+├── 02_types/
 │   └── 000001.sql
-├── 3_sequences/
+├── 03_functions/
 │   └── 000001.sql
-├── 4_tables/
+├── 04_sequences/
+│   └── 000001.sql
+├── 05_tables/
 │   ├── 000001.sql          # ~500 lines per file
 │   ├── 000002.sql
 │   └── 000003.sql
-├── 5_indexes/
+├── 06_indexes/
 │   └── 000001.sql
-├── 6_foreign_keys/
+├── 07_foreign_keys/
 │   └── 000001.sql
-├── 7_views/
+├── 08_views/
 │   └── 000001.sql
-├── 8_functions/
+├── 09_triggers/
 │   └── 000001.sql
-└── 9_triggers/
+└── 10_migrations/
     └── 000001.sql
 ```
 
 **Benefits for Large Schemas**:
 - ✅ Memory efficient - incremental file writing
 - ✅ Git friendly - only changed files in diffs
-- ✅ Easy navigation - find specific tables/triggers quickly
+- ✅ Easy navigation - find specific tables in `05_tables/`, triggers in `09_triggers/`, etc.
 - ✅ ZIP downloads - complete directory as single archive
 - ✅ Scalable - handles 50,000+ database objects
+- ✅ AI-friendly - 500-line chunks work better with LLM context windows
+
+**Manifest File (_manifest.json)**:
+
+The manifest tracks metadata and provides load order information:
+
+```json
+{
+  "version": "1.0",
+  "total_files": 11,
+  "total_lines": 2345,
+  "max_lines_per_file": 500,
+  "directories": {
+    "01_extensions": { "files": 1, "lines": 3 },
+    "02_types": { "files": 1, "lines": 13 },
+    "03_functions": { "files": 1, "lines": 332 },
+    "04_sequences": { "files": 1, "lines": 289 },
+    "05_tables": { "files": 2, "lines": 979 },
+    "06_indexes": { "files": 1, "lines": 397 },
+    "07_foreign_keys": { "files": 1, "lines": 67 },
+    "08_views": { "files": 1, "lines": 217 },
+    "09_triggers": { "files": 1, "lines": 35 },
+    "10_migrations": { "files": 1, "lines": 13 }
+  }
+}
+```
+
+This example shows a real schema with 2,345 lines split across 11 files. The `05_tables` directory has 2 files because the tables exceed the 500-line limit.
 
 ## 📝 Usage & Rake Tasks
 
@@ -394,14 +442,16 @@ rails db:schema:versions
 
 Output example:
 ```
-Total versions: 5
+Total versions: 3
 
 ID     Format  Mode          Files   PostgreSQL      Created              Size
 -----------------------------------------------------------------------------------------------
-5      sql     multi_file    47      15.3            2025-01-15 10:30:22  156.42 KB
-4      sql     single_file   1       15.3            2025-01-14 15:20:10  89.21 KB
-3      sql     single_file   1       15.2            2025-01-13 09:45:33  87.03 KB
+3      sql     multi_file    12      15.3            2025-01-15 10:30:22  56.42 KB
+2      sql     single_file   1       15.3            2025-01-14 15:20:10  45.21 KB
+1      sql     single_file   1       15.2            2025-01-13 09:45:33  44.03 KB
 ```
+
+The multi-file mode example shows 12 files across 10 directories (extensions, types, functions, sequences, tables, indexes, foreign_keys, views, triggers, migrations) stored as a ZIP archive.
 
 **Restore from Version**
 ```bash
@@ -436,10 +486,12 @@ end
 ```
 
 Access at `http://localhost:3000/schema_versions` to:
-- View list of all stored schema versions
-- Browse formatted schema content with syntax highlighting
-- Download raw SQL/Ruby schema files
+- View list of up to 100 most recent schema versions (pagination-ready)
+- Browse formatted schema content with syntax highlighting (for files <200KB)
+- Download raw SQL/Ruby schema files as text
 - Download ZIP archives for multi-file schemas
+- View manifest metadata for multi-file schemas
+- Stream large files efficiently (>2MB) without memory issues
 - Compare database versions and formats
 
 **Authentication Examples**:
@@ -503,10 +555,13 @@ fi
 |-----------|---------|-------|
 | **Ruby** | 2.7+ | Tested up to Ruby 3.4.7 |
 | **Rails** | 7.0+ | Works with Rails 8.1.1+ |
-| **Database Adapter** | | Choose one: |
-| `pg` | ≥ 1.0 | For PostgreSQL 12+ |
-| `mysql2` | ≥ 0.5 | For MySQL 8.0+ |
-| `sqlite3` | ≥ 1.4 | For SQLite 3.35+ |
+| **rubyzip** | ≥ 2.0.0 | Required for ZIP archive support |
+| **Database Adapter** | | |
+| `pg` | ≥ 1.0 | **Required dependency**. Works with PostgreSQL 12+ |
+| `mysql2` | ≥ 0.5 | Optional. For MySQL 8.0+ (experimental) |
+| `sqlite3` | ≥ 1.4 | Optional. For SQLite 3.35+ (experimental) |
+
+**Note**: The gem currently requires the `pg` gem as a dependency. Multi-database support (MySQL, SQLite) is implemented but requires manual gem installation. Future versions may make database adapters optional.
 
 ## Migration Guides
 
@@ -530,6 +585,34 @@ BetterStructureSql supports **both** `schema.rb` and `structure.sql` formats, al
 - Switch between formats using `SCHEMA_FORMAT` environment variable
 - Compare different formats in the web UI
 - Migrate gradually from Ruby to SQL format
+
+---
+
+## 📊 Project Stats
+
+**Codebase Metrics** (as of v0.1.0):
+- **47 Ruby files** in `lib/` (~5,296 total lines)
+- **25 test files** in `spec/` (~3,022 lines)
+- **8 adapter files** (PostgreSQL, MySQL, SQLite, Registry, Configs)
+- **13 SQL generators** (Tables, Indexes, Functions, Triggers, Views, etc.)
+- **9 introspection modules** (Extensions, Types, Tables, Indexes, Foreign Keys, etc.)
+- **3 integration apps** (PostgreSQL, MySQL, SQLite) with Docker support
+- **React documentation site** deployed to GitHub Pages
+
+**Test Coverage**: Comprehensive RSpec test suite with unit and integration tests across all major components.
+
+**Real-World Example**: The integration app generates a multi-file schema with:
+- 11 SQL files across 10 directories
+- 2,345 total lines of SQL
+- Complete PostgreSQL feature coverage (extensions, types, functions, triggers, materialized views)
+
+**Production Status**:
+- ✅ **PostgreSQL**: Fully implemented and tested (primary focus)
+- ✅ **Multi-file output**: Complete with ZIP storage and streaming
+- ✅ **Schema versioning**: Full CRUD with web UI
+- ✅ **Rails integration**: Drop-in replacement for default tasks
+- 🧪 **MySQL**: Adapter implemented, integration app available (experimental)
+- 🧪 **SQLite**: Adapter implemented, basic testing (experimental)
 
 ---
 
