@@ -11,8 +11,9 @@ module BetterStructureSql
   class SchemaVersionsController < ApplicationController
     # Maximum file size to load into memory (2MB)
     MAX_MEMORY_SIZE = 2.megabytes
-    # Maximum file size to display in browser (200KB)
-    MAX_DISPLAY_SIZE = 200.kilobytes
+    # Maximum file size to display in browser (1MB)
+    # Large enough for most schemas but keeps browser responsive
+    MAX_DISPLAY_SIZE = 1.megabyte
 
     # Lists stored schema versions with pagination
     #
@@ -25,7 +26,7 @@ module BetterStructureSql
       # Load only metadata for listing (no content or zip_archive)
       @schema_versions = SchemaVersion
                          .select(:id, :pg_version, :format_type, :output_mode, :created_at,
-                                 :content_size, :file_count)
+                                 :content_size, :file_count, :content_hash)
                          .order(created_at: :desc)
                          .limit(100)
     end
@@ -43,7 +44,7 @@ module BetterStructureSql
       # Load metadata first
       @schema_version = SchemaVersion
                         .select(:id, :pg_version, :format_type, :output_mode, :created_at,
-                                :content_size, :line_count, :file_count)
+                                :content_size, :line_count, :file_count, :content_hash)
                         .find(params[:id])
 
       # Only load content for small single-file versions

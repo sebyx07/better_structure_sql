@@ -54,7 +54,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
   end
 
   describe 'GET #show' do
-    context 'with small file (< 200KB)' do
+    context 'with small file (< 1MB)' do
       let(:version) { create_schema_version(content_size: 1000) }
 
       it 'returns success' do
@@ -70,8 +70,8 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
       end
     end
 
-    context 'with large file (> 200KB)' do
-      let(:version) { create_schema_version(content_size: 300_000) }
+    context 'with large file (> 1MB)' do
+      let(:version) { create_schema_version(content_size: 2_000_000) }
 
       it 'returns success' do
         get :show, params: { id: version.id }
@@ -87,7 +87,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
       it 'includes content_size' do
         get :show, params: { id: version.id }
         schema_version = assigns(:schema_version)
-        expect(schema_version.content_size).to eq(300_000)
+        expect(schema_version.content_size).to eq(2_000_000)
       end
     end
 
@@ -176,7 +176,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
     end
 
     it 'has correct MAX_DISPLAY_SIZE' do
-      expect(described_class::MAX_DISPLAY_SIZE).to eq(200.kilobytes)
+      expect(described_class::MAX_DISPLAY_SIZE).to eq(1.megabyte)
     end
   end
 end

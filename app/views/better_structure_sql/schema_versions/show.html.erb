@@ -93,6 +93,18 @@
             </p>
           </div>
         </div>
+
+        <div class="row mt-3">
+          <div class="col-md-12">
+            <h6 class="text-muted mb-1">
+              <i class="bi bi-fingerprint"></i>
+              Content Hash (MD5)
+            </h6>
+            <p class="mb-0">
+              <code class="text-muted"><%= @schema_version.content_hash %></code>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -153,7 +165,7 @@
             <i class="bi bi-exclamation-triangle"></i>
             <strong>File too large to display</strong>
             <p class="mb-0 mt-2">
-              This schema file is too large to display in the browser (limit: 200 KB).
+              This schema file is too large to display in the browser (limit: 1 MB).
               Please use the "Download" button above to download and view it locally.
             </p>
           </div>

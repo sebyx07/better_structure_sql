@@ -27,6 +27,7 @@
             <thead class="table-light">
               <tr>
                 <th scope="col" class="text-center" style="width: 80px;">ID</th>
+                <th scope="col" style="width: 120px;">Hash</th>
                 <th scope="col" style="width: 120px;">Format</th>
                 <th scope="col" style="width: 150px;">Mode</th>
                 <th scope="col" style="width: 180px;">PostgreSQL</th>
@@ -41,6 +42,11 @@
                 <tr>
                   <td class="text-center fw-bold text-muted">
                     #<%= version.id %>
+                  </td>
+                  <td>
+                    <code class="text-muted small" title="<%= version.content_hash %>">
+                      <%= version.content_hash[0..7] %>
+                    </code>
                   </td>
                   <td>
                     <%= format_type_badge(version.format_type) %>
