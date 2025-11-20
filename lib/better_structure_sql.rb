@@ -6,7 +6,7 @@ require_relative 'better_structure_sql/adapters/base_adapter'
 require_relative 'better_structure_sql/adapters/postgresql_config'
 require_relative 'better_structure_sql/adapters/registry'
 require_relative 'better_structure_sql/configuration'
-require_relative 'better_structure_sql/dependency_resolver'
+# require_relative 'better_structure_sql/dependency_resolver' # TODO: Not yet integrated, implement in future phase
 require_relative 'better_structure_sql/introspection'
 require_relative 'better_structure_sql/formatter'
 require_relative 'better_structure_sql/generators/base'

@@ -26,14 +26,21 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
         %w[posts public]
       ]
 
-      allow(connection).to receive(:execute).and_return(query_result)
+      # Mock version check for check constraints support
+      allow(connection).to receive(:select_value).with('SELECT VERSION()').and_return('8.0.25')
+
+      # Mock the quote method for building IN clauses
       allow(connection).to receive(:quote).and_return("'users'", "'posts'")
-      allow(adapter).to receive_messages(fetch_columns: [], fetch_primary_key: [], fetch_constraints: [])
+
+      # Mock the table query first, then the batch queries
+      allow(connection).to receive(:execute).and_return(query_result, [], [], [])
 
       tables = adapter.fetch_tables(connection)
 
       expect(tables.length).to eq(2)
       expect(tables.first[:name]).to eq('users')
+      expect(tables.first[:columns]).to eq([])
+      expect(tables.first[:primary_key]).to eq([])
       expect(tables.last[:name]).to eq('posts')
     end
   end

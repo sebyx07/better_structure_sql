@@ -84,29 +84,36 @@ RSpec.describe BetterStructureSql::Adapters::PostgresqlAdapter do
         tables_result = [{ 'table_name' => 'users', 'table_schema' => 'public' }]
 
         # Mock the quote method
-        allow(connection).to receive_messages(execute: tables_result, quote: "'users'")
+        allow(connection).to receive(:quote).with('users').and_return("'users'")
+        allow(connection).to receive(:execute).and_return(tables_result)
 
-        # Mock the columns query
-        columns_result = double
-        allow(columns_result).to receive(:map).and_return([
+        # Mock the batched columns query
+        columns_result = [
           {
-            name: 'id',
-            type: 'bigint',
-            default: nil,
-            nullable: false,
-            length: nil,
-            precision: 64,
-            scale: 0
+            'table_name' => 'users',
+            'column_name' => 'id',
+            'data_type' => 'bigint',
+            'column_default' => nil,
+            'is_nullable' => 'NO',
+            'character_maximum_length' => nil,
+            'numeric_precision' => 64,
+            'numeric_scale' => 0,
+            'udt_name' => 'int8',
+            'ordinal_position' => 1
           }
-        ])
+        ]
 
-        # Mock the primary key query
-        pk_result = double
-        allow(pk_result).to receive(:pluck).with('column_name').and_return(['id'])
+        # Mock the batched primary key query
+        pk_result = [
+          {
+            'table_name' => 'users',
+            'column_name' => 'id',
+            'column_position' => 1
+          }
+        ]
 
-        # Mock the constraints query
-        constraints_result = double
-        allow(constraints_result).to receive(:map).and_return([])
+        # Mock the batched constraints query
+        constraints_result = []
 
         allow(connection).to receive(:select_all).and_return(columns_result, pk_result, constraints_result)
 
@@ -114,7 +121,8 @@ RSpec.describe BetterStructureSql::Adapters::PostgresqlAdapter do
         expect(tables).to be_an(Array)
         expect(tables.first[:name]).to eq('users')
         expect(tables.first[:columns]).to be_an(Array)
-        expect(tables.first[:primary_key]).to be_an(Array)
+        expect(tables.first[:columns].first[:name]).to eq('id')
+        expect(tables.first[:primary_key]).to eq(['id'])
         expect(tables.first[:constraints]).to be_an(Array)
       end
     end

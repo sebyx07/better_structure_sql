@@ -11,7 +11,8 @@ module BetterStructureSql
       def generate(domain)
         schema_prefix = domain[:schema] == 'public' ? '' : "#{domain[:schema]}."
 
-        parts = ["CREATE DOMAIN IF NOT EXISTS #{schema_prefix}#{domain[:name]} AS #{domain[:base_type]}"]
+        # Note: PostgreSQL does not support IF NOT EXISTS for domains
+        parts = ["CREATE DOMAIN #{schema_prefix}#{domain[:name]} AS #{domain[:base_type]}"]
 
         parts << domain[:constraint] if domain[:constraint].present?
 

@@ -67,7 +67,7 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
 | **Materialized Views** | ✅ | ❌ | ❌ |
 | **Functions** | ✅ plpgsql, sql | ✅ Stored procedures | ❌ |
 | **Triggers** | ✅ BEFORE/AFTER/INSTEAD OF | ✅ BEFORE/AFTER | ✅ BEFORE/AFTER |
-| **Partitioned Tables** | ✅ RANGE/LIST/HASH | ❌ | ❌ |
+| **Partitioned Tables** | 🚧 Planned | ❌ | ❌ |
 | **Domains** | ✅ | ❌ | ❌ |
 
 ### Getting Started by Database
@@ -418,8 +418,8 @@ BetterStructureSql.configure do |config|
   config.include_domains = true             # PostgreSQL only
   config.include_sequences = true           # PostgreSQL only
   config.include_custom_types = true        # PostgreSQL ENUM, MySQL ENUM/SET
-  config.include_rules = false              # Experimental
-  config.include_comments = false           # Database object comments
+  # config.include_rules = false            # Not yet implemented
+  # config.include_comments = false         # Not yet implemented
 
   # Search path and schema filtering
   config.search_path = '"$user", public'

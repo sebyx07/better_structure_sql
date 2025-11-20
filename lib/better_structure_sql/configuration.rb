@@ -14,8 +14,8 @@ module BetterStructureSql
                   :include_triggers,
                   :include_views,
                   :include_materialized_views,
-                  :include_rules,
-                  :include_comments,
+                  :include_rules,      # TODO: Not yet implemented
+                  :include_comments,   # TODO: Not yet implemented
                   :include_domains,
                   :include_sequences,
                   :include_custom_types,

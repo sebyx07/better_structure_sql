@@ -16,7 +16,7 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
         }
         result = generator.generate(domain)
 
-        expect(result).to eq('CREATE DOMAIN IF NOT EXISTS positive_integer AS integer;')
+        expect(result).to eq('CREATE DOMAIN positive_integer AS integer;')
       end
     end
 
@@ -30,7 +30,7 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
         }
         result = generator.generate(domain)
 
-        expect(result).to include('CREATE DOMAIN IF NOT EXISTS email AS character varying(255)')
+        expect(result).to include('CREATE DOMAIN email AS character varying(255)')
         expect(result).to include('CHECK')
         expect(result).to end_with(';')
       end
@@ -46,7 +46,7 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
         }
         result = generator.generate(domain)
 
-        expect(result).to start_with('CREATE DOMAIN IF NOT EXISTS custom.positive_number')
+        expect(result).to start_with('CREATE DOMAIN custom.positive_number')
       end
     end
 
@@ -60,7 +60,7 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
         }
         result = generator.generate(domain)
 
-        expect(result).to eq('CREATE DOMAIN IF NOT EXISTS simple_domain AS text;')
+        expect(result).to eq('CREATE DOMAIN simple_domain AS text;')
       end
     end
   end

@@ -74,11 +74,11 @@ Ruby gem that generates clean PostgreSQL schema dumps for Rails applications wit
 - ZIP archive storage for multi-file schemas
 - Extract and restore from stored versions
 
-**DependencyResolver** - Object ordering
-- Build dependency graph
-- Topological sort for correct order
-- Handle views depending on tables
-- Handle functions used by triggers
+**DependencyResolver** - Object ordering (Not Currently Integrated)
+- Class exists but not actively used in dumper
+- Current implementation uses fixed section order (extensions → types → tables → views → functions → triggers)
+- Fixed order works for most cases but may fail for complex inter-dependencies
+- Future: Full dependency graph with topological sort for views/functions
 
 **FileWriter** - Multi-file output management
 - Detect output mode (file vs directory)
@@ -228,9 +228,11 @@ Ruby gem that generates clean PostgreSQL schema dumps for Rails applications wit
 - Partial indexes with WHERE clauses
 - Expression indexes
 - Multi-column indexes
+
+### Planned Features (Not Yet Implemented)
 - Partitioned tables (RANGE, LIST, HASH)
 - Table inheritance
-- Comments on database objects
+- Comments on database objects (COMMENT ON)
 
 ### Ordering Requirements
 1. Extensions (needed by types and functions)
@@ -330,13 +332,17 @@ Ruby gem that generates clean PostgreSQL schema dumps for Rails applications wit
 - Rake tasks for version operations
 - API endpoint documentation
 
-### Phase 3: Advanced
-- Views and materialized views
-- Functions and triggers
+### Phase 3: Advanced (Completed)
+- Views and materialized views ✅
+- Functions and triggers ✅
+- Dependency resolution (basic fixed-order implementation) ✅
+- Performance optimization (ongoing)
+
+### Future Phases: Additional Features (Not Yet Implemented)
 - Partitioned tables
 - Table inheritance
-- Dependency resolution
-- Performance optimization
+- Full dependency graph resolution
+- Comments on database objects
 
 ## Development Workflow
 
