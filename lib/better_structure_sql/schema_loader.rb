@@ -35,10 +35,10 @@ module BetterStructureSql
       header_path = File.join(dir_path, '_header.sql')
       connection.execute(File.read(header_path)) if File.exist?(header_path)
 
-      # Load numbered directories in order (01_extensions through 10_migrations)
+      # Load numbered directories in order (01_extensions through 20_migrations)
       # Load all files in each directory and execute statements
-      # Use [01]* pattern to match directories starting with 0 or 1 (covers 01-10)
-      Dir.glob(File.join(dir_path, '[01]*_*')).sort.each do |dir|
+      # Use [012]* pattern to match directories starting with 0, 1, or 2 (covers 01-29)
+      Dir.glob(File.join(dir_path, '[012]*_*')).sort.each do |dir|
         next unless File.directory?(dir)
 
         dir_name = File.basename(dir)

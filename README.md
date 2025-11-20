@@ -491,7 +491,9 @@ db/schema/
 │   └── 000001.sql
 ├── 09_triggers/
 │   └── 000001.sql
-└── 10_migrations/
+├── 10_comments/
+│   └── 000001.sql
+└── 20_migrations/
     └── 000001.sql
 ```
 
@@ -523,7 +525,8 @@ The manifest tracks metadata and provides load order information:
     "07_foreign_keys": { "files": 1, "lines": 67 },
     "08_views": { "files": 1, "lines": 217 },
     "09_triggers": { "files": 1, "lines": 35 },
-    "10_migrations": { "files": 1, "lines": 13 }
+    "10_comments": { "files": 1, "lines": 9 },
+    "20_migrations": { "files": 1, "lines": 13 }
   }
 }
 ```

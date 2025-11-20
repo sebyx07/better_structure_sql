@@ -58,7 +58,7 @@ module BetterStructureSql
         materialized_views: '08_views',  # Bundled with views
         triggers: '09_triggers',         # After tables and functions
         comments: '10_comments',         # After all objects are created
-        migrations: '11_migrations'      # Last (schema_migrations INSERT)
+        migrations: '20_migrations'      # Last (schema_migrations INSERT)
       }
 
       file_map = {}
