@@ -51,7 +51,7 @@ module BetterStructureSql
       @include_views = true
       @include_materialized_views = true
       @include_rules = false
-      @include_comments = false
+      @include_comments = true
       @include_domains = true
       @include_sequences = true
       @include_custom_types = true
