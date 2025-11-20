@@ -2,14 +2,14 @@
 
 # == Schema Information
 #
-# Table name: users
+# Table name: users(User accounts and authentication data)
 #
-#  id                 :bigint           not null, primary key
-#  email              :string           not null
-#  encrypted_password :string
-#  uuid               :uuid
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
+#  id                                                            :bigint           not null, primary key
+#  email(Unique email address for authentication)                :string           not null
+#  encrypted_password(BCrypt hashed password for secure storage) :string
+#  uuid                                                          :uuid
+#  created_at                                                    :datetime         not null
+#  updated_at                                                    :datetime         not null
 #
 # Indexes
 #

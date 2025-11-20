@@ -29,7 +29,7 @@ class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
     SQL
 
     execute <<-SQL.squish
-      COMMENT ON COLUMN posts.content IS 'Full post content in Markdown format';
+      COMMENT ON COLUMN posts.body IS 'Full post content in Markdown format';
     SQL
 
     execute <<-SQL.squish
@@ -63,7 +63,7 @@ class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
     execute "COMMENT ON COLUMN users.email IS NULL;"
     execute "COMMENT ON COLUMN users.encrypted_password IS NULL;"
     execute "COMMENT ON COLUMN posts.title IS NULL;"
-    execute "COMMENT ON COLUMN posts.content IS NULL;"
+    execute "COMMENT ON COLUMN posts.body IS NULL;"
     execute "COMMENT ON COLUMN products.name IS NULL;"
     execute "COMMENT ON COLUMN products.price IS NULL;"
 

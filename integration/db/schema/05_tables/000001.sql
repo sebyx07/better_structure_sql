@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS better_structure_sql_schema_versions (
   "updated_at" timestamp NOT NULL,
   "content_hash" varchar(32) NOT NULL,
   PRIMARY KEY ("id"),
-  CONSTRAINT format_type_check CHECK (((format_type)::text = ANY (ARRAY[('sql'::character varying)::text, ('rb'::character varying)::text]))),
-  CONSTRAINT output_mode_check CHECK (((output_mode)::text = ANY (ARRAY[('single_file'::character varying)::text, ('multi_file'::character varying)::text])))
+  CONSTRAINT format_type_check CHECK (((format_type)::text = ANY ((ARRAY['sql'::character varying, 'rb'::character varying])::text[]))),
+  CONSTRAINT output_mode_check CHECK (((output_mode)::text = ANY ((ARRAY['single_file'::character varying, 'multi_file'::character varying])::text[])))
 );
 
 CREATE TABLE IF NOT EXISTS categories (

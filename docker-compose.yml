@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: better_structure_sql_development
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./integration/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s

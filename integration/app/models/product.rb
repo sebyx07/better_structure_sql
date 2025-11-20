@@ -2,23 +2,23 @@
 
 # == Schema Information
 #
-# Table name: products
+# Table name: products(Product catalog with pricing and inventory)
 #
-#  id                  :bigint           not null, primary key
-#  description         :text
-#  discount_percentage :decimal(5, 2)
-#  is_active           :boolean          default(TRUE)
-#  is_featured         :boolean          default(FALSE)
-#  metadata            :jsonb
-#  name                :string           not null
-#  price               :decimal(10, 2)   not null
-#  sku                 :string           not null
-#  specifications      :jsonb
-#  stock_quantity      :integer          default(0), not null
-#  tags                :string           default([]), is an Array
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  category_id         :bigint           not null
+#  id                                                                     :bigint           not null, primary key
+#  description                                                            :text
+#  discount_percentage                                                    :decimal(5, 2)
+#  is_active                                                              :boolean          default(TRUE)
+#  is_featured                                                            :boolean          default(FALSE)
+#  metadata                                                               :jsonb
+#  name(Product name displayed to customers)                              :string           not null
+#  price(Current selling price in cents (to avoid floating point errors)) :decimal(10, 2)   not null
+#  sku                                                                    :string           not null
+#  specifications                                                         :jsonb
+#  stock_quantity                                                         :integer          default(0), not null
+#  tags                                                                   :string           default([]), is an Array
+#  created_at                                                             :datetime         not null
+#  updated_at                                                             :datetime         not null
+#  category_id                                                            :bigint           not null
 #
 # Indexes
 #

@@ -2,15 +2,15 @@
 
 # == Schema Information
 #
-# Table name: posts
+# Table name: posts(Blog posts created by users)
 #
-#  id           :bigint           not null, primary key
-#  body         :text
-#  published_at :datetime
-#  title        :string           not null
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
-#  user_id      :bigint           not null
+#  id                                                      :bigint           not null, primary key
+#  body(Full post content in Markdown format)              :text
+#  published_at                                            :datetime
+#  title(Post title displayed in search results and feeds) :string           not null
+#  created_at                                              :datetime         not null
+#  updated_at                                              :datetime         not null
+#  user_id                                                 :bigint           not null
 #
 # Indexes
 #
