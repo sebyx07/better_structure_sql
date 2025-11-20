@@ -11,7 +11,14 @@ module BetterStructureSql
     STREAM_CHUNK_SIZE = 4 * 1024 * 1024
 
     class << self
-      # Store current schema from file
+      # Store current schema from file with automatic deduplication
+      #
+      # Calculates content hash and compares with latest version.
+      # Skips storage if hash matches (no schema changes).
+      # Cleans up filesystem directory after storing ZIP (multi-file mode only).
+      #
+      # @param connection [ActiveRecord::Connection] Database connection
+      # @return [StoreResult] Result indicating stored or skipped
       def store_current(connection = ActiveRecord::Base.connection)
         config = BetterStructureSql.configuration
         pg_version = PgVersion.detect(connection)
@@ -20,13 +27,24 @@ module BetterStructureSql
         format_type = deduce_format_type(config.output_path)
         output_mode = detect_output_mode(config.output_path)
 
-        # Read content
+        # Read content and calculate hash
         content, zip_archive, file_count = read_schema_content(config.output_path, output_mode)
+        return build_skip_result(nil, count) unless content
 
-        return nil unless content
+        content_hash = calculate_hash(content)
 
-        store(
+        # Compare with latest version's hash
+        ensure_table_exists!(connection)
+        latest_version = latest
+        if latest_version && latest_version.content_hash == content_hash
+          # Skip storage - no changes detected (directory remains for re-use)
+          return build_skip_result(latest_version, count)
+        end
+
+        # Proceed with storage - hash differs or no previous versions
+        version = store(
           content: content,
+          content_hash: content_hash,
           zip_archive: zip_archive,
           format_type: format_type,
           output_mode: output_mode,
@@ -34,10 +52,26 @@ module BetterStructureSql
           file_count: file_count,
           connection: connection
         )
+
+        # Cleanup filesystem directory after ZIP stored (multi-file mode only)
+        cleanup_filesystem_directory(config.output_path, output_mode)
+
+        # Cleanup old versions (retention management)
+        cleanup!(connection)
+
+        # Return stored result
+        build_stored_result(version)
       end
 
       # Store schema version with explicit parameters
-      def store(content:, format_type:, pg_version:, **options)
+      #
+      # @param content [String] Schema content
+      # @param content_hash [String] MD5 hash of content (required)
+      # @param format_type [String] Format type ('sql' or 'rb')
+      # @param pg_version [String] PostgreSQL version
+      # @param options [Hash] Optional parameters (connection, output_mode, zip_archive, file_count)
+      # @return [SchemaVersion] Created version
+      def store(content:, content_hash:, format_type:, pg_version:, **options)
         connection = options.fetch(:connection, ActiveRecord::Base.connection)
         output_mode = options.fetch(:output_mode, 'single_file')
         zip_archive = options[:zip_archive]
@@ -45,8 +79,11 @@ module BetterStructureSql
 
         ensure_table_exists!(connection)
 
-        version = SchemaVersion.create!(
+        SchemaVersion.create!(
           content: content,
+          content_hash: content_hash,
+          content_size: content.bytesize,
+          line_count: content.count("\n"),
           zip_archive: zip_archive,
           format_type: format_type,
           output_mode: output_mode,
@@ -54,10 +91,6 @@ module BetterStructureSql
           file_count: file_count,
           created_at: Time.current
         )
-
-        cleanup!(connection)
-
-        version
       end
 
       # Retrieval methods
@@ -247,6 +280,52 @@ module BetterStructureSql
       end
 
       private
+
+      # Builds a skip result when storage is not needed
+      #
+      # @param version [SchemaVersion, nil] Existing version that matched
+      # @param total_count [Integer] Total version count
+      # @return [StoreResult] Skip result
+      def build_skip_result(version, total_count)
+        StoreResult.new(
+          skipped: true,
+          version_id: version&.id,
+          hash: version&.content_hash,
+          total_count: total_count
+        )
+      end
+
+      # Builds a stored result when new version was created
+      #
+      # @param version [SchemaVersion] Newly created version
+      # @return [StoreResult] Stored result
+      def build_stored_result(version)
+        StoreResult.new(
+          skipped: false,
+          version: version,
+          total_count: count
+        )
+      end
+
+      # Cleanup filesystem directory after ZIP archive stored
+      #
+      # Only removes multi-file directories (single files remain).
+      # Gracefully handles errors without failing the storage operation.
+      #
+      # @param output_path [String, Pathname] Path to directory
+      # @param output_mode [String] Output mode ('single_file' or 'multi_file')
+      def cleanup_filesystem_directory(output_path, output_mode)
+        # Only cleanup multi-file directories (single files remain)
+        return unless output_mode == 'multi_file'
+
+        full_path = Rails.root.join(output_path)
+        return unless Dir.exist?(full_path)
+
+        FileUtils.rm_rf(full_path)
+      rescue StandardError => e
+        warn "Warning: Failed to cleanup directory #{output_path}: #{e.message}"
+        # Continue despite cleanup failure - version already stored
+      end
 
       # Streams a file to digest using STREAM_CHUNK_SIZE chunks
       #

@@ -22,11 +22,16 @@ module BetterStructureSql
     validates :output_mode, presence: true, inclusion: { in: %w[single_file multi_file] }
 
     # Scopes
-    scope :latest, -> { order(created_at: :desc).first }
+    scope :latest_first, -> { order(created_at: :desc) }
     scope :by_format, ->(type) { where(format_type: type) }
     scope :by_output_mode, ->(mode) { where(output_mode: mode) }
     scope :recent, ->(limit) { order(created_at: :desc).limit(limit) }
     scope :oldest_first, -> { order(created_at: :asc) }
+
+    # Class method to get latest version
+    def self.latest
+      order(created_at: :desc).first
+    end
 
     # Instance methods
     def size

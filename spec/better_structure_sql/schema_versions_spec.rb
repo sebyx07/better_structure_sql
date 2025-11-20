@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'digest'
 
 RSpec.describe BetterStructureSql::SchemaVersions do
   let(:connection) { double('connection') }
@@ -20,6 +21,7 @@ RSpec.describe BetterStructureSql::SchemaVersions do
   describe '.store' do
     it 'stores a schema version with given parameters' do
       content = 'CREATE TABLE users (id serial);'
+      content_hash = Digest::MD5.hexdigest(content)
       format_type = 'sql'
       pg_version = '14.5'
 
@@ -33,11 +35,9 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       allow(BetterStructureSql::SchemaVersion).to receive(:create!)
         .and_return(version)
 
-      # Mock cleanup
-      allow(described_class).to receive(:cleanup!).and_return(0)
-
       result = described_class.store(
         content: content,
+        content_hash: content_hash,
         format_type: format_type,
         pg_version: pg_version,
         connection: connection
@@ -54,6 +54,7 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       expect do
         described_class.store(
           content: 'CREATE TABLE users',
+          content_hash: Digest::MD5.hexdigest('CREATE TABLE users'),
           format_type: 'sql',
           output_mode: 'single_file',
           pg_version: '14.5',
