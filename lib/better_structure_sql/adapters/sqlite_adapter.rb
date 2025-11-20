@@ -243,6 +243,20 @@ module BetterStructureSql
         connection.execute(query).map { |row| build_trigger_hash(row) }
       end
 
+      # Fetch comments on database objects (not supported in SQLite)
+      #
+      # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
+      # @return [Hash] Empty hash for all object types
+      def fetch_comments(_connection)
+        {
+          tables: {},
+          columns: {},
+          indexes: {},
+          views: {},
+          functions: {}
+        }
+      end
+
       # Capability methods - SQLite feature support
 
       # Indicates whether SQLite supports extensions

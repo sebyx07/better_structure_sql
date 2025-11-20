@@ -267,6 +267,20 @@ module BetterStructureSql
         end
       end
 
+      # Fetch comments on database objects
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash] Hash with object types as keys (:tables, :columns)
+      def fetch_comments(connection)
+        {
+          tables: fetch_table_comments(connection),
+          columns: fetch_column_comments(connection),
+          indexes: {},  # MySQL doesn't support index comments via information_schema
+          views: {},    # MySQL doesn't expose view comments via information_schema
+          functions: {} # MySQL doesn't expose function comments via information_schema
+        }
+      end
+
       # Capability methods - MySQL feature support
 
       # Indicates whether MySQL supports extensions
@@ -323,6 +337,13 @@ module BetterStructureSql
       # @return [Boolean] True for MySQL 8.0.16+, false for earlier versions
       def supports_check_constraints?
         version_at_least?(database_version, '8.0.16')
+      end
+
+      # Indicates whether MySQL supports comments on database objects
+      #
+      # @return [Boolean] Always true for MySQL (tables and columns only)
+      def supports_comments?
+        true # MySQL supports table and column comments
       end
 
       # Version detection
@@ -602,6 +623,48 @@ module BetterStructureSql
         else
           data_type
         end
+      end
+
+      # Fetch comments on tables
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of table_name => comment
+      def fetch_table_comments(connection)
+        query = <<~SQL.squish
+          SELECT TABLE_NAME, TABLE_COMMENT
+          FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_TYPE = 'BASE TABLE'
+            AND TABLE_COMMENT != ''
+          ORDER BY TABLE_NAME
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          result[row[0]] = row[1]
+        end
+        result
+      end
+
+      # Fetch comments on columns
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of "table_name.column_name" => comment
+      def fetch_column_comments(connection)
+        query = <<~SQL.squish
+          SELECT TABLE_NAME, COLUMN_NAME, COLUMN_COMMENT
+          FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND COLUMN_COMMENT != ''
+          ORDER BY TABLE_NAME, ORDINAL_POSITION
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          key = "#{row[0]}.#{row[1]}"
+          result[key] = row[2]
+        end
+        result
       end
     end
   end

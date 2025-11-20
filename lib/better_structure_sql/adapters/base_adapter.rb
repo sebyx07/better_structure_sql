@@ -112,6 +112,17 @@ module BetterStructureSql
         raise NotImplementedError, "#{self.class} must implement #fetch_triggers"
       end
 
+      # Fetch comments on database objects
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash] Hash with object types as keys (:tables, :columns, :indexes, etc.)
+      #   Each value is a hash mapping object identifier to comment text
+      #   Example: { tables: { 'users' => 'User accounts', ... }, columns: { 'users.email' => 'Email address', ... } }
+      # @raise [NotImplementedError] If not implemented by subclass
+      def fetch_comments(connection)
+        raise NotImplementedError, "#{self.class} must implement #fetch_comments"
+      end
+
       # Capability methods - indicate feature support
 
       # Indicates whether this database supports extensions (like PostgreSQL extensions)
@@ -160,6 +171,13 @@ module BetterStructureSql
       #
       # @return [Boolean] True if sequences are supported, false otherwise
       def supports_sequences?
+        false
+      end
+
+      # Indicates whether this database supports comments on database objects
+      #
+      # @return [Boolean] True if comments are supported, false otherwise
+      def supports_comments?
         false
       end
 

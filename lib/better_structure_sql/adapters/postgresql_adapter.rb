@@ -304,6 +304,20 @@ module BetterStructureSql
         end
       end
 
+      # Fetch comments on database objects
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash] Hash with object types as keys (:tables, :columns, :indexes, :views, :functions)
+      def fetch_comments(connection)
+        {
+          tables: fetch_table_comments(connection),
+          columns: fetch_column_comments(connection),
+          indexes: fetch_index_comments(connection),
+          views: fetch_view_comments(connection),
+          functions: fetch_function_comments(connection)
+        }
+      end
+
       # Capability methods - PostgreSQL supports all features
 
       # Indicates whether PostgreSQL supports extensions
@@ -352,6 +366,13 @@ module BetterStructureSql
       #
       # @return [Boolean] Always true for PostgreSQL
       def supports_sequences?
+        true
+      end
+
+      # Indicates whether PostgreSQL supports comments
+      #
+      # @return [Boolean] Always true for PostgreSQL
+      def supports_comments?
         true
       end
 
@@ -779,6 +800,130 @@ module BetterStructureSql
         end
 
         type_data
+      end
+
+      # Fetch comments on tables
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of table_name => comment
+      def fetch_table_comments(connection)
+        query = <<~SQL.squish
+          SELECT
+            c.relname as table_name,
+            d.description as comment
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
+          WHERE c.relkind = 'r'
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY c.relname
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          result[row['table_name']] = row['comment']
+        end
+        result
+      end
+
+      # Fetch comments on columns
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of "table_name.column_name" => comment
+      def fetch_column_comments(connection)
+        query = <<~SQL.squish
+          SELECT
+            c.relname as table_name,
+            a.attname as column_name,
+            d.description as comment
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_attribute a ON a.attrelid = c.oid
+          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
+          WHERE c.relkind = 'r'
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND a.attnum > 0
+            AND NOT a.attisdropped
+          ORDER BY c.relname, a.attnum
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          key = "#{row['table_name']}.#{row['column_name']}"
+          result[key] = row['comment']
+        end
+        result
+      end
+
+      # Fetch comments on indexes
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of index_name => comment
+      def fetch_index_comments(connection)
+        query = <<~SQL.squish
+          SELECT
+            c.relname as index_name,
+            d.description as comment
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
+          WHERE c.relkind = 'i'
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY c.relname
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          result[row['index_name']] = row['comment']
+        end
+        result
+      end
+
+      # Fetch comments on views
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of view_name => comment
+      def fetch_view_comments(connection)
+        query = <<~SQL.squish
+          SELECT
+            c.relname as view_name,
+            d.description as comment
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
+          WHERE c.relkind = 'v'
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY c.relname
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          result[row['view_name']] = row['comment']
+        end
+        result
+      end
+
+      # Fetch comments on functions
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, String>] Hash of function_name => comment
+      def fetch_function_comments(connection)
+        query = <<~SQL.squish
+          SELECT
+            p.proname as function_name,
+            d.description as comment
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          JOIN pg_description d ON d.objoid = p.oid
+          WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          ORDER BY p.proname
+        SQL
+
+        result = {}
+        connection.execute(query).each do |row|
+          result[row['function_name']] = row['comment']
+        end
+        result
       end
     end
   end

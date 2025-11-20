@@ -55,6 +55,7 @@ module BetterStructureSql
       output << views_section if config.include_views
       output << materialized_views_section if config.include_materialized_views
       output << triggers_section if config.include_triggers
+      output << comments_section if config.include_comments
       output << schema_migrations_section
       output << footer
 
@@ -115,6 +116,7 @@ module BetterStructureSql
       sections[:views] = generate_views_section if config.include_views
       sections[:materialized_views] = generate_materialized_views_section if config.include_materialized_views
       sections[:triggers] = generate_triggers_section if config.include_triggers
+      sections[:comments] = generate_comments_section if config.include_comments
       sections[:migrations] = generate_migrations_section unless sqlite_adapter?
 
       sections.compact
@@ -242,6 +244,46 @@ module BetterStructureSql
 
       generator = Generators::TriggerGenerator.new(config)
       triggers.map { |trigger| generator.generate(trigger) }
+    end
+
+    # Generate comments section
+    #
+    # @return [Array<String>, nil] Array of COMMENT ON statements or nil if empty
+    def generate_comments_section
+      return nil unless adapter.supports_comments?
+
+      all_comments = adapter.fetch_comments(connection)
+      comments_array = []
+      generator = Generators::CommentGenerator.new(config)
+
+      # Generate table comments
+      all_comments[:tables].each do |table_name, comment|
+        comments_array << generator.generate(object_type: :table, object_name: table_name, comment: comment)
+      end
+
+      # Generate column comments
+      all_comments[:columns].each do |column_identifier, comment|
+        comments_array << generator.generate(object_type: :column, object_name: column_identifier, comment: comment)
+      end
+
+      # Generate index comments (PostgreSQL only)
+      all_comments[:indexes].each do |index_name, comment|
+        comments_array << generator.generate(object_type: :index, object_name: index_name, comment: comment)
+      end
+
+      # Generate view comments (PostgreSQL only)
+      all_comments[:views].each do |view_name, comment|
+        comments_array << generator.generate(object_type: :view, object_name: view_name, comment: comment)
+      end
+
+      # Generate function comments (PostgreSQL only)
+      all_comments[:functions].each do |function_name, comment|
+        comments_array << generator.generate(object_type: :function, object_name: function_name, comment: comment)
+      end
+
+      return nil if comments_array.empty?
+
+      comments_array
     end
 
     # Generate migrations section
@@ -476,6 +518,45 @@ module BetterStructureSql
       lines = ['-- Triggers']
       lines += triggers.map { |trigger| generator.generate(trigger) }
       lines.join("\n\n")
+    end
+
+    def comments_section
+      return nil unless adapter.supports_comments?
+
+      all_comments = adapter.fetch_comments(connection)
+      comments_array = []
+      generator = Generators::CommentGenerator.new(config)
+
+      # Generate table comments
+      all_comments[:tables].each do |table_name, comment|
+        comments_array << generator.generate(object_type: :table, object_name: table_name, comment: comment)
+      end
+
+      # Generate column comments
+      all_comments[:columns].each do |column_identifier, comment|
+        comments_array << generator.generate(object_type: :column, object_name: column_identifier, comment: comment)
+      end
+
+      # Generate index comments (PostgreSQL only)
+      all_comments[:indexes].each do |index_name, comment|
+        comments_array << generator.generate(object_type: :index, object_name: index_name, comment: comment)
+      end
+
+      # Generate view comments (PostgreSQL only)
+      all_comments[:views].each do |view_name, comment|
+        comments_array << generator.generate(object_type: :view, object_name: view_name, comment: comment)
+      end
+
+      # Generate function comments (PostgreSQL only)
+      all_comments[:functions].each do |function_name, comment|
+        comments_array << generator.generate(object_type: :function, object_name: function_name, comment: comment)
+      end
+
+      return nil if comments_array.empty?
+
+      lines = ['-- Comments']
+      lines += comments_array
+      lines.join("\n")
     end
 
     def schema_migrations_section
