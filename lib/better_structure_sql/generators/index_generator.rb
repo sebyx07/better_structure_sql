@@ -23,7 +23,9 @@ module BetterStructureSql
         table = quote_identifier(index[:table])
         name = quote_identifier(index[:name])
 
-        "CREATE #{unique_clause}INDEX IF NOT EXISTS #{name} ON #{table} (#{columns_list});"
+        # MySQL doesn't support IF NOT EXISTS for indexes, SQLite does
+        # For simplicity, omit IF NOT EXISTS for cross-database compatibility
+        "CREATE #{unique_clause}INDEX #{name} ON #{table} (#{columns_list});"
       end
 
       private

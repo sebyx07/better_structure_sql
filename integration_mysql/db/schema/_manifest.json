@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "total_files": 7,
-  "total_lines": 183,
+  "total_lines": 187,
   "max_lines_per_file": 500,
   "directories": {
     "03_functions": {
@@ -10,11 +10,11 @@
     },
     "05_tables": {
       "files": 1,
-      "lines": 93
+      "lines": 94
     },
     "06_indexes": {
       "files": 1,
-      "lines": 29
+      "lines": 31
     },
     "07_foreign_keys": {
       "files": 1,
@@ -30,7 +30,7 @@
     },
     "10_migrations": {
       "files": 1,
-      "lines": 9
+      "lines": 10
     }
   }
 }

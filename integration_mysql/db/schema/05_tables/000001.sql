@@ -1,4 +1,4 @@
-CREATE TABLE ar_internal_metadata (
+CREATE TABLE IF NOT EXISTS ar_internal_metadata (
   `key` varchar(255) NOT NULL,
   `value` varchar(255),
   `created_at` datetime NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE ar_internal_metadata (
   PRIMARY KEY (`key`)
 );
 
-CREATE TABLE better_structure_sql_schema_versions (
+CREATE TABLE IF NOT EXISTS better_structure_sql_schema_versions (
   `id` bigint NOT NULL,
   `content` text NOT NULL,
   `zip_archive` longblob,
@@ -18,10 +18,11 @@ CREATE TABLE better_structure_sql_schema_versions (
   `file_count` int,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
+  `content_hash` varchar(32) NOT NULL,
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   `id` bigint NOT NULL,
   `name` varchar(255) NOT NULL,
   `description` text,
@@ -31,7 +32,7 @@ CREATE TABLE categories (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   `id` bigint NOT NULL,
   `order_id` bigint,
   `product_id` bigint,
@@ -42,7 +43,7 @@ CREATE TABLE order_items (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   `id` bigint NOT NULL,
   `user_id` bigint,
   `total` decimal(10,2) NOT NULL,
@@ -52,7 +53,7 @@ CREATE TABLE orders (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE posts (
+CREATE TABLE IF NOT EXISTS posts (
   `id` bigint NOT NULL,
   `title` varchar(255) NOT NULL,
   `body` text,
@@ -63,7 +64,7 @@ CREATE TABLE posts (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   `id` bigint NOT NULL,
   `name` varchar(255) NOT NULL,
   `description` text,
@@ -77,12 +78,12 @@ CREATE TABLE products (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE schema_migrations (
+CREATE TABLE IF NOT EXISTS schema_migrations (
   `version` varchar(255) NOT NULL,
   PRIMARY KEY (`version`)
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   `id` bigint NOT NULL,
   `email` varchar(255) NOT NULL,
   `encrypted_password` varchar(255),

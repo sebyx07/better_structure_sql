@@ -1,3 +1,5 @@
+CREATE INDEX `index_better_structure_sql_schema_versions_on_content_hash` ON `better_structure_sql_schema_versions` (`content_hash`);
+
 CREATE INDEX `index_better_structure_sql_schema_versions_on_created_at` ON `better_structure_sql_schema_versions` (`created_at`);
 
 CREATE INDEX `index_better_structure_sql_schema_versions_on_output_mode` ON `better_structure_sql_schema_versions` (`output_mode`);

@@ -474,9 +474,13 @@ module BetterStructureSql
         result = Hash.new { |h, k| h[k] = [] }
 
         connection.execute(query).each do |row|
+          # Build row array compatible with resolve_column_type expectations
+          # resolve_column_type expects: [nil, DATA_TYPE, nil, nil, LENGTH, PRECISION, SCALE, COLUMN_TYPE]
+          column_row = [nil, row[2], nil, nil, row[5], row[6], row[7], row[8]]
+
           result[row[0]] << {
             name: row[1],
-            type: resolve_column_type(row[2..-1]), # Pass remaining columns
+            type: resolve_column_type(column_row),
             nullable: row[3] == 'YES',
             default: row[4],
             length: row[5],
