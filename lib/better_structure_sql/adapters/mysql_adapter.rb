@@ -50,7 +50,7 @@ module BetterStructureSql
         table_rows = connection.execute(query).to_a
         return [] if table_rows.empty?
 
-        table_names = table_rows.map { |row| row[0] }
+        table_names = table_rows.pluck(0)
 
         # Batch fetch all columns, primary keys, and constraints
         columns_by_table = fetch_all_columns(connection, table_names)

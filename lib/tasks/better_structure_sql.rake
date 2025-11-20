@@ -88,7 +88,7 @@ namespace :db do
         puts "\nNo schema changes detected"
         puts "  Current schema matches version ##{result.version_id}"
         puts "  Hash: #{result.hash}"
-        puts "  No new version stored"
+        puts '  No new version stored'
         puts "  Total versions: #{result.total_count}"
       elsif result.stored?
         version = result.version
@@ -127,8 +127,7 @@ namespace :db do
         puts 'No schema versions stored yet'
       else
         puts "\nSchema Versions (#{versions.count} total)\n\n"
-        puts format('%-4s | %-6s | %-11s | %-5s | %-10s | %-8s | %-19s | %s',
-                    'ID', 'Format', 'Mode', 'Files', 'PostgreSQL', 'Hash', 'Created', 'Size')
+        puts 'ID   | Format | Mode        | Files | PostgreSQL | Hash     | Created             | Size'
         puts '-' * 100
         versions.each do |version|
           puts format('%-4d | %-6s | %-11s | %-5s | %-10s | %-8s | %-19s | %s',

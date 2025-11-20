@@ -3,9 +3,9 @@
 require 'spec_helper'
 
 RSpec.describe 'Edge Cases' do
-  let(:config) { BetterStructureSql::Configuration.new }
+  let(:config)     { BetterStructureSql::Configuration.new }
   let(:connection) { ActiveRecord::Base.connection }
-  let(:adapter) { BetterStructureSql::Adapters::Registry.adapter_for(connection) }
+  let(:adapter)    { BetterStructureSql::Adapters::Registry.adapter_for(connection) }
 
   describe 'Empty database' do
     it 'handles database with no tables' do

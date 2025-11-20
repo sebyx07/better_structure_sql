@@ -3,9 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe 'Schema version deduplication', type: :integration do
-  let(:connection) { ActiveRecord::Base.connection }
-  let(:config) { BetterStructureSql.configuration }
-  let(:temp_dir) { Pathname.new(Dir.mktmpdir) }
+  let(:connection)  { ActiveRecord::Base.connection }
+  let(:config)      { BetterStructureSql.configuration }
+  let(:temp_dir)    { Pathname.new(Dir.mktmpdir) }
   let(:output_path) { temp_dir.join('db', 'structure.sql') }
 
   before do
@@ -54,7 +54,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
       expect(result.version_id).to eq(initial_id)
       expect(result.hash).to eq(initial_hash)
       expect(result.total_count).to eq(1)
-      expect(BetterStructureSql::SchemaVersion.count).to eq(1)  # Still only one version
+      expect(BetterStructureSql::SchemaVersion.count).to eq(1) # Still only one version
     end
 
     it 'stores new version when hash differs' do
@@ -124,7 +124,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
       # Recreate directory with different content
       FileUtils.rm_rf(multi_file_path)
       FileUtils.mkdir_p(multi_file_path.join('01_tables'))
-      File.write(multi_file_path.join('_header.sql'), '-- Header v2')  # Changed
+      File.write(multi_file_path.join('_header.sql'), '-- Header v2') # Changed
       File.write(multi_file_path.join('01_tables', '000001.sql'), 'CREATE TABLE users (id serial);')
 
       # Attempt to store with changes
@@ -140,7 +140,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       expect(result.stored?).to be true
       expect(result.version.zip_archive).to be_present
-      expect(result.version.file_count).to eq(2)  # _header.sql + 01_tables/000001.sql
+      expect(result.version.file_count).to eq(2) # _header.sql + 01_tables/000001.sql
       expect(result.version.output_mode).to eq('multi_file')
     end
   end
@@ -187,7 +187,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       # Only 3 versions stored (deploys with actual changes)
       expect(BetterStructureSql::SchemaVersion.count).to eq(3)
-      expect(stored_results.select(&:stored?).count).to eq(3)
+      expect(stored_results.count(&:stored?)).to eq(3)
 
       # Each stored version has different hash
       hashes = stored_results.map { |r| r.version.content_hash }
@@ -241,7 +241,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       expect(result.stored?).to be true
       expect(result.version.zip_archive).to be_present
-      expect(Dir.exist?(multi_file_path)).to be false  # Directory deleted
+      expect(Dir.exist?(multi_file_path)).to be false # Directory deleted
     end
 
     it 'does not delete directory when storage skipped' do
@@ -259,11 +259,11 @@ RSpec.describe 'Schema version deduplication', type: :integration do
       # Second store skipped (directory remains for re-use)
       result = BetterStructureSql::SchemaVersions.store_current(connection)
       expect(result.skipped?).to be true
-      expect(Dir.exist?(multi_file_path)).to be true  # Directory NOT deleted
+      expect(Dir.exist?(multi_file_path)).to be true # Directory NOT deleted
     end
 
     it 'does not delete single file after storing' do
-      config.output_path = output_path  # Switch back to single-file mode
+      config.output_path = output_path # Switch back to single-file mode
       File.write(output_path, '-- Schema')
 
       # File exists before storage
@@ -274,7 +274,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       expect(result.stored?).to be true
       expect(result.version.zip_archive).to be_nil
-      expect(File.exist?(output_path)).to be true  # File NOT deleted
+      expect(File.exist?(output_path)).to be true # File NOT deleted
     end
 
     it 'handles cleanup errors gracefully' do
@@ -311,7 +311,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       # Store 3 unique versions
       File.write(output_path, '-- v1')
-      v1 = BetterStructureSql::SchemaVersions.store_current(connection)
+      BetterStructureSql::SchemaVersions.store_current(connection)
 
       File.write(output_path, '-- v2')
       v2 = BetterStructureSql::SchemaVersions.store_current(connection)

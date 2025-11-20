@@ -735,7 +735,7 @@ module BetterStructureSql
         unique_clause = is_unique ? 'UNIQUE ' : ''
         columns_clause = columns.map { |col| quote_identifier(col) }.join(', ')
         "CREATE #{unique_clause}INDEX #{quote_identifier(index_name)} " \
-        "ON #{quote_identifier(table_name)} (#{columns_clause})"
+          "ON #{quote_identifier(table_name)} (#{columns_clause})"
       end
 
       # SQL query for fetching triggers

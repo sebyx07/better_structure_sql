@@ -237,7 +237,7 @@ module BetterStructureSql
       def hash_exists?(hash, _connection = ActiveRecord::Base.connection)
         return false unless table_exists?
 
-        SchemaVersion.where(content_hash: hash).exists?
+        SchemaVersion.exists?(content_hash: hash)
       end
 
       # Finds schema version by content hash

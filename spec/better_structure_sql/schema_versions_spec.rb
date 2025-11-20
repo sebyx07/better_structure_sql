@@ -344,18 +344,14 @@ RSpec.describe BetterStructureSql::SchemaVersions do
   describe '.hash_exists?' do
     it 'returns true when hash found' do
       allow(described_class).to receive(:table_exists?).and_return(true)
-      relation = double('relation')
-      allow(BetterStructureSql::SchemaVersion).to receive(:where).with(content_hash: 'abc123').and_return(relation)
-      allow(relation).to receive(:exists?).and_return(true)
+      allow(BetterStructureSql::SchemaVersion).to receive(:exists?).with(content_hash: 'abc123').and_return(true)
 
       expect(described_class.hash_exists?('abc123', connection)).to be true
     end
 
     it 'returns false when hash not found' do
       allow(described_class).to receive(:table_exists?).and_return(true)
-      relation = double('relation')
-      allow(BetterStructureSql::SchemaVersion).to receive(:where).with(content_hash: 'xyz789').and_return(relation)
-      allow(relation).to receive(:exists?).and_return(false)
+      allow(BetterStructureSql::SchemaVersion).to receive(:exists?).with(content_hash: 'xyz789').and_return(false)
 
       expect(described_class.hash_exists?('xyz789', connection)).to be false
     end

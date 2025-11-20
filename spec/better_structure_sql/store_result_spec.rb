@@ -86,7 +86,7 @@ RSpec.describe BetterStructureSql::StoreResult do
         result = described_class.new(
           skipped: false,
           version: version,
-          version_id: 99,  # Explicit override
+          version_id: 99, # Explicit override
           total_count: 30
         )
 

@@ -39,7 +39,7 @@ module BetterStructureSql
       end
 
       def generate_domain(type)
-        # Note: PostgreSQL does not support IF NOT EXISTS for domains
+        # NOTE: PostgreSQL does not support IF NOT EXISTS for domains
         parts = ["CREATE DOMAIN #{type[:name]} AS #{type[:base_type]}"]
         parts << type[:constraint] if type[:constraint]
         "#{parts.join(' ')};"
