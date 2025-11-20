@@ -49,6 +49,7 @@ require_relative '../config/routes'
 ActiveRecord::Schema.define do
   create_table :better_structure_sql_schema_versions, force: true do |t|
     t.text :content, null: false
+    t.string :content_hash, limit: 32, null: false
     t.binary :zip_archive, null: true
     t.string :pg_version, null: false
     t.string :format_type, null: false
@@ -61,6 +62,7 @@ ActiveRecord::Schema.define do
 
   add_index :better_structure_sql_schema_versions, :created_at, order: { created_at: :desc }
   add_index :better_structure_sql_schema_versions, :output_mode
+  add_index :better_structure_sql_schema_versions, :content_hash
 end
 
 RSpec.configure do |config|

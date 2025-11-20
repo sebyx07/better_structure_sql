@@ -14,6 +14,9 @@ module BetterStructureSql
 
     # Validations
     validates :content, presence: true
+    validates :content_hash, presence: true,
+                             format: { with: /\A[a-f0-9]{32}\z/,
+                                       message: 'must be 32-character MD5 hex digest' }
     validates :pg_version, presence: true
     validates :format_type, presence: true, inclusion: { in: %w[sql rb] }
     validates :output_mode, presence: true, inclusion: { in: %w[single_file multi_file] }
@@ -61,6 +64,14 @@ module BetterStructureSql
     # @return [Boolean] True if ZIP archive exists
     def zip_archive?
       zip_archive.present?
+    end
+
+    # Compares this version's hash with another hash
+    #
+    # @param other_hash [String] Hash to compare against
+    # @return [Boolean] True if hashes match
+    def hash_matches?(other_hash)
+      content_hash == other_hash
     end
 
     # Extracts ZIP archive to target directory

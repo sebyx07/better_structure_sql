@@ -52,4 +52,25 @@ RSpec.describe BetterStructureSql::SchemaVersion do
       expect(described_class).to respond_to(:validates)
     end
   end
+
+  describe '#hash_matches?' do
+    let(:version) do
+      double('SchemaVersion', content_hash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6')
+    end
+
+    it 'returns true when hashes match' do
+      allow(version).to receive(:hash_matches?).with('a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6').and_return(true)
+      expect(version.hash_matches?('a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6')).to be true
+    end
+
+    it 'returns false when hashes differ' do
+      allow(version).to receive(:hash_matches?).with('different_hash').and_return(false)
+      expect(version.hash_matches?('different_hash')).to be false
+    end
+
+    it 'handles nil comparison' do
+      allow(version).to receive(:hash_matches?).with(nil).and_return(false)
+      expect(version.hash_matches?(nil)).to be false
+    end
+  end
 end

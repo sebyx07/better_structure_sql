@@ -85,6 +85,12 @@ Rails/InverseOf:
 Rails/Exit:
   Enabled: false
 
+Rails/SkipsModelValidations:
+  Enabled: false
+
+Rails/I18nLocaleTexts:
+  Enabled: false
+
 Naming/PredicateMethod:
   Enabled: false
 
