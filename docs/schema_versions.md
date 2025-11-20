@@ -6,10 +6,13 @@ Store and retrieve database schema versions with metadata tracking.
 
 Schema Versions feature stores snapshots of your database schema with:
 - Full schema content (SQL or Ruby format)
+- MD5 content hash for deduplication
 - PostgreSQL version
 - Format type (sql/rb)
+- Output mode (single_file/multi_file)
 - Creation timestamp
 - Automatic cleanup based on retention limit
+- ZIP archive storage for multi-file schemas
 
 ## Setup
 
@@ -38,13 +41,20 @@ Creates table: `better_structure_sql_schema_versions`
 CREATE TABLE better_structure_sql_schema_versions (
   id bigserial PRIMARY KEY,
   content text NOT NULL,
+  content_hash varchar(32) NOT NULL,
   pg_version varchar NOT NULL,
   format_type varchar NOT NULL,
+  output_mode varchar NOT NULL DEFAULT 'single_file',
+  zip_archive bytea,
+  file_count integer,
   created_at timestamp(6) NOT NULL
 );
 
 CREATE INDEX index_schema_versions_on_created_at
   ON better_structure_sql_schema_versions (created_at DESC);
+
+CREATE INDEX index_schema_versions_on_content_hash
+  ON better_structure_sql_schema_versions (content_hash);
 ```
 
 ## Usage
@@ -91,6 +101,50 @@ version = BetterStructureSql::SchemaVersions.find(3)
 count = BetterStructureSql::SchemaVersions.count
 ```
 
+## Automatic Deduplication
+
+Schema versions are automatically deduplicated using MD5 content hashing:
+
+```bash
+# First store - schema saved
+rails db:schema:store
+# => Stored schema version #1 (hash: a3b2c1d4...)
+
+# Second store - no changes, skipped
+rails db:schema:store
+# => Skipped storage - schema unchanged (matches version #1)
+
+# After migration - schema changed, stored
+rails db:migrate
+rails db:schema:store
+# => Stored schema version #2 (hash: e5f6g7h8...)
+```
+
+Benefits:
+- **Storage efficiency**: Only actual schema changes create versions
+- **Clear audit trail**: Version history shows meaningful evolution
+- **Production friendly**: Safe to run `db:schema:store` on every deploy
+
+### Hash Calculation
+
+Content hashes are calculated from:
+- **Single-file mode**: MD5 of structure.sql or schema.rb
+- **Multi-file mode**: MD5 of combined content from all .sql files in order
+
+Manifest JSON is excluded (metadata only, not schema content).
+
+```ruby
+# Check if current schema matches stored version
+latest_hash = BetterStructureSql::SchemaVersions.latest_hash
+current_hash = BetterStructureSql::SchemaVersions.calculate_hash_from_file('db/structure.sql')
+
+if latest_hash == current_hash
+  puts "Schema unchanged"
+else
+  puts "Schema has changed"
+end
+```
+
 ## Automatic Cleanup
 
 When `schema_versions_limit` is set, old versions are automatically deleted.
@@ -106,7 +160,7 @@ config.schema_versions_limit = 0
 BetterStructureSql::SchemaVersions.cleanup!
 ```
 
-Cleanup happens automatically after `db:schema:store`.
+Cleanup happens automatically after `db:schema:store` (only when storage occurs, not when skipped).
 
 ## Model Reference
 
@@ -115,21 +169,38 @@ class BetterStructureSql::SchemaVersion < ActiveRecord::Base
   # Attributes
   # - id: integer
   # - content: text (schema SQL/Ruby content)
+  # - content_hash: string (32-character MD5 hexdigest)
   # - pg_version: string (PostgreSQL version)
   # - format_type: string ('sql' or 'rb')
+  # - output_mode: string ('single_file' or 'multi_file')
+  # - zip_archive: binary (ZIP archive for multi-file schemas)
+  # - file_count: integer (number of SQL files in multi-file mode)
   # - created_at: datetime
 
   # Class Methods
   def self.store_current
     # Store current schema as new version
+    # Automatically skips if content_hash matches latest version
   end
 
   def self.latest
     # Get most recent version
   end
 
+  def self.latest_hash
+    # Get content_hash of most recent version
+  end
+
   def self.all_versions
     # Get all versions ordered by created_at DESC
+  end
+
+  def self.find_by_hash(hash)
+    # Find version by content_hash
+  end
+
+  def self.hash_exists?(hash)
+    # Check if content_hash exists
   end
 
   def self.cleanup!
@@ -137,6 +208,10 @@ class BetterStructureSql::SchemaVersion < ActiveRecord::Base
   end
 
   # Instance Methods
+  def hash_matches?(other_hash)
+    # Check if content_hash matches given hash
+  end
+
   def size
     # Content size in bytes
   end
