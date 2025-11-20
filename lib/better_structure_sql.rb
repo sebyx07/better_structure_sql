@@ -2,6 +2,7 @@
 
 require 'active_record'
 require_relative 'better_structure_sql/version'
+require_relative 'better_structure_sql/errors'
 require_relative 'better_structure_sql/adapters/base_adapter'
 require_relative 'better_structure_sql/adapters/postgresql_config'
 require_relative 'better_structure_sql/adapters/registry'

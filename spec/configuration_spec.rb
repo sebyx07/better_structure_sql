@@ -91,91 +91,91 @@ RSpec.describe BetterStructureSql::Configuration do
     context 'when output_path is blank' do
       it 'raises an error' do
         config.output_path = ''
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /output_path cannot be blank/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /output_path cannot be blank/)
       end
     end
 
     context 'when output_path is nil' do
       it 'raises an error' do
         config.output_path = nil
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /output_path cannot be blank/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /output_path cannot be blank/)
       end
     end
 
     context 'when schema_versions_limit is negative' do
       it 'raises an error' do
         config.schema_versions_limit = -1
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a non-negative integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a non-negative integer/)
       end
     end
 
     context 'when schema_versions_limit is not an integer' do
       it 'raises an error' do
         config.schema_versions_limit = '10'
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a non-negative integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a non-negative integer/)
       end
     end
 
     context 'when indent_size is zero' do
       it 'raises an error' do
         config.indent_size = 0
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a positive integer/)
       end
     end
 
     context 'when indent_size is negative' do
       it 'raises an error' do
         config.indent_size = -2
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a positive integer/)
       end
     end
 
     context 'when schemas is empty array' do
       it 'raises an error' do
         config.schemas = []
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /schemas must be a non-empty array/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /schemas must be a non-empty array/)
       end
     end
 
     context 'when schemas is not an array' do
       it 'raises an error' do
         config.schemas = 'public'
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /schemas must be a non-empty array/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /schemas must be a non-empty array/)
       end
     end
 
     context 'when max_lines_per_file is zero' do
       it 'raises an error' do
         config.max_lines_per_file = 0
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a positive integer/)
       end
     end
 
     context 'when max_lines_per_file is negative' do
       it 'raises an error' do
         config.max_lines_per_file = -100
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a positive integer/)
       end
     end
 
     context 'when max_lines_per_file is not an integer' do
       it 'raises an error' do
         config.max_lines_per_file = '500'
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be a positive integer/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be a positive integer/)
       end
     end
 
     context 'when overflow_threshold is less than 1.0' do
       it 'raises an error' do
         config.overflow_threshold = 0.9
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be >= 1.0/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be >= 1.0/)
       end
     end
 
     context 'when overflow_threshold is not numeric' do
       it 'raises an error' do
         config.overflow_threshold = '1.1'
-        expect { config.validate! }.to raise_error(BetterStructureSql::Error, /must be >= 1.0/)
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /must be >= 1.0/)
       end
     end
 

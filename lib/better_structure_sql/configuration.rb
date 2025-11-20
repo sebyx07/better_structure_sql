@@ -85,37 +85,39 @@ module BetterStructureSql
     private
 
     def validate_output_path!
-      raise Error, 'output_path cannot be blank' if output_path.nil? || output_path.strip.empty?
+      return unless output_path.nil? || output_path.strip.empty?
+
+      raise ConfigurationError, 'output_path cannot be blank. Use absolute path or relative like "db/structure.sql"'
     end
 
     def validate_schema_versions_limit!
       return if schema_versions_limit.is_a?(Integer) && schema_versions_limit >= 0
 
-      raise Error, 'schema_versions_limit must be a non-negative integer'
+      raise ConfigurationError, 'schema_versions_limit must be a non-negative integer (0 for unlimited, or positive number)'
     end
 
     def validate_indent_size!
       return if indent_size.is_a?(Integer) && indent_size.positive?
 
-      raise Error, 'indent_size must be a positive integer'
+      raise ConfigurationError, 'indent_size must be a positive integer (typically 2 or 4)'
     end
 
     def validate_schemas!
       return if schemas.is_a?(Array) && schemas.any?
 
-      raise Error, 'schemas must be a non-empty array'
+      raise ConfigurationError, 'schemas must be a non-empty array (e.g., ["public"] for PostgreSQL)'
     end
 
     def validate_max_lines_per_file!
       return if max_lines_per_file.is_a?(Integer) && max_lines_per_file.positive?
 
-      raise Error, 'max_lines_per_file must be a positive integer'
+      raise ConfigurationError, 'max_lines_per_file must be a positive integer (recommended: 500-1000)'
     end
 
     def validate_overflow_threshold!
       return if overflow_threshold.is_a?(Numeric) && overflow_threshold >= 1.0
 
-      raise Error, 'overflow_threshold must be >= 1.0'
+      raise ConfigurationError, 'overflow_threshold must be >= 1.0 (typically 1.1 for 10% overflow)'
     end
 
     def validate_adapter!
@@ -123,7 +125,7 @@ module BetterStructureSql
 
       return if valid_adapters.include?(adapter)
 
-      raise Error, "Invalid adapter: #{adapter}. Valid options: #{valid_adapters.join(', ')}"
+      raise ConfigurationError, "Invalid adapter: #{adapter}. Valid options: #{valid_adapters.join(', ')}"
     end
   end
 end

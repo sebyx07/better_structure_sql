@@ -37,38 +37,8 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of type hashes with :name, :schema, :type, and type-specific attributes
       def fetch_custom_types(connection)
-        query = <<~SQL.squish
-          SELECT
-            t.typname as name,
-            t.typtype as type,
-            n.nspname as schema
-          FROM pg_type t
-          JOIN pg_namespace n ON n.oid = t.typnamespace
-          LEFT JOIN pg_class c ON c.reltype = t.oid AND c.relkind IN ('r', 'v', 'm')
-          WHERE t.typtype IN ('e', 'c', 'd')
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-            AND c.oid IS NULL
-          ORDER BY t.typname
-        SQL
-
-        connection.execute(query).map do |row|
-          type_data = {
-            name: row['schema'] == 'public' ? row['name'] : "#{row['schema']}.#{row['name']}",
-            schema: row['schema'],
-            type: type_category(row['type'])
-          }
-
-          case row['type']
-          when 'e'
-            type_data[:values] = fetch_enum_values(connection, row['name'])
-          when 'c'
-            type_data[:attributes] = fetch_composite_attributes(connection, row['name'])
-          when 'd'
-            type_data.merge!(fetch_domain_details(connection, row['name']))
-          end
-
-          type_data
-        end
+        query = custom_types_query
+        connection.execute(query).map { |row| build_custom_type(connection, row) }
       end
 
       # Fetch all tables from the database
@@ -766,6 +736,49 @@ module BetterStructureSql
         when 'v' then 'VOLATILE'
         else 'VOLATILE'
         end
+      end
+
+      # SQL query for fetching custom types
+      #
+      # @return [String] SQL query string
+      def custom_types_query
+        <<~SQL.squish
+          SELECT
+            t.typname as name,
+            t.typtype as type,
+            n.nspname as schema
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          LEFT JOIN pg_class c ON c.reltype = t.oid AND c.relkind IN ('r', 'v', 'm')
+          WHERE t.typtype IN ('e', 'c', 'd')
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND c.oid IS NULL
+          ORDER BY t.typname
+        SQL
+      end
+
+      # Build custom type hash from query row
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param row [Hash] Row from custom_types_query
+      # @return [Hash] Type hash with name, schema, type, and type-specific attributes
+      def build_custom_type(connection, row)
+        type_data = {
+          name: row['schema'] == 'public' ? row['name'] : "#{row['schema']}.#{row['name']}",
+          schema: row['schema'],
+          type: type_category(row['type'])
+        }
+
+        case row['type']
+        when 'e'
+          type_data[:values] = fetch_enum_values(connection, row['name'])
+        when 'c'
+          type_data[:attributes] = fetch_composite_attributes(connection, row['name'])
+        when 'd'
+          type_data.merge!(fetch_domain_details(connection, row['name']))
+        end
+
+        type_data
       end
     end
   end

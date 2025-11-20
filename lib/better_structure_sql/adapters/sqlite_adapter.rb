@@ -136,39 +136,9 @@ module BetterStructureSql
       def fetch_indexes(connection)
         tables = fetch_table_names(connection)
         indexes = []
-        skip_origins = %w[pk u].freeze
 
         tables.each do |table_name|
-          # Get list of indexes for this table
-          index_list = connection.execute("PRAGMA index_list(#{quote_identifier(table_name)})")
-
-          index_list.each do |index_row|
-            index_name = index_row['name'] || index_row[1]
-            is_unique = (index_row['unique'] || index_row[2]).to_i == 1
-            origin = index_row['origin'] || index_row[3] # 'c' = CREATE INDEX, 'u' = UNIQUE constraint, 'pk' = PRIMARY KEY
-
-            # Skip auto-generated indexes for PRIMARY KEY and UNIQUE constraints
-            next if skip_origins.include?(origin)
-
-            # Get columns for this index
-            index_info = connection.execute("PRAGMA index_info(#{quote_identifier(index_name)})")
-            columns = index_info.map { |col_row| col_row['name'] || col_row[2] }
-
-            # Generate CREATE INDEX SQL for compatibility with Dumper/IndexGenerator
-            unique_clause = is_unique ? 'UNIQUE ' : ''
-            columns_clause = columns.map { |col| quote_identifier(col) }.join(', ')
-            definition = "CREATE #{unique_clause}INDEX #{quote_identifier(index_name)} " \
-                         "ON #{quote_identifier(table_name)} (#{columns_clause})"
-
-            indexes << {
-              table: table_name,
-              name: index_name,
-              columns: columns,
-              unique: is_unique,
-              type: 'BTREE', # SQLite uses B-tree by default
-              definition: definition # Add definition field for compatibility with IndexGenerator
-            }
-          end
+          indexes.concat(fetch_table_indexes(connection, table_name))
         end
 
         indexes
@@ -269,31 +239,8 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of trigger hashes with :schema, :name, :table_name, :timing, :event, :definition
       def fetch_triggers(connection)
-        query = <<~SQL.squish
-          SELECT name, tbl_name, sql
-          FROM sqlite_master
-          WHERE type = 'trigger'
-          ORDER BY tbl_name, name
-        SQL
-
-        connection.execute(query).map do |row|
-          # Parse timing and event from SQL
-          sql = row['sql'] || row[2] || ''
-          timing_match = sql.match(/\b(BEFORE|AFTER|INSTEAD OF)\b/i)
-          timing = timing_match ? timing_match.captures.first.upcase : 'AFTER'
-
-          event_match = sql.match(/\b(INSERT|UPDATE|DELETE)\b/i)
-          event = event_match ? event_match.captures.first.upcase : 'INSERT'
-
-          {
-            schema: 'main',
-            name: row['name'] || row[0],
-            table_name: row['tbl_name'] || row[1],
-            timing: timing,
-            event: event,
-            definition: sql # Use 'definition' to match PostgreSQL adapter
-          }
-        end
+        query = triggers_query
+        connection.execute(query).map { |row| build_trigger_hash(row) }
       end
 
       # Capability methods - SQLite feature support
@@ -732,6 +679,110 @@ module BetterStructureSql
         else
           value.to_s
         end
+      end
+
+      # Fetch indexes for a specific table
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param table_name [String] Table name
+      # @return [Array<Hash>] Array of index hashes
+      def fetch_table_indexes(connection, table_name)
+        index_list = connection.execute("PRAGMA index_list(#{quote_identifier(table_name)})")
+        skip_origins = %w[pk u].freeze
+        indexes = []
+
+        index_list.each do |index_row|
+          index_name = index_row['name'] || index_row[1]
+          is_unique = (index_row['unique'] || index_row[2]).to_i == 1
+          origin = index_row['origin'] || index_row[3]
+
+          next if skip_origins.include?(origin)
+
+          columns = fetch_index_columns(connection, index_name)
+          definition = build_index_definition(table_name, index_name, is_unique, columns)
+
+          indexes << {
+            table: table_name,
+            name: index_name,
+            columns: columns,
+            unique: is_unique,
+            type: 'BTREE',
+            definition: definition
+          }
+        end
+
+        indexes
+      end
+
+      # Fetch columns for a specific index
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param index_name [String] Index name
+      # @return [Array<String>] Array of column names
+      def fetch_index_columns(connection, index_name)
+        index_info = connection.execute("PRAGMA index_info(#{quote_identifier(index_name)})")
+        index_info.map { |col_row| col_row['name'] || col_row[2] }
+      end
+
+      # Build CREATE INDEX definition string
+      #
+      # @param table_name [String] Table name
+      # @param index_name [String] Index name
+      # @param is_unique [Boolean] Whether index is unique
+      # @param columns [Array<String>] Column names
+      # @return [String] CREATE INDEX SQL statement
+      def build_index_definition(table_name, index_name, is_unique, columns)
+        unique_clause = is_unique ? 'UNIQUE ' : ''
+        columns_clause = columns.map { |col| quote_identifier(col) }.join(', ')
+        "CREATE #{unique_clause}INDEX #{quote_identifier(index_name)} " \
+        "ON #{quote_identifier(table_name)} (#{columns_clause})"
+      end
+
+      # SQL query for fetching triggers
+      #
+      # @return [String] SQL query string
+      def triggers_query
+        <<~SQL.squish
+          SELECT name, tbl_name, sql
+          FROM sqlite_master
+          WHERE type = 'trigger'
+          ORDER BY tbl_name, name
+        SQL
+      end
+
+      # Build trigger hash from query row
+      #
+      # @param row [Hash] Row from triggers query
+      # @return [Hash] Trigger hash with parsed timing and event
+      def build_trigger_hash(row)
+        sql = row['sql'] || row[2] || ''
+
+        {
+          schema: 'main',
+          name: row['name'] || row[0],
+          table_name: row['tbl_name'] || row[1],
+          timing: parse_trigger_timing(sql),
+          event: parse_trigger_event(sql),
+          definition: sql
+        }
+      end
+
+      # Parse trigger timing from SQL
+      #
+      # @param sql [String] Trigger SQL definition
+      # @return [String] Timing ('BEFORE', 'AFTER', or 'INSTEAD OF')
+      def parse_trigger_timing(sql)
+        timing_match = sql.match(/\b(BEFORE|AFTER|INSTEAD OF)\b/i)
+        timing_match ? timing_match.captures.first.upcase : 'AFTER'
+      end
+
+      # Parse trigger event from SQL
+      #
+      # @param sql [String] Trigger SQL definition
+      # @return [String] Event ('INSERT', 'UPDATE', or 'DELETE')
+      def parse_trigger_event(sql)
+        event_match = sql.match(/\b(INSERT|UPDATE|DELETE)\b/i)
+        event_match ? event_match.captures.first.upcase : 'INSERT'
       end
     end
   end

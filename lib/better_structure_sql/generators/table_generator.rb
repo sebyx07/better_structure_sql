@@ -20,33 +20,58 @@ module BetterStructureSql
       # @return [String] SQL statement
       def generate(table)
         lines = ["CREATE TABLE IF NOT EXISTS #{table[:name]} ("]
-
-        column_defs = table[:columns].map { |col| column_definition(col) }
-
-        if table[:primary_key]&.any?
-          # Quote primary key column names
-          pk_cols = table[:primary_key].map { |col| quote_column_name(col) }.join(', ')
-          column_defs << "PRIMARY KEY (#{pk_cols})"
-        end
-
-        table[:constraints]&.each do |constraint|
-          column_defs << constraint_definition(constraint)
-        end
-
-        # For SQLite, add foreign keys inline
-        if sqlite_adapter? && table[:foreign_keys]&.any?
-          table[:foreign_keys].each do |fk|
-            column_defs << foreign_key_definition(fk)
-          end
-        end
-
-        lines << column_defs.map { |def_line| indent(def_line) }.join(",\n")
+        lines << build_table_contents(table)
         lines << ');'
-
         lines.join("\n")
       end
 
       private
+
+      # Build table contents (columns, primary key, constraints, foreign keys)
+      #
+      # @param table [Hash] Table metadata
+      # @return [String] Formatted table contents
+      def build_table_contents(table)
+        column_defs = build_column_definitions(table)
+        column_defs << build_primary_key_clause(table) if table[:primary_key]&.any?
+        column_defs.concat(build_constraints_clauses(table))
+        column_defs.concat(build_foreign_keys_clauses(table)) if sqlite_adapter? && table[:foreign_keys]&.any?
+
+        column_defs.map { |def_line| indent(def_line) }.join(",\n")
+      end
+
+      # Build column definitions
+      #
+      # @param table [Hash] Table metadata
+      # @return [Array<String>] Array of column definition strings
+      def build_column_definitions(table)
+        table[:columns].map { |col| column_definition(col) }
+      end
+
+      # Build primary key clause
+      #
+      # @param table [Hash] Table metadata
+      # @return [String] PRIMARY KEY clause
+      def build_primary_key_clause(table)
+        pk_cols = table[:primary_key].map { |col| quote_column_name(col) }.join(', ')
+        "PRIMARY KEY (#{pk_cols})"
+      end
+
+      # Build constraints clauses
+      #
+      # @param table [Hash] Table metadata
+      # @return [Array<String>] Array of constraint definition strings
+      def build_constraints_clauses(table)
+        table[:constraints]&.map { |constraint| constraint_definition(constraint) } || []
+      end
+
+      # Build foreign keys clauses for SQLite
+      #
+      # @param table [Hash] Table metadata
+      # @return [Array<String>] Array of foreign key definition strings
+      def build_foreign_keys_clauses(table)
+        table[:foreign_keys].map { |fk| foreign_key_definition(fk) }
+      end
 
       def column_definition(column)
         # Quote column name for MySQL compatibility (reserved words like 'key')

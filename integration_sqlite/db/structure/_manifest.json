@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "total_files": 5,
+  "total_lines": 125,
+  "max_lines_per_file": 500,
+  "directories": {
+    "01_extensions": {
+      "files": 1,
+      "lines": 17
+    },
+    "05_tables": {
+      "files": 1,
+      "lines": 62
+    },
+    "06_indexes": {
+      "files": 1,
+      "lines": 19
+    },
+    "08_views": {
+      "files": 1,
+      "lines": 10
+    },
+    "09_triggers": {
+      "files": 1,
+      "lines": 17
+    }
+  }
+}

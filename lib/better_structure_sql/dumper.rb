@@ -99,133 +99,182 @@ module BetterStructureSql
     end
 
     # Generate sections as structured data (arrays) instead of joined strings
+    #
+    # Refactored to extract section generation into dedicated methods for better readability
     def generate_sections_for_multi_file
       sections = {}
 
-      # Extensions
-      if config.include_extensions
-        extensions = Introspection.fetch_extensions(connection)
-        unless extensions.empty?
-          generator = Generators::ExtensionGenerator.new(config)
-          sections[:extensions] = extensions.map { |ext| generator.generate(ext) }
-        end
-      end
+      sections[:extensions] = generate_extensions_section if config.include_extensions
+      sections[:types] = generate_types_section if config.include_custom_types
+      sections[:domains] = generate_domains_section if config.include_domains
+      sections[:functions] = generate_functions_section if config.include_functions
+      sections[:sequences] = generate_sequences_section if config.include_sequences
+      sections[:tables] = generate_tables_section
+      sections[:indexes] = generate_indexes_section
+      sections[:foreign_keys] = generate_foreign_keys_section unless sqlite_adapter?
+      sections[:views] = generate_views_section if config.include_views
+      sections[:materialized_views] = generate_materialized_views_section if config.include_materialized_views
+      sections[:triggers] = generate_triggers_section if config.include_triggers
+      sections[:migrations] = generate_migrations_section unless sqlite_adapter?
 
-      # Custom types (enums, composite)
-      if config.include_custom_types
-        types = Introspection.fetch_custom_types(connection).reject { |t| t[:type] == 'domain' }
-        unless types.empty?
-          generator = Generators::TypeGenerator.new(config)
-          sections[:types] = types.filter_map { |type| generator.generate(type) }
-        end
-      end
+      sections.compact
+    end
 
-      # Domains
-      if config.include_domains
-        domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == 'domain' }
-        unless domains.empty?
-          generator = Generators::DomainGenerator.new(config)
-          sections[:domains] = domains.map { |domain| generator.generate(domain) }
-        end
-      end
+    # Generate extensions section
+    #
+    # @return [Array<String>, nil] Array of CREATE EXTENSION statements or nil if empty
+    def generate_extensions_section
+      extensions = Introspection.fetch_extensions(connection)
+      return nil if extensions.empty?
 
-      # Functions
-      if config.include_functions
-        functions = Introspection.fetch_functions(connection)
-        unless functions.empty?
-          generator = Generators::FunctionGenerator.new(config)
-          sections[:functions] = functions.map { |func| generator.generate(func) }
-        end
-      end
+      generator = Generators::ExtensionGenerator.new(config)
+      extensions.map { |ext| generator.generate(ext) }
+    end
 
-      # Sequences
-      if config.include_sequences
-        sequences = Introspection.fetch_sequences(connection)
-        unless sequences.empty?
-          generator = Generators::SequenceGenerator.new(config)
-          sections[:sequences] = sequences.map { |seq| generator.generate(seq) }
-        end
-      end
+    # Generate custom types section (enums, composite types)
+    #
+    # @return [Array<String>, nil] Array of CREATE TYPE statements or nil if empty
+    def generate_types_section
+      types = Introspection.fetch_custom_types(connection).reject { |t| t[:type] == 'domain' }
+      return nil if types.empty?
 
-      # Tables
+      generator = Generators::TypeGenerator.new(config)
+      types.filter_map { |type| generator.generate(type) }
+    end
+
+    # Generate domains section
+    #
+    # @return [Array<String>, nil] Array of CREATE DOMAIN statements or nil if empty
+    def generate_domains_section
+      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == 'domain' }
+      return nil if domains.empty?
+
+      generator = Generators::DomainGenerator.new(config)
+      domains.map { |domain| generator.generate(domain) }
+    end
+
+    # Generate functions section
+    #
+    # @return [Array<String>, nil] Array of CREATE FUNCTION statements or nil if empty
+    def generate_functions_section
+      functions = Introspection.fetch_functions(connection)
+      return nil if functions.empty?
+
+      generator = Generators::FunctionGenerator.new(config)
+      functions.map { |func| generator.generate(func) }
+    end
+
+    # Generate sequences section
+    #
+    # @return [Array<String>, nil] Array of CREATE SEQUENCE statements or nil if empty
+    def generate_sequences_section
+      sequences = Introspection.fetch_sequences(connection)
+      return nil if sequences.empty?
+
+      generator = Generators::SequenceGenerator.new(config)
+      sequences.map { |seq| generator.generate(seq) }
+    end
+
+    # Generate tables section
+    #
+    # @return [Array<String>, nil] Array of CREATE TABLE statements or nil if empty
+    def generate_tables_section
       tables = Introspection.fetch_tables(connection)
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
-      unless tables.empty?
-        # For SQLite, attach foreign keys to each table for inline generation
-        if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
-          all_foreign_keys = Introspection.fetch_foreign_keys(connection)
-          tables.each do |table|
-            table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
-          end
-        end
+      return nil if tables.empty?
 
-        generator = Generators::TableGenerator.new(config, adapter)
-        sections[:tables] = tables.map { |table| generator.generate(table) }
-      end
+      attach_foreign_keys_for_sqlite(tables) if sqlite_adapter?
 
-      # Indexes
+      generator = Generators::TableGenerator.new(config, adapter)
+      tables.map { |table| generator.generate(table) }
+    end
+
+    # Generate indexes section
+    #
+    # @return [Array<String>, nil] Array of CREATE INDEX statements or nil if empty
+    def generate_indexes_section
       indexes = Introspection.fetch_indexes(connection)
-      unless indexes.empty?
-        generator = Generators::IndexGenerator.new(config)
-        sections[:indexes] = indexes.map { |idx| generator.generate(idx) }
+      return nil if indexes.empty?
+
+      generator = Generators::IndexGenerator.new(config)
+      indexes.map { |idx| generator.generate(idx) }
+    end
+
+    # Generate foreign keys section
+    #
+    # @return [Array<String>, nil] Array of ALTER TABLE ADD CONSTRAINT statements or nil if empty
+    def generate_foreign_keys_section
+      foreign_keys = Introspection.fetch_foreign_keys(connection)
+      return nil if foreign_keys.empty?
+
+      generator = Generators::ForeignKeyGenerator.new(config)
+      foreign_keys.map { |fk| generator.generate(fk) }
+    end
+
+    # Generate views section
+    #
+    # @return [Array<String>, nil] Array of CREATE VIEW statements or nil if empty
+    def generate_views_section
+      views = Introspection.fetch_views(connection)
+      return nil if views.empty?
+
+      generator = Generators::ViewGenerator.new(config)
+      views.map { |view| generator.generate(view) }
+    end
+
+    # Generate materialized views section
+    #
+    # @return [Array<String>, nil] Array of CREATE MATERIALIZED VIEW statements or nil if empty
+    def generate_materialized_views_section
+      matviews = Introspection.fetch_materialized_views(connection)
+      return nil if matviews.empty?
+
+      generator = Generators::MaterializedViewGenerator.new(config)
+      matviews.map { |mv| generator.generate(mv) }
+    end
+
+    # Generate triggers section
+    #
+    # @return [Array<String>, nil] Array of CREATE TRIGGER statements or nil if empty
+    def generate_triggers_section
+      triggers = Introspection.fetch_triggers(connection)
+      return nil if triggers.empty?
+
+      generator = Generators::TriggerGenerator.new(config)
+      triggers.map { |trigger| generator.generate(trigger) }
+    end
+
+    # Generate migrations section
+    #
+    # @return [Array<String>, nil] Array of batch INSERT statements or nil if empty
+    def generate_migrations_section
+      return nil unless table_exists?('schema_migrations')
+
+      versions = fetch_schema_migration_versions
+      return nil if versions.empty?
+
+      chunk_size = config.max_lines_per_file - 3
+      version_chunks = versions.each_slice(chunk_size).to_a
+
+      version_chunks.map { |chunk| generate_migrations_batch(chunk) }
+    end
+
+    # Attach foreign keys to tables for SQLite inline generation
+    #
+    # @param tables [Array<Hash>] Array of table hashes
+    # @return [void]
+    def attach_foreign_keys_for_sqlite(tables)
+      all_foreign_keys = Introspection.fetch_foreign_keys(connection)
+      tables.each do |table|
+        table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
       end
+    end
 
-      # Foreign keys
-      # SQLite foreign keys are inline with CREATE TABLE, not separate ALTER TABLE statements
-      unless adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
-        foreign_keys = Introspection.fetch_foreign_keys(connection)
-        unless foreign_keys.empty?
-          generator = Generators::ForeignKeyGenerator.new(config)
-          sections[:foreign_keys] = foreign_keys.map { |fk| generator.generate(fk) }
-        end
-      end
-
-      # Views
-      if config.include_views
-        views = Introspection.fetch_views(connection)
-        unless views.empty?
-          generator = Generators::ViewGenerator.new(config)
-          sections[:views] = views.map { |view| generator.generate(view) }
-        end
-      end
-
-      # Materialized views
-      if config.include_materialized_views
-        matviews = Introspection.fetch_materialized_views(connection)
-        unless matviews.empty?
-          generator = Generators::MaterializedViewGenerator.new(config)
-          sections[:materialized_views] = matviews.map { |mv| generator.generate(mv) }
-        end
-      end
-
-      # Triggers
-      if config.include_triggers
-        triggers = Introspection.fetch_triggers(connection)
-        unless triggers.empty?
-          generator = Generators::TriggerGenerator.new(config)
-          sections[:triggers] = triggers.map { |trigger| generator.generate(trigger) }
-        end
-      end
-
-      # Schema migrations - create batch INSERT statements
-      # Each batch INSERT is a complete SQL statement, chunked into groups
-      # SQLite doesn't include schema_migrations in structure.sql (Rails manages it separately)
-      if adapter.class.name != 'BetterStructureSql::Adapters::SqliteAdapter' && table_exists?('schema_migrations')
-        versions = fetch_schema_migration_versions
-        unless versions.empty?
-          # Chunk versions into groups (each group will be one batch INSERT)
-          # Using max_lines - 3 to account for INSERT header + ON CONFLICT footer
-          chunk_size = config.max_lines_per_file - 3
-          version_chunks = versions.each_slice(chunk_size).to_a
-
-          # Generate batch INSERT for each chunk
-          sections[:migrations] = version_chunks.map do |chunk|
-            generate_migrations_batch(chunk)
-          end
-        end
-      end
-
-      sections
+    # Check if current adapter is SQLite
+    #
+    # @return [Boolean] True if using SQLite adapter
+    def sqlite_adapter?
+      adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
     end
 
     # Combine sections for database storage (when versioning is enabled)
