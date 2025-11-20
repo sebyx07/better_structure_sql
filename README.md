@@ -104,6 +104,7 @@ Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structur
 
 ### Schema Versioning (Optional)
 - Store schema versions in database with metadata
+- **Hash-based deduplication** - Automatically skip storing when schema unchanged
 - Track database type and version, format type (SQL/Ruby), creation timestamp
 - ZIP archive storage for multi-file schemas
 - Configurable retention policy (keep last N versions)
