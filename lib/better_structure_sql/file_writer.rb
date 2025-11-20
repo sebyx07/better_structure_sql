@@ -57,6 +57,7 @@ module BetterStructureSql
         views: '08_views',               # After tables (may use functions)
         materialized_views: '08_views',  # Bundled with views
         triggers: '09_triggers',         # After tables and functions
+        comments: '11_comments',         # After all objects are created
         migrations: '10_migrations'      # Last (schema_migrations INSERT)
       }
 
