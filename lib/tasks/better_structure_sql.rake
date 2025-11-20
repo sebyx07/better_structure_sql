@@ -73,53 +73,71 @@ namespace :db do
     task store: :environment do
       require 'better_structure_sql'
 
-      unless BetterStructureSql.configuration.enable_schema_versions
+      config = BetterStructureSql.configuration
+      unless config.enable_schema_versions
         puts 'Schema versioning is not enabled.'
         puts 'Enable it in config/initializers/better_structure_sql.rb:'
         puts '  config.enable_schema_versions = true'
-        exit 1
+        next
       end
 
-      version = BetterStructureSql::SchemaVersions.store_current
+      connection = ActiveRecord::Base.connection
+      result = BetterStructureSql::SchemaVersions.store_current(connection)
 
-      if version
-        puts 'Schema version stored successfully'
-        puts "  ID: #{version.id}"
+      if result.skipped?
+        puts "\nNo schema changes detected"
+        puts "  Current schema matches version ##{result.version_id}"
+        puts "  Hash: #{result.hash}"
+        puts "  No new version stored"
+        puts "  Total versions: #{result.total_count}"
+      elsif result.stored?
+        version = result.version
+        puts "\nStored schema version ##{version.id}"
         puts "  Format: #{version.format_type}"
         puts "  Mode: #{version.output_mode}"
-        puts "  Files: #{version.file_count || 1}"
+        puts "  Files: #{version.file_count}" if version.multi_file?
         puts "  PostgreSQL: #{version.pg_version}"
         puts "  Size: #{version.formatted_size}"
-        puts "  Total versions: #{BetterStructureSql::SchemaVersions.count}"
+        puts "  Hash: #{version.content_hash}"
+        puts "  Total versions: #{result.total_count}"
       else
-        puts 'No schema file found to store'
+        puts "\nNo schema file found to store"
         exit 1
       end
+    rescue StandardError => e
+      puts "\nError storing schema version: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if ENV['VERBOSE']
+      exit 1
     end
 
     desc 'List all stored schema versions'
     task versions: :environment do
       require 'better_structure_sql'
 
-      unless BetterStructureSql.configuration.enable_schema_versions
+      config = BetterStructureSql.configuration
+      unless config.enable_schema_versions
         puts 'Schema versioning is not enabled.'
-        exit 1
+        puts 'Enable it in config/initializers/better_structure_sql.rb:'
+        puts '  config.enable_schema_versions = true'
+        next
       end
 
       versions = BetterStructureSql::SchemaVersions.all_versions
       if versions.empty?
         puts 'No schema versions stored yet'
       else
-        puts "Total versions: #{versions.count}"
-        puts "\nID     Format  Mode          Files   PostgreSQL      Created              Size"
-        puts '-' * 95
+        puts "\nSchema Versions (#{versions.count} total)\n\n"
+        puts format('%-4s | %-6s | %-11s | %-5s | %-10s | %-8s | %-19s | %s',
+                    'ID', 'Format', 'Mode', 'Files', 'PostgreSQL', 'Hash', 'Created', 'Size')
+        puts '-' * 100
         versions.each do |version|
-          puts format('%-6d %-7s %-13s %-7s %-15s %-20s %s',
+          puts format('%-4d | %-6s | %-11s | %-5s | %-10s | %-8s | %-19s | %s',
                       version.id,
                       version.format_type,
                       version.output_mode,
-                      version.file_count || 1,
-                      version.pg_version,
+                      version.file_count || '-',
+                      version.pg_version[0..9], # Truncate long version strings
+                      version.content_hash[0..7], # First 8 chars of hash
                       version.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                       version.formatted_size)
         end

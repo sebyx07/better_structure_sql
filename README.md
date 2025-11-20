@@ -155,6 +155,128 @@ rails db:schema:dump_better
 
 **🎉 Your `db/structure.sql` is now clean and maintainable!**
 
+## 📦 Schema Versioning with Deduplication
+
+BetterStructureSql automatically tracks schema evolution by storing versions in your database. Hash-based deduplication ensures only meaningful schema changes are recorded.
+
+### How It Works
+
+When you run `rails db:schema:store`, the gem:
+
+1. **Reads** your current schema files (single or multi-file)
+2. **Calculates** MD5 hash of the complete schema content
+3. **Compares** with the most recent stored version's hash
+4. **Skips storage** if hash matches (no changes detected) ✨
+5. **Creates new version** if hash differs (schema changed)
+
+### Quick Example
+
+```bash
+# After migrations, dump and store schema
+rails db:migrate
+rails db:schema:dump_better
+rails db:schema:store
+
+# First run (no previous version)
+# =>
+# Stored schema version #1
+#   Format: sql
+#   Mode: single_file
+#   PostgreSQL: 15.4
+#   Size: 45.2 KB
+#   Hash: a3f5c9d2e8b1f4a6c7e9d3f1b5a8c2e4
+#   Total versions: 1
+
+# Second run (no schema changes)
+# =>
+# No schema changes detected
+#   Current schema matches version #1
+#   Hash: a3f5c9d2e8b1f4a6c7e9d3f1b5a8c2e4
+#   No new version stored
+#   Total versions: 1
+
+# After adding a table
+rails db:migrate  # Adds new table
+rails db:schema:dump_better
+rails db:schema:store
+
+# =>
+# Stored schema version #2
+#   Format: sql
+#   Mode: single_file
+#   PostgreSQL: 15.4
+#   Size: 48.7 KB
+#   Hash: b7e2d1c4f9a6c3e5d8b2f1a4c9e7d3b6
+#   Total versions: 2
+```
+
+### Production Workflow
+
+Perfect for deployment automation:
+
+```ruby
+# config/deploy.rb or GitHub Actions
+namespace :deploy do
+  task :update_schema do
+    # Run migrations (may be zero)
+    # Rails automatically dumps schema after migrations
+    execute :rake, 'db:migrate'
+
+    # Store schema version only if changed (automatic deduplication)
+    execute :rake, 'db:schema:store'
+  end
+end
+```
+
+**Benefits in Production:**
+- ✅ Deploys without migrations don't create duplicate versions
+- ✅ Developers see clean schema evolution timeline
+- ✅ Storage efficient (no duplicate content)
+- ✅ Clear audit trail of actual schema changes
+
+### Viewing Stored Versions
+
+```bash
+# List all versions with hashes
+rails db:schema:versions
+
+Schema Versions (3 total)
+
+ID   | Format | Mode        | Files | PostgreSQL | Hash     | Created             | Size
+-----|--------|-------------|-------|------------|----------|---------------------|-------
+3    | sql    | multi_file  | 47    | 15.4       | a3f5c9d2 | 2025-01-20 14:30:15 | 125 KB
+2    | sql    | single_file | -     | 15.4       | b7e2d1c4 | 2025-01-19 10:15:42 | 98 KB
+1    | sql    | single_file | -     | 15.3       | c9f8a3b2 | 2025-01-18 08:45:30 | 85 KB
+```
+
+### Configuration
+
+```ruby
+# config/initializers/better_structure_sql.rb
+BetterStructureSql.configure do |config|
+  # Enable schema versioning
+  config.enable_schema_versions = true
+
+  # Retain 10 most recent unique versions (0 = unlimited)
+  config.schema_versions_limit = 10
+end
+```
+
+### Web UI Access
+
+Developers can view stored schema versions via the web UI without database access:
+
+```ruby
+# config/routes.rb
+authenticate :user, ->(user) { user.admin? } do
+  mount BetterStructureSql::Engine, at: '/schema_versions'
+end
+```
+
+Navigate to `/schema_versions` to browse versions, view formatted schema, and download raw SQL files.
+
+📖 See [Schema Versioning Documentation](docs/schema_versions.md) for complete details.
+
 ## Docker Development Environment 🐳
 
 Get started with a fully configured development environment in seconds:
