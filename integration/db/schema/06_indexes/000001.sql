@@ -1,3 +1,5 @@
+CREATE INDEX index_better_structure_sql_schema_versions_on_content_hash ON public.better_structure_sql_schema_versions USING btree (content_hash);
+
 CREATE INDEX index_better_structure_sql_schema_versions_on_created_at ON public.better_structure_sql_schema_versions USING btree (created_at DESC);
 
 CREATE INDEX index_better_structure_sql_schema_versions_on_output_mode ON public.better_structure_sql_schema_versions USING btree (output_mode);

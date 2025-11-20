@@ -28,7 +28,7 @@ BetterStructureSql.configure do |config|
   schema_file = if Rails.application.config.active_record.schema_format == :ruby
                   'db/schema.rb'
                 else
-                  ENV.fetch('MULTI_FILE_SCHEMA', 'false') == 'true' ? 'db/schema' : 'db/structure.sql'
+                  ENV.fetch('MULTI_FILE_SCHEMA', 'true') == 'true' ? 'db/schema' : 'db/structure.sql'
                 end
   config.output_path = Rails.root.join(ENV.fetch('SCHEMA_OUTPUT_PATH', schema_file))
 

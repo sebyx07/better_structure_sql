@@ -1,4 +1,4 @@
-CREATE VIEW active_products_view AS
+CREATE OR REPLACE VIEW active_products_view AS
 SELECT p.id,
     p.name,
     p.sku,
@@ -11,7 +11,7 @@ SELECT p.id,
   WHERE (p.is_active = true)
   ORDER BY p.created_at DESC;
 
-CREATE VIEW large_view_00 AS
+CREATE OR REPLACE VIEW large_view_00 AS
 SELECT large_table_000.id,
     large_table_000.name,
     large_table_000.status,
@@ -20,7 +20,7 @@ SELECT large_table_000.id,
    FROM large_table_000
   WHERE (large_table_000.active = true);
 
-CREATE VIEW large_view_01 AS
+CREATE OR REPLACE VIEW large_view_01 AS
 SELECT large_table_002.id,
     large_table_002.name,
     large_table_002.status,
@@ -29,7 +29,7 @@ SELECT large_table_002.id,
    FROM large_table_002
   WHERE (large_table_002.active = true);
 
-CREATE VIEW large_view_02 AS
+CREATE OR REPLACE VIEW large_view_02 AS
 SELECT large_table_004.id,
     large_table_004.name,
     large_table_004.status,
@@ -38,7 +38,7 @@ SELECT large_table_004.id,
    FROM large_table_004
   WHERE (large_table_004.active = true);
 
-CREATE VIEW large_view_03 AS
+CREATE OR REPLACE VIEW large_view_03 AS
 SELECT large_table_006.id,
     large_table_006.name,
     large_table_006.status,
@@ -47,7 +47,7 @@ SELECT large_table_006.id,
    FROM large_table_006
   WHERE (large_table_006.active = true);
 
-CREATE VIEW large_view_04 AS
+CREATE OR REPLACE VIEW large_view_04 AS
 SELECT large_table_008.id,
     large_table_008.name,
     large_table_008.status,
@@ -56,7 +56,7 @@ SELECT large_table_008.id,
    FROM large_table_008
   WHERE (large_table_008.active = true);
 
-CREATE VIEW large_view_05 AS
+CREATE OR REPLACE VIEW large_view_05 AS
 SELECT large_table_010.id,
     large_table_010.name,
     large_table_010.status,
@@ -65,7 +65,7 @@ SELECT large_table_010.id,
    FROM large_table_010
   WHERE (large_table_010.active = true);
 
-CREATE VIEW large_view_06 AS
+CREATE OR REPLACE VIEW large_view_06 AS
 SELECT large_table_012.id,
     large_table_012.name,
     large_table_012.status,
@@ -74,7 +74,7 @@ SELECT large_table_012.id,
    FROM large_table_012
   WHERE (large_table_012.active = true);
 
-CREATE VIEW large_view_07 AS
+CREATE OR REPLACE VIEW large_view_07 AS
 SELECT large_table_014.id,
     large_table_014.name,
     large_table_014.status,
@@ -83,7 +83,7 @@ SELECT large_table_014.id,
    FROM large_table_014
   WHERE (large_table_014.active = true);
 
-CREATE VIEW large_view_08 AS
+CREATE OR REPLACE VIEW large_view_08 AS
 SELECT large_table_016.id,
     large_table_016.name,
     large_table_016.status,
@@ -92,7 +92,7 @@ SELECT large_table_016.id,
    FROM large_table_016
   WHERE (large_table_016.active = true);
 
-CREATE VIEW large_view_09 AS
+CREATE OR REPLACE VIEW large_view_09 AS
 SELECT large_table_018.id,
     large_table_018.name,
     large_table_018.status,
@@ -101,7 +101,7 @@ SELECT large_table_018.id,
    FROM large_table_018
   WHERE (large_table_018.active = true);
 
-CREATE VIEW large_view_10 AS
+CREATE OR REPLACE VIEW large_view_10 AS
 SELECT large_table_020.id,
     large_table_020.name,
     large_table_020.status,
@@ -110,7 +110,7 @@ SELECT large_table_020.id,
    FROM large_table_020
   WHERE (large_table_020.active = true);
 
-CREATE VIEW large_view_11 AS
+CREATE OR REPLACE VIEW large_view_11 AS
 SELECT large_table_022.id,
     large_table_022.name,
     large_table_022.status,
@@ -119,7 +119,7 @@ SELECT large_table_022.id,
    FROM large_table_022
   WHERE (large_table_022.active = true);
 
-CREATE VIEW large_view_12 AS
+CREATE OR REPLACE VIEW large_view_12 AS
 SELECT large_table_024.id,
     large_table_024.name,
     large_table_024.status,
@@ -128,7 +128,7 @@ SELECT large_table_024.id,
    FROM large_table_024
   WHERE (large_table_024.active = true);
 
-CREATE VIEW large_view_13 AS
+CREATE OR REPLACE VIEW large_view_13 AS
 SELECT large_table_026.id,
     large_table_026.name,
     large_table_026.status,
@@ -137,7 +137,7 @@ SELECT large_table_026.id,
    FROM large_table_026
   WHERE (large_table_026.active = true);
 
-CREATE VIEW large_view_14 AS
+CREATE OR REPLACE VIEW large_view_14 AS
 SELECT large_table_028.id,
     large_table_028.name,
     large_table_028.status,
@@ -146,7 +146,7 @@ SELECT large_table_028.id,
    FROM large_table_028
   WHERE (large_table_028.active = true);
 
-CREATE VIEW large_view_15 AS
+CREATE OR REPLACE VIEW large_view_15 AS
 SELECT large_table_030.id,
     large_table_030.name,
     large_table_030.status,
@@ -155,7 +155,7 @@ SELECT large_table_030.id,
    FROM large_table_030
   WHERE (large_table_030.active = true);
 
-CREATE VIEW large_view_16 AS
+CREATE OR REPLACE VIEW large_view_16 AS
 SELECT large_table_032.id,
     large_table_032.name,
     large_table_032.status,
@@ -164,7 +164,7 @@ SELECT large_table_032.id,
    FROM large_table_032
   WHERE (large_table_032.active = true);
 
-CREATE VIEW large_view_17 AS
+CREATE OR REPLACE VIEW large_view_17 AS
 SELECT large_table_034.id,
     large_table_034.name,
     large_table_034.status,
@@ -173,7 +173,7 @@ SELECT large_table_034.id,
    FROM large_table_034
   WHERE (large_table_034.active = true);
 
-CREATE VIEW large_view_18 AS
+CREATE OR REPLACE VIEW large_view_18 AS
 SELECT large_table_036.id,
     large_table_036.name,
     large_table_036.status,
@@ -182,7 +182,7 @@ SELECT large_table_036.id,
    FROM large_table_036
   WHERE (large_table_036.active = true);
 
-CREATE VIEW large_view_19 AS
+CREATE OR REPLACE VIEW large_view_19 AS
 SELECT large_table_038.id,
     large_table_038.name,
     large_table_038.status,
@@ -191,7 +191,7 @@ SELECT large_table_038.id,
    FROM large_table_038
   WHERE (large_table_038.active = true);
 
-CREATE VIEW user_post_stats AS
+CREATE OR REPLACE VIEW user_post_stats AS
 SELECT u.id AS user_id,
     u.email,
     count(p.id) AS total_posts,
@@ -201,7 +201,7 @@ SELECT u.id AS user_id,
      LEFT JOIN posts p ON ((p.user_id = u.id)))
   GROUP BY u.id, u.email;
 
-CREATE MATERIALIZED VIEW product_category_summary AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS product_category_summary AS
 SELECT c.id AS category_id,
     c.name AS category_name,
     count(p.id) AS product_count,
