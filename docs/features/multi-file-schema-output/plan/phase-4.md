@@ -681,7 +681,7 @@ def show_instructions
   say "   config.output_path = 'db/schema'  # Directory for split files"
   say "\nFor single-file output (default):"
   say "   config.output_path = 'db/structure.sql'"
-  say "\nDocumentation: https://github.com/yourusername/better_structure_sql"
+  say "\nDocumentation: https://github.com/sebyx07/better_structure_sql"
   say ("=" * 70) + "\n"
 end
 ```

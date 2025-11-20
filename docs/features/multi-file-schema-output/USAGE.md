@@ -572,8 +572,8 @@ diff -r v1/ v2/
 
 ## Support
 
-**Issues**: https://github.com/yourusername/better_structure_sql/issues
+**Issues**: https://github.com/sebyx07/better_structure_sql/issues
 
-**Docs**: https://github.com/yourusername/better_structure_sql
+**Docs**: https://github.com/sebyx07/better_structure_sql
 
 **Questions**: Open a discussion on GitHub
