@@ -40,7 +40,7 @@ describe('App', () => {
         </MemoryRouter>
       </HelmetProvider>
     );
-    expect(screen.getAllByText(/Version 0.1.0/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Version 0.2.1/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/MIT License/i).length).toBeGreaterThan(0);
   });
 });

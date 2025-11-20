@@ -35,7 +35,7 @@ describe('Header', () => {
 describe('Footer', () => {
   it('displays version', () => {
     render(<Footer />);
-    expect(screen.getByText(/Version 0\.1\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Version 0\.2\.1/i)).toBeInTheDocument();
   });
 
   it('displays license', () => {

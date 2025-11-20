@@ -73,7 +73,7 @@ describe('Home Page', () => {
       </HelmetProvider>
     );
 
-    expect(screen.getByText(/Beta Version 0\.1\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Beta Version 0\.2\.1/i)).toBeInTheDocument();
   });
 
   it('renders call-to-action buttons', () => {
