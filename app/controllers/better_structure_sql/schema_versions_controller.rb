@@ -41,20 +41,26 @@ module BetterStructureSql
     # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id
     def show
-      # Load metadata first
+      # Load metadata first (no content or ZIP to minimize memory usage)
       @schema_version = SchemaVersion
                         .select(:id, :pg_version, :format_type, :output_mode, :created_at,
                                 :content_size, :line_count, :file_count, :content_hash)
                         .find(params[:id])
 
-      # Only load content for small single-file versions
-      if @schema_version.output_mode == 'single_file' && @schema_version.content_size <= MAX_DISPLAY_SIZE
-        @schema_version = SchemaVersion.find(params[:id]) # Load with content
-      elsif @schema_version.output_mode == 'multi_file'
-        # Load content to extract manifest
-        full_version = SchemaVersion.select(:id, :content).find(params[:id])
-        @manifest = extract_manifest_from_content(full_version.content)
+      # Only load content for small files to display inline
+      # For large files, metadata is sufficient
+      if @schema_version.content_size <= MAX_DISPLAY_SIZE
+        # Reload full record with content column
+        # Note: We don't select zip_archive to avoid loading large binary data
+        @schema_version = SchemaVersion.select(
+          :id, :pg_version, :format_type, :output_mode, :created_at,
+          :content_size, :line_count, :file_count, :content_hash, :content
+        ).find(params[:id])
       end
+
+      # NOTE: Manifest extraction intentionally skipped to avoid loading
+      # potentially large ZIP archives into memory. Manifest is primarily
+      # useful for tooling and can be extracted from the download if needed.
     rescue ActiveRecord::RecordNotFound
       render plain: 'Schema version not found', status: :not_found
     end
@@ -175,37 +181,6 @@ module BetterStructureSql
           offset += chunk_size
         end
       end
-    end
-
-    # Extracts embedded manifest JSON from multi-file schema content
-    #
-    # Manifest is stored between MANIFEST_JSON_START and MANIFEST_JSON_END markers
-    # as SQL comments. Parses and returns the manifest hash.
-    #
-    # @param content [String] the schema content containing embedded manifest
-    # @return [Hash, nil] parsed manifest hash or nil if not found/invalid
-    def extract_manifest_from_content(content)
-      # Manifest is embedded in content between MANIFEST_JSON_START and MANIFEST_JSON_END markers
-      return nil unless content.include?('MANIFEST_JSON_START')
-
-      # Extract JSON from between markers, removing comment prefixes
-      start_marker = '-- MANIFEST_JSON_START'
-      end_marker = '-- MANIFEST_JSON_END'
-
-      start_pos = content.index(start_marker)
-      end_pos = content.index(end_marker)
-
-      return nil unless start_pos && end_pos
-
-      manifest_section = content[(start_pos + start_marker.length)..(end_pos - 1)]
-      manifest_json = manifest_section.lines
-                                      .map { |line| line.sub(/^--\s?/, '') }
-                                      .join
-
-      JSON.parse(manifest_json)
-    rescue JSON::ParserError => e
-      Rails.logger.debug { "Failed to parse manifest: #{e.message}" }
-      nil
     end
 
     # Streams large file content from database in chunks
