@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.2.2] - 2025-11-23
+
+### Fixed
+- Web UI now properly displays multi-file schema content for files under 1MB
+- Optimized schema version show page to avoid loading ZIP archives unnecessarily
+- Improved memory efficiency by explicitly selecting only needed columns
+- Better error messages distinguishing "too large" from "not available" content
+
 ## [0.2.1] - 2025-11-20
 
 ### Changed
