@@ -20,7 +20,7 @@ permissions:
 jobs:
   # Gate the release on the same suite CI runs on main.
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:14
@@ -55,7 +55,7 @@ jobs:
 
   release:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: release
     permissions:
       contents: write   # create the GitHub Release
