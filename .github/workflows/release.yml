@@ -1,0 +1,94 @@
+name: Release
+
+# Publishes the gem to RubyGems and creates a GitHub Release whenever a
+# version tag (e.g. v0.2.3) is pushed. No API key: RubyGems trusted publishing
+# (OIDC) authenticates this workflow, once rubygems.org lists it as a trusted
+# publisher for the gem (owner: sebyx07/better_structure_sql, workflow:
+# release.yml, environment: release).
+#
+# Per release: bump BetterStructureSql::VERSION and CHANGELOG.md, merge, then
+# push the matching tag (`git tag v<version> && git push origin v<version>`).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  # Gate the release on the same suite CI runs on main.
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: better_structure_sql_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
+      RAILS_VERSION: '8.1.1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.7'
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rspec
+
+      - name: Run RuboCop
+        run: bundle exec rubocop
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write   # create the GitHub Release
+      id-token: write   # RubyGems trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.7'
+          bundler-cache: true
+
+      - name: Verify tag matches gem version
+        run: |
+          gem_version="$(ruby -r ./lib/better_structure_sql/version.rb -e 'print BetterStructureSql::VERSION')"
+          tag_version="${GITHUB_REF_NAME#v}"
+          echo "gem version: $gem_version"
+          echo "tag version: $tag_version"
+          if [ "$gem_version" != "$tag_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match BetterStructureSql::VERSION ($gem_version)"
+            exit 1
+          fi
+
+      # Builds the gem and pushes it to RubyGems via OIDC trusted publishing.
+      - name: Publish to RubyGems
+        uses: rubygems/release-gem@v1
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Release $GITHUB_REF_NAME. See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." \
+            pkg/*.gem
