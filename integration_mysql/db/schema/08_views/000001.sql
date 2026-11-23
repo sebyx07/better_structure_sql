@@ -1,5 +1,11 @@
-CREATE OR REPLACE VIEW product_inventory AS
-select `better_structure_sql_mysql_development`.`products`.`id` AS `id`,`better_structure_sql_mysql_development`.`products`.`name` AS `name`,`better_structure_sql_mysql_development`.`products`.`price` AS `price`,`better_structure_sql_mysql_development`.`products`.`stock_quantity` AS `stock_quantity`,`better_structure_sql_mysql_development`.`categories`.`name` AS `category_name` from (`better_structure_sql_mysql_development`.`products` join `better_structure_sql_mysql_development`.`categories` on((`better_structure_sql_mysql_development`.`categories`.`id` = `better_structure_sql_mysql_development`.`products`.`category_id`))) where (`better_structure_sql_mysql_development`.`products`.`stock_quantity` > 0);
+CREATE OR REPLACE VIEW `active_accounts` AS
+select `accounts`.`id` AS `id`,`accounts`.`code` AS `code`,'x;y' AS `label` from `accounts` where (`accounts`.`status` = 'active') WITH CASCADED CHECK OPTION;
 
-CREATE OR REPLACE VIEW user_post_counts AS
-select `better_structure_sql_mysql_development`.`users`.`id` AS `user_id`,`better_structure_sql_mysql_development`.`users`.`email` AS `email`,count(`better_structure_sql_mysql_development`.`posts`.`id`) AS `post_count` from (`better_structure_sql_mysql_development`.`users` left join `better_structure_sql_mysql_development`.`posts` on((`better_structure_sql_mysql_development`.`posts`.`user_id` = `better_structure_sql_mysql_development`.`users`.`id`))) group by `better_structure_sql_mysql_development`.`users`.`id`,`better_structure_sql_mysql_development`.`users`.`email`;
+CREATE OR REPLACE VIEW `a_active_account_codes` AS
+select `active_accounts`.`code` AS `code` from `active_accounts`;
+
+CREATE OR REPLACE VIEW `product_inventory` AS
+select `products`.`id` AS `id`,`products`.`name` AS `name`,`products`.`price` AS `price`,`products`.`stock_quantity` AS `stock_quantity`,`categories`.`name` AS `category_name` from (`products` join `categories` on((`categories`.`id` = `products`.`category_id`))) where (`products`.`stock_quantity` > 0);
+
+CREATE OR REPLACE VIEW `user_post_counts` AS
+select `users`.`id` AS `user_id`,`users`.`email` AS `email`,count(`posts`.`id`) AS `post_count` from (`users` left join `posts` on((`posts`.`user_id` = `users`.`id`))) group by `users`.`id`,`users`.`email`;

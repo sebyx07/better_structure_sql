@@ -7,7 +7,7 @@
 #
 # For more configuration examples, see:
 #   - docs/migration-guides/from-schema-rb-to-structure-sql.md
-#   - docs/features/dev-environment-docker-web-ui/plan/phase-3.md
+#   - docs/configuration.md
 
 BetterStructureSql.configure do |config|
   # ===================================================================================

@@ -117,7 +117,8 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Hash] Hash with object types as keys (:tables, :columns, :indexes, etc.)
       #   Each value is a hash mapping object identifier to comment text
-      #   Example: { tables: { 'users' => 'User accounts', ... }, columns: { 'users.email' => 'Email address', ... } }
+      #   (:columns is keyed by [table_name, column_name], so names containing dots stay unambiguous)
+      #   Example: { tables: { 'users' => 'User accounts', ... }, columns: { ['users', 'email'] => 'Email address', ... } }
       # @raise [NotImplementedError] If not implemented by subclass
       def fetch_comments(connection)
         raise NotImplementedError, "#{self.class} must implement #fetch_comments"
@@ -246,6 +247,20 @@ module BetterStructureSql
       # @return [Boolean] True if current version is greater than or equal to required version
       def version_at_least?(current_version, required_version)
         compare_versions(current_version, required_version) >= 0
+      end
+
+      private
+
+      # Order relations so each comes after the relations it depends on
+      #
+      # @param relations [Array<Hash>] Relations sorted by name
+      # @param dependencies [Hash<String, Array<String>>] Relation name => names it depends on
+      # @return [Array<Hash>] Relations in creation order
+      def order_by_dependencies(relations, dependencies)
+        resolver = DependencyResolver.new
+        relations.each { |rel| resolver.add_object(rel[:name], :view, depends_on: dependencies[rel[:name]]) }
+        by_name = relations.index_by { |rel| rel[:name] }
+        resolver.resolve.map { |name| by_name.fetch(name) }
       end
     end
   end

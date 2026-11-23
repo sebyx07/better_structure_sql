@@ -27,26 +27,6 @@ module BetterStructureSql
         # For simplicity, omit IF NOT EXISTS for cross-database compatibility
         "CREATE #{unique_clause}INDEX #{name} ON #{table} (#{columns_list});"
       end
-
-      private
-
-      def quote_identifier(identifier)
-        return identifier if identifier.nil?
-
-        # Detect adapter from ActiveRecord connection
-        adapter_name = begin
-          ActiveRecord::Base.connection.adapter_name.downcase
-        rescue StandardError
-          nil
-        end
-
-        # MySQL/MariaDB use backticks, PostgreSQL/SQLite use double quotes
-        if %w[mysql mysql2 trilogy].include?(adapter_name)
-          "`#{identifier}`"
-        else
-          "\"#{identifier}\""
-        end
-      end
     end
   end
 end

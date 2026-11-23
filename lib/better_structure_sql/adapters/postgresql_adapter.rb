@@ -5,10 +5,24 @@ module BetterStructureSql
     # PostgreSQL adapter implementing all introspection and generation methods
     #
     # Provides full PostgreSQL support including extensions, custom types, materialized views,
-    # functions, triggers, sequences, and all standard database objects.
-    # Preserves existing query logic for backward compatibility.
+    # functions, triggers, sequences, partitioned tables and all standard database objects.
+    #
+    # Introspection reads pg_catalog directly and relies on PostgreSQL's own deparse
+    # functions (format_type, pg_get_expr, pg_get_constraintdef, pg_get_indexdef, ...)
+    # so the generated SQL matches what the server understands. Objects owned by
+    # extensions are skipped because CREATE EXTENSION recreates them.
     class PostgresqlAdapter < BaseAdapter
-      # Introspection methods - migrated from Introspection modules
+      # Schema whose objects are dumped. Extensions may live in any schema.
+      DUMPED_SCHEMA = 'public'
+
+      # Rewrites format_type output into the short type names used in dumps
+      TYPE_ALIASES = [
+        [/\Acharacter varying/, 'varchar'],
+        [/\Acharacter(?=\(|\[|\z)/, 'char'],
+        [/\Atimestamp(\(\d+\))? without time zone/, 'timestamp\1'],
+        [/\Atimestamp(\(\d+\))? with time zone/, 'timestamptz\1'],
+        [/\Atime(\(\d+\))? without time zone/, 'time\1']
+      ].freeze
 
       # Fetch all extensions from the database
       #
@@ -32,175 +46,146 @@ module BetterStructureSql
         end
       end
 
-      # Fetch all custom types (enums, composite types, domains) from the database
+      # Fetch all custom types (enums, composite types, domains, ranges) from the database
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of type hashes with :name, :schema, :type, and type-specific attributes
       def fetch_custom_types(connection)
-        query = custom_types_query
-        connection.execute(query).map { |row| build_custom_type(connection, row) }
+        connection.select_all(custom_types_query).map { |row| build_custom_type(connection, row) }
       end
 
       # Fetch all tables from the database
       #
-      # Performance optimized: Batches all table metadata queries to avoid N+1 queries.
-      # For 1000 tables: 4 queries instead of 3001 queries (~750x faster)
+      # Partitions are not returned at the top level: each partition is nested under
+      # its parent's :partitions so it is always created after the parent.
+      # Batches all table metadata queries to avoid N+1 queries.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of table hashes with :name, :schema, :columns, :primary_key, :constraints
       def fetch_tables(connection)
-        # Fetch all table names first
-        tables_query = <<~SQL.squish
-          SELECT table_name, table_schema
-          FROM information_schema.tables
-          WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-            AND table_type = 'BASE TABLE'
-          ORDER BY table_name
-        SQL
-
-        table_rows = connection.execute(tables_query).to_a
+        table_rows = connection.select_all(tables_query).to_a
         return [] if table_rows.empty?
 
-        table_names = table_rows.pluck('table_name')
+        oids = table_rows.pluck('oid')
+        columns = fetch_all_columns(connection, oids)
+        constraints = fetch_all_constraints(connection, oids)
+        sequences = fetch_owned_sequences(connection, oids)
 
-        # Batch fetch all columns, primary keys, and constraints
-        columns_by_table = fetch_all_columns(connection, table_names)
-        primary_keys_by_table = fetch_all_primary_keys(connection, table_names)
-        constraints_by_table = fetch_all_constraints(connection, table_names)
-
-        # Combine results
-        table_rows.map do |row|
-          table_name = row['table_name']
-          {
-            name: table_name,
-            schema: row['table_schema'],
-            columns: columns_by_table[table_name] || [],
-            primary_key: primary_keys_by_table[table_name] || [],
-            constraints: constraints_by_table[table_name] || []
-          }
+        tables = table_rows.to_h do |row|
+          [row['oid'], build_table(row, columns, constraints, sequences)]
         end
+        nest_partitions(table_rows, tables)
       end
 
-      # Fetch all indexes from the database
+      # Fetch all indexes that are not created by a constraint or a parent partitioned index
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of index hashes with :schema, :table, :name, :definition
       def fetch_indexes(connection)
         query = <<~SQL.squish
           SELECT
-            pi.schemaname,
-            pi.tablename,
-            pi.indexname,
-            pi.indexdef
-          FROM pg_indexes pi
-          LEFT JOIN pg_matviews mv ON mv.matviewname = pi.tablename AND mv.schemaname = pi.schemaname
-          WHERE pi.schemaname NOT IN ('pg_catalog', 'information_schema')
-            AND mv.matviewname IS NULL
-          ORDER BY pi.tablename, pi.indexname
+            n.nspname AS schemaname,
+            t.relname AS tablename,
+            ic.relname AS indexname,
+            ic.relkind = 'I' AS partitioned,
+            pg_get_indexdef(i.indexrelid) AS indexdef
+          FROM pg_index i
+          JOIN pg_class ic ON ic.oid = i.indexrelid
+          JOIN pg_class t ON t.oid = i.indrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE n.nspname = '#{DUMPED_SCHEMA}'
+            AND t.relkind IN ('r', 'p')
+            AND NOT ic.relispartition
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_constraint con
+              WHERE con.conindid = i.indexrelid AND con.contype IN ('p', 'u', 'x')
+            )
+            AND #{not_extension_member('t.oid')}
+          ORDER BY t.relname, ic.relname
         SQL
 
-        connection.execute(query).map do |row|
+        connection.select_all(query).map do |row|
           {
             schema: row['schemaname'],
             table: row['tablename'],
             name: row['indexname'],
-            definition: row['indexdef']
-          }
-        end.reject { |idx| idx[:name].end_with?('_pkey') }
-      end
-
-      # Fetch all foreign keys from the database
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :column, :foreign_table, :foreign_column, :on_update, :on_delete
-      def fetch_foreign_keys(connection)
-        query = <<~SQL.squish
-          SELECT
-            tc.table_name,
-            tc.constraint_name,
-            kcu.column_name,
-            ccu.table_name AS foreign_table_name,
-            ccu.column_name AS foreign_column_name,
-            rc.update_rule,
-            rc.delete_rule
-          FROM information_schema.table_constraints AS tc
-          JOIN information_schema.key_column_usage AS kcu
-            ON tc.constraint_name = kcu.constraint_name
-            AND tc.table_schema = kcu.table_schema
-          JOIN information_schema.constraint_column_usage AS ccu
-            ON ccu.constraint_name = tc.constraint_name
-            AND ccu.table_schema = tc.table_schema
-          JOIN information_schema.referential_constraints AS rc
-            ON rc.constraint_name = tc.constraint_name
-            AND rc.constraint_schema = tc.table_schema
-          WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_schema = 'public'
-          ORDER BY tc.table_name, tc.constraint_name
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            table: row['table_name'],
-            name: row['constraint_name'],
-            column: row['column_name'],
-            foreign_table: row['foreign_table_name'],
-            foreign_column: row['foreign_column_name'],
-            on_update: row['update_rule'],
-            on_delete: row['delete_rule']
+            definition: index_definition(row)
           }
         end
       end
 
-      # Fetch all views from the database
+      # Fetch all foreign keys from the database
+      #
+      # Foreign keys cloned onto partitions are skipped; the parent's constraint recreates them.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition
-      def fetch_views(connection)
+      # @return [Array<Hash>] Array of foreign key hashes with :table, :schema, :name, :definition
+      def fetch_foreign_keys(connection)
         query = <<~SQL.squish
           SELECT
-            schemaname,
-            viewname,
-            definition
-          FROM pg_views
-          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY viewname
+            c.relname AS table_name,
+            n.nspname AS schema_name,
+            con.conname AS constraint_name,
+            pg_get_constraintdef(con.oid) AS definition
+          FROM pg_constraint con
+          JOIN pg_class c ON c.oid = con.conrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE con.contype = 'f'
+            AND con.conparentid = 0
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND #{not_extension_member('c.oid')}
+          ORDER BY c.relname, con.conname
         SQL
 
-        connection.execute(query).map do |row|
+        connection.select_all(query).map do |row|
           {
-            schema: row['schemaname'],
-            name: row['viewname'],
+            table: row['table_name'],
+            schema: row['schema_name'],
+            name: row['constraint_name'],
             definition: row['definition']
           }
         end
       end
 
-      # Fetch all materialized views from the database
+      # Fetch all views from the database, ordered so dependencies come first
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of materialized view hashes with :schema, :name, :definition, :indexes
-      def fetch_materialized_views(connection)
-        query = <<~SQL.squish
-          SELECT
-            schemaname,
-            matviewname,
-            definition
-          FROM pg_matviews
-          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY matviewname
-        SQL
-
-        connection.execute(query).map do |row|
+      # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition, :options
+      def fetch_views(connection)
+        rows = connection.select_all(relations_query('v')).map do |row|
           {
-            schema: row['schemaname'],
-            name: row['matviewname'],
+            schema: row['schema_name'],
+            name: row['name'],
             definition: row['definition'],
-            indexes: fetch_materialized_view_indexes(connection, row['matviewname'])
+            options: row['options']
           }
         end
+        order_by_dependencies(rows, fetch_relation_dependencies(connection, 'v'))
       end
 
-      # Fetch all functions from the database
+      # Fetch all materialized views from the database, ordered so dependencies come first
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Array<Hash>] Array of materialized view hashes with :schema, :name, :definition, :indexes, :comment
+      def fetch_materialized_views(connection)
+        indexes = fetch_materialized_view_indexes(connection)
+        comments = fetch_relation_comments(connection, %w[m])
+        rows = connection.select_all(relations_query('m')).map do |row|
+          {
+            schema: row['schema_name'],
+            name: row['name'],
+            definition: row['definition'],
+            indexes: indexes[row['name']],
+            comment: comments[row['name']]
+          }
+        end
+        order_by_dependencies(rows, fetch_relation_dependencies(connection, 'm'))
+      end
+
+      # Fetch all functions and procedures from the database
+      #
+      # Skips extension members and functions created implicitly by a type
+      # (e.g. range type constructors).
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of function hashes with :schema, :name, :definition, :arguments, :return_type, :language, :volatility, :strict, :security_definer
@@ -219,14 +204,16 @@ module BetterStructureSql
           FROM pg_proc p
           JOIN pg_namespace n ON n.oid = p.pronamespace
           JOIN pg_language l ON l.oid = p.prolang
-          LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e'
-          WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-            AND p.prokind = 'f'
-            AND d.objid IS NULL
-          ORDER BY n.nspname, p.proname
+          WHERE n.nspname = '#{DUMPED_SCHEMA}'
+            AND p.prokind IN ('f', 'p', 'w')
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_depend d
+              WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype IN ('e', 'i')
+            )
+          ORDER BY n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)
         SQL
 
-        connection.execute(query).map do |row|
+        connection.select_all(query).map do |row|
           {
             schema: row['schema'],
             name: row['name'],
@@ -241,41 +228,41 @@ module BetterStructureSql
         end
       end
 
-      # Fetch all sequences from the database
+      # Fetch standalone and serial sequences from the database
+      #
+      # Identity sequences are skipped: they are recreated by the identity column.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of sequence hashes with :name, :schema, :start_value, :increment, :min_value, :max_value, :cache_size, :cycle
+      # @return [Array<Hash>] Array of sequence hashes with :name, :schema, :data_type, :start_value, :increment, :min_value, :max_value, :cache_size, :cycle
       def fetch_sequences(connection)
         query = <<~SQL.squish
           SELECT
-            sequencename,
-            schemaname,
-            start_value,
-            increment_by,
-            min_value,
-            max_value,
-            cache_size,
-            cycle
-          FROM pg_sequences
-          WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY sequencename
+            s.sequencename,
+            s.schemaname,
+            s.data_type::text AS data_type,
+            s.start_value,
+            s.increment_by,
+            s.min_value,
+            s.max_value,
+            s.cache_size,
+            s.cycle
+          FROM pg_sequences s
+          JOIN pg_namespace n ON n.nspname = s.schemaname
+          JOIN pg_class c ON c.relname = s.sequencename AND c.relnamespace = n.oid
+          WHERE s.schemaname = '#{DUMPED_SCHEMA}'
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_depend d
+              WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype IN ('e', 'i')
+            )
+          ORDER BY s.sequencename
         SQL
 
-        connection.execute(query).map do |row|
-          {
-            name: row['sequencename'],
-            schema: row['schemaname'],
-            start_value: row['start_value'],
-            increment: row['increment_by'],
-            min_value: row['min_value'],
-            max_value: row['max_value'],
-            cache_size: row['cache_size'],
-            cycle: row['cycle']
-          }
-        end
+        connection.select_all(query).map { |row| build_sequence(row) }
       end
 
-      # Fetch all triggers from the database
+      # Fetch all user triggers from the database
+      #
+      # Triggers cloned onto partitions are skipped; the parent's trigger recreates them.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of trigger hashes with :schema, :name, :table_name, :definition
@@ -290,11 +277,15 @@ module BetterStructureSql
           JOIN pg_class c ON c.oid = t.tgrelid
           JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE NOT t.tgisinternal
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_depend d
+              WHERE d.classid = 'pg_trigger'::regclass AND d.objid = t.oid AND d.deptype IN ('e', 'P')
+            )
           ORDER BY c.relname, t.tgname
         SQL
 
-        connection.execute(query).map do |row|
+        connection.select_all(query).map do |row|
           {
             schema: row['schema'],
             name: row['name'],
@@ -307,14 +298,16 @@ module BetterStructureSql
       # Fetch comments on database objects
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash] Hash with object types as keys (:tables, :columns, :indexes, :views, :functions)
+      # @return [Hash] Hash with object types as keys (:tables, :columns, :indexes, :views, :functions, :procedures);
+      #   :columns is keyed by [table_name, column_name]
       def fetch_comments(connection)
         {
-          tables: fetch_table_comments(connection),
+          tables: fetch_relation_comments(connection, %w[r p]),
           columns: fetch_column_comments(connection),
-          indexes: fetch_index_comments(connection),
-          views: fetch_view_comments(connection),
-          functions: fetch_function_comments(connection)
+          indexes: fetch_relation_comments(connection, %w[i I]),
+          views: fetch_relation_comments(connection, %w[v]),
+          functions: fetch_routine_comments(connection, %w[f w]),
+          procedures: fetch_routine_comments(connection, %w[p])
         }
       end
 
@@ -403,345 +396,388 @@ module BetterStructureSql
 
       private
 
-      # Helper methods for introspection
-
-      # Fetch columns for a specific table
+      # SQL condition excluding pg_class objects owned by an extension
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<Hash>] Array of column hashes with :name, :type, :default, :nullable, etc.
-      def fetch_columns(connection, table_name)
-        query = <<~SQL.squish
-          SELECT
-            column_name,
-            data_type,
-            column_default,
-            is_nullable,
-            character_maximum_length,
-            numeric_precision,
-            numeric_scale,
-            udt_name
-          FROM information_schema.columns
-          WHERE table_name = $1
-            AND table_schema = 'public'
-          ORDER BY ordinal_position
+      # @param oid_column [String] Column holding the pg_class oid
+      # @return [String] SQL condition
+      def not_extension_member(oid_column)
+        <<~SQL.squish
+          NOT EXISTS (
+            SELECT 1 FROM pg_depend ext
+            WHERE ext.classid = 'pg_class'::regclass AND ext.objid = #{oid_column} AND ext.deptype = 'e'
+          )
         SQL
-
-        connection.select_all(
-          query.gsub('$1', connection.quote(table_name))
-        ).map do |row|
-          {
-            name: row['column_name'],
-            type: resolve_column_type(row),
-            default: row['column_default'],
-            nullable: row['is_nullable'] == 'YES',
-            length: row['character_maximum_length'],
-            precision: row['numeric_precision'],
-            scale: row['numeric_scale']
-          }
-        end
       end
 
-      # Fetch primary key columns for a specific table
+      # SQL listing oids as an IN list
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<String>] Array of primary key column names
-      def fetch_primary_key(connection, table_name)
-        query = <<~SQL.squish
-          SELECT a.attname as column_name
-          FROM pg_index i
-          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-          WHERE i.indrelid = $1::regclass
-            AND i.indisprimary
-          ORDER BY a.attnum
-        SQL
-
-        result = connection.select_all(
-          query.gsub('$1', connection.quote(table_name))
-        )
-        result.pluck('column_name')
+      # @param oids [Array<Integer>] Object ids
+      # @return [String] Comma separated oids
+      def oid_list(oids)
+        oids.map { |oid| Integer(oid) }.join(', ')
       end
 
-      # Fetch constraints (CHECK, UNIQUE) for a specific table
+      # SQL query for regular and partitioned tables, with persistence, storage
+      # parameters (WITH (...)) and the parents of inheritance children (INHERITS)
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<Hash>] Array of constraint hashes with :name, :definition, :type
-      def fetch_constraints(connection, table_name)
-        query = <<~SQL.squish
+      # @return [String] SQL query string
+      def tables_query
+        <<~SQL.squish
           SELECT
-            conname as name,
-            pg_get_constraintdef(oid) as definition,
-            contype as type
-          FROM pg_constraint
-          WHERE conrelid = $1::regclass
-            AND contype IN ('c', 'u')
-          ORDER BY conname
-        SQL
-
-        connection.select_all(
-          query.gsub('$1', connection.quote(table_name))
-        ).map do |row|
-          {
-            name: row['name'],
-            definition: row['definition'],
-            type: constraint_type(row['type'])
-          }
-        end
-      end
-
-      # Batch fetch all columns for multiple tables (performance optimization)
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
-      # @return [Hash<String, Array<Hash>>] Hash of table_name => array of column hashes
-      def fetch_all_columns(connection, table_names)
-        return {} if table_names.empty?
-
-        query = <<~SQL.squish
-          SELECT
-            table_name,
-            column_name,
-            data_type,
-            column_default,
-            is_nullable,
-            character_maximum_length,
-            numeric_precision,
-            numeric_scale,
-            udt_name,
-            ordinal_position
-          FROM information_schema.columns
-          WHERE table_name IN (#{table_names.map { |t| connection.quote(t) }.join(', ')})
-            AND table_schema = 'public'
-          ORDER BY table_name, ordinal_position
-        SQL
-
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.select_all(query).each do |row|
-          result[row['table_name']] << {
-            name: row['column_name'],
-            type: resolve_column_type(row),
-            default: row['column_default'],
-            nullable: row['is_nullable'] == 'YES',
-            length: row['character_maximum_length'],
-            precision: row['numeric_precision'],
-            scale: row['numeric_scale']
-          }
-        end
-
-        result
-      end
-
-      # Batch fetch all primary keys for multiple tables (performance optimization)
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
-      # @return [Hash<String, Array<String>>] Hash of table_name => array of primary key column names
-      def fetch_all_primary_keys(connection, table_names)
-        return {} if table_names.empty?
-
-        query = <<~SQL.squish
-          SELECT
-            c.relname as table_name,
-            a.attname as column_name,
-            a.attnum as column_position
-          FROM pg_index i
-          JOIN pg_class c ON c.oid = i.indrelid
-          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+            c.oid,
+            c.relname AS table_name,
+            n.nspname AS table_schema,
+            c.relispartition AS partition,
+            CASE WHEN c.relkind = 'p' THEN pg_get_partkeydef(c.oid) END AS partition_key,
+            pg_get_expr(c.relpartbound, c.oid) AS partition_bound,
+            parent.relname AS parent_name,
+            c.relpersistence = 'u' AS unlogged,
+            (
+              SELECT string_agg(o.option_name || '=' || CASE WHEN o.option_value ~ '^[A-Za-z0-9_.]+$'
+                                                         THEN o.option_value ELSE quote_literal(o.option_value) END, ', ')
+              FROM pg_options_to_table(c.reloptions) o
+            ) AS storage_parameters,
+            (
+              SELECT json_agg(inherited.relname ORDER BY i.inhseqno)
+              FROM pg_inherits i
+              JOIN pg_class inherited ON inherited.oid = i.inhparent
+              WHERE i.inhrelid = c.oid AND NOT c.relispartition
+            ) AS inherits
+          FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
-          WHERE i.indisprimary
-            AND n.nspname = 'public'
-            AND c.relname IN (#{table_names.map { |t| connection.quote(t) }.join(', ')})
-          ORDER BY c.relname, a.attnum
+          LEFT JOIN pg_inherits inh ON inh.inhrelid = c.oid AND c.relispartition
+          LEFT JOIN pg_class parent ON parent.oid = inh.inhparent
+          WHERE c.relkind IN ('r', 'p')
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND #{not_extension_member('c.oid')}
+          ORDER BY c.relname
         SQL
-
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.select_all(query).each do |row|
-          result[row['table_name']] << row['column_name']
-        end
-
-        result
       end
 
-      # Batch fetch all constraints for multiple tables (performance optimization)
+      # Build a table hash from its row and batched metadata
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
-      # @return [Hash<String, Array<Hash>>] Hash of table_name => array of constraint hashes
-      def fetch_all_constraints(connection, table_names)
-        return {} if table_names.empty?
+      # @param row [Hash] Row from tables_query
+      # @param columns [Hash<Integer, Array<Hash>>] Columns by table oid
+      # @param constraints [Hash<Integer, Array<Hash>>] Constraints by table oid
+      # @param sequences [Hash<Integer, Array<Hash>>] Owned sequences by table oid
+      # @return [Hash] Table metadata
+      def build_table(row, columns, constraints, sequences)
+        table_constraints = constraints[row['oid']]
+        primary_key = table_constraints.find { |con| con[:type] == :primary_key }
+        inherits = row['inherits'] ? JSON.parse(row['inherits']) : []
 
-        query = <<~SQL.squish
-          SELECT
-            c.relname as table_name,
-            con.conname as name,
-            pg_get_constraintdef(con.oid) as definition,
-            con.contype as type
-          FROM pg_constraint con
-          JOIN pg_class c ON c.oid = con.conrelid
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          WHERE con.contype IN ('c', 'u')
-            AND n.nspname = 'public'
-            AND c.relname IN (#{table_names.map { |t| connection.quote(t) }.join(', ')})
-          ORDER BY c.relname, con.conname
-        SQL
-
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.select_all(query).each do |row|
-          result[row['table_name']] << {
-            name: row['name'],
-            definition: row['definition'],
-            type: constraint_type(row['type'])
-          }
-        end
-
-        result
-      end
-
-      # Fetch enum values for a specific enum type
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param type_name [String] Name of the enum type
-      # @return [Array<String>] Array of enum values in sort order
-      def fetch_enum_values(connection, type_name)
-        query = <<~SQL.squish
-          SELECT e.enumlabel
-          FROM pg_enum e
-          JOIN pg_type t ON t.oid = e.enumtypid
-          WHERE t.typname = $1
-          ORDER BY e.enumsortorder
-        SQL
-
-        connection.select_all(
-          query.gsub('$1', connection.quote(type_name))
-        ).pluck('enumlabel')
-      end
-
-      # Fetch attributes for a composite type
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param type_name [String] Name of the composite type
-      # @return [Array<Hash>] Array of attribute hashes with :name, :type
-      def fetch_composite_attributes(connection, type_name)
-        query = <<~SQL.squish
-          SELECT
-            a.attname as name,
-            format_type(a.atttypid, a.atttypmod) as type
-          FROM pg_attribute a
-          JOIN pg_type t ON t.typrelid = a.attrelid
-          WHERE t.typname = $1
-            AND a.attnum > 0
-            AND NOT a.attisdropped
-          ORDER BY a.attnum
-        SQL
-
-        connection.select_all(
-          query.gsub('$1', connection.quote(type_name))
-        ).map do |row|
-          { name: row['name'], type: row['type'] }
-        end
-      end
-
-      # Fetch details for a domain type
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param type_name [String] Name of the domain type
-      # @return [Hash] Domain details with :base_type, :constraint
-      def fetch_domain_details(connection, type_name)
-        query = <<~SQL.squish
-          SELECT
-            format_type(t.typbasetype, t.typtypmod) as base_type,
-            pg_get_constraintdef(c.oid) as constraint
-          FROM pg_type t
-          LEFT JOIN pg_constraint c ON c.contypid = t.oid
-          WHERE t.typname = $1
-        SQL
-
-        result = connection.select_all(
-          query.gsub('$1', connection.quote(type_name))
-        ).first
         {
-          base_type: result['base_type'],
-          constraint: result['constraint']
+          name: row['table_name'],
+          schema: row['table_schema'],
+          columns: local_columns(columns[row['oid']], inherits),
+          primary_key: primary_key ? primary_key[:columns] : [],
+          primary_key_name: primary_key&.dig(:name),
+          constraints: table_constraints - [primary_key],
+          partition_key: row['partition_key'],
+          partition_of: row['parent_name'],
+          partition_bound: row['partition_bound'],
+          partitions: [],
+          owned_sequences: sequences[row['oid']],
+          unlogged: row['unlogged'],
+          storage_parameters: row['storage_parameters'],
+          inherits:
         }
       end
 
-      # Fetch indexes for a materialized view
+      # Columns an inheritance child defines itself; INHERITS recreates the rest
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param matview_name [String] Name of the materialized view
-      # @return [Array<String>] Array of index definition SQL strings
-      def fetch_materialized_view_indexes(connection, matview_name)
-        query = <<~SQL.squish
-          SELECT indexdef
-          FROM pg_indexes
-          WHERE tablename = $1
-          ORDER BY indexname
-        SQL
-
-        connection.select_all(
-          query.gsub('$1', connection.quote(matview_name))
-        ).pluck('indexdef')
+      # @param columns [Array<Hash>] Column hashes with :local
+      # @param inherits [Array<String>] Parent table names
+      # @return [Array<Hash>] Column hashes without :local
+      def local_columns(columns, inherits)
+        columns = columns.select { |column| column[:local] } if inherits.any?
+        columns.map { |column| column.except(:local) }
       end
 
-      # Resolve PostgreSQL column type into normalized format
+      # Move partitions under their parent table
       #
-      # @param row [Hash] Column information row from information_schema.columns
-      # @return [String] Normalized column type with length/precision if applicable
-      def resolve_column_type(row)
-        case row['data_type']
-        when 'ARRAY'
-          # For arrays, udt_name contains the base type with leading underscore (e.g., _varchar)
-          base_type = row['udt_name'].sub(/^_/, '')
-          "#{base_type}[]"
-        when 'character varying'
-          row['character_maximum_length'] ? "varchar(#{row['character_maximum_length']})" : 'varchar'
-        when 'character'
-          row['character_maximum_length'] ? "char(#{row['character_maximum_length']})" : 'char'
-        when 'numeric'
-          if row['numeric_precision'] && row['numeric_scale']
-            "numeric(#{row['numeric_precision']},#{row['numeric_scale']})"
-          else
-            'numeric'
-          end
-        when 'timestamp without time zone'
-          'timestamp'
-        when 'timestamp with time zone'
-          'timestamptz'
-        when 'time without time zone'
-          'time'
-        when 'USER-DEFINED'
-          row['udt_name']
-        else
-          row['data_type']
+      # @param table_rows [Array<Hash>] Rows from tables_query
+      # @param tables [Hash<Integer, Hash>] Table hashes by oid
+      # @return [Array<Hash>] Top-level tables
+      def nest_partitions(table_rows, tables)
+        by_name = tables.values.index_by { |table| table[:name] }
+        table_rows.each do |row|
+          by_name.fetch(row['parent_name'])[:partitions] << tables[row['oid']] if row['partition']
+        end
+        table_rows.reject { |row| row['partition'] }.map { |row| tables[row['oid']] }
+      end
+
+      # Batch fetch all columns for multiple tables
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param oids [Array<Integer>] Table oids
+      # @return [Hash<Integer, Array<Hash>>] Hash of table oid => array of column hashes
+      def fetch_all_columns(connection, oids)
+        query = <<~SQL.squish
+          SELECT
+            a.attrelid AS table_oid,
+            a.attname AS column_name,
+            format_type(a.atttypid, a.atttypmod) AS data_type,
+            pg_get_expr(ad.adbin, ad.adrelid) AS expression,
+            NOT a.attnotnull AS nullable,
+            a.attidentity AS identity,
+            a.attgenerated AS generated,
+            a.attislocal AS local,
+            CASE WHEN a.attcollation <> t.typcollation THEN quote_ident(co.collname) END AS collation,
+            seq.seqstart, seq.seqincrement, seq.seqmin, seq.seqmax, seq.seqcache, seq.seqcycle
+          FROM pg_attribute a
+          JOIN pg_type t ON t.oid = a.atttypid
+          LEFT JOIN pg_collation co ON co.oid = a.attcollation
+          LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
+          LEFT JOIN pg_depend dep ON dep.refobjid = a.attrelid AND dep.refobjsubid = a.attnum
+            AND dep.classid = 'pg_class'::regclass AND dep.deptype = 'i' AND a.attidentity <> ''
+          LEFT JOIN pg_sequence seq ON seq.seqrelid = dep.objid
+          WHERE a.attrelid IN (#{oid_list(oids)})
+            AND a.attnum > 0
+            AND NOT a.attisdropped
+          ORDER BY a.attrelid, a.attnum
+        SQL
+
+        result = Hash.new { |hash, key| hash[key] = [] }
+        connection.select_all(query).each do |row|
+          result[row['table_oid']] << build_column(row)
+        end
+        result
+      end
+
+      # Build a column hash from a column row
+      #
+      # @param row [Hash] Row from fetch_all_columns
+      # @return [Hash] Column metadata
+      def build_column(row)
+        generated = row['generated'].presence
+        {
+          name: row['column_name'],
+          type: normalize_type(row['data_type']),
+          default: generated ? nil : row['expression'],
+          nullable: row['nullable'],
+          collation: row['collation'],
+          generated: generated && { expression: row['expression'], kind: generated == 's' ? 'STORED' : 'VIRTUAL' },
+          identity: row['identity'].presence && build_identity(row),
+          local: row['local']
+        }
+      end
+
+      # Build identity column metadata
+      #
+      # @param row [Hash] Row from fetch_all_columns
+      # @return [Hash] Identity metadata with :generation and sequence options
+      def build_identity(row)
+        {
+          generation: row['identity'] == 'a' ? 'ALWAYS' : 'BY DEFAULT',
+          start_value: row['seqstart'],
+          increment: row['seqincrement'],
+          min_value: row['seqmin'],
+          max_value: row['seqmax'],
+          cache_size: row['seqcache'],
+          cycle: row['seqcycle']
+        }
+      end
+
+      # Shorten format_type output to the type names used in dumps
+      #
+      # @param type [String] format_type output (e.g. "character varying(255)[]")
+      # @return [String] Normalized type (e.g. "varchar(255)[]")
+      def normalize_type(type)
+        TYPE_ALIASES.reduce(type) { |result, (pattern, replacement)| result.sub(pattern, replacement) }
+      end
+
+      # Batch fetch primary key, unique, check and exclusion constraints
+      #
+      # Constraints a partition or an inheritance child inherits from its parent are skipped.
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param oids [Array<Integer>] Table oids
+      # @return [Hash<Integer, Array<Hash>>] Hash of table oid => array of constraint hashes
+      def fetch_all_constraints(connection, oids)
+        query = <<~SQL.squish
+          SELECT
+            con.conrelid AS table_oid,
+            con.conname AS name,
+            pg_get_constraintdef(con.oid) AS definition,
+            con.contype AS type,
+            con.convalidated AS validated,
+            (
+              SELECT json_agg(a.attname ORDER BY k.position)
+              FROM unnest(con.conkey) WITH ORDINALITY AS k(attnum, position)
+              JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
+            ) AS columns
+          FROM pg_constraint con
+          JOIN pg_class rel ON rel.oid = con.conrelid
+          WHERE con.conrelid IN (#{oid_list(oids)})
+            AND con.contype IN ('p', 'u', 'c', 'x')
+            AND con.conparentid = 0
+            AND con.conislocal
+            AND (NOT rel.relispartition OR con.coninhcount = 0)
+          ORDER BY con.conrelid, con.conname
+        SQL
+
+        result = Hash.new { |hash, key| hash[key] = [] }
+        connection.select_all(query).each do |row|
+          result[row['table_oid']] << {
+            name: row['name'],
+            definition: row['definition'],
+            type: constraint_type(row['type']),
+            validated: row['validated'],
+            columns: row['columns'] ? JSON.parse(row['columns']) : []
+          }
+        end
+        result
+      end
+
+      # Batch fetch serial sequences owned by table columns (OWNED BY)
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param oids [Array<Integer>] Table oids
+      # @return [Hash<Integer, Array<Hash>>] Hash of table oid => array of :sequence, :column hashes
+      def fetch_owned_sequences(connection, oids)
+        query = <<~SQL.squish
+          SELECT dep.refobjid AS table_oid, s.relname AS sequence_name, a.attname AS column_name
+          FROM pg_depend dep
+          JOIN pg_class s ON s.oid = dep.objid AND s.relkind = 'S'
+          JOIN pg_attribute a ON a.attrelid = dep.refobjid AND a.attnum = dep.refobjsubid
+          WHERE dep.classid = 'pg_class'::regclass
+            AND dep.refclassid = 'pg_class'::regclass
+            AND dep.deptype = 'a'
+            AND dep.refobjid IN (#{oid_list(oids)})
+          ORDER BY s.relname
+        SQL
+
+        result = Hash.new { |hash, key| hash[key] = [] }
+        connection.select_all(query).each do |row|
+          result[row['table_oid']] << { sequence: row['sequence_name'], column: row['column_name'] }
+        end
+        result
+      end
+
+      # Build a sequence hash from a pg_sequences row
+      #
+      # @param row [Hash] Row from fetch_sequences
+      # @return [Hash] Sequence metadata
+      def build_sequence(row)
+        {
+          name: row['sequencename'],
+          schema: row['schemaname'],
+          data_type: row['data_type'],
+          start_value: row['start_value'],
+          increment: row['increment_by'],
+          min_value: row['min_value'],
+          max_value: row['max_value'],
+          cache_size: row['cache_size'],
+          cycle: row['cycle']
+        }
+      end
+
+      # Render an index definition that recreates the index on every partition
+      #
+      # pg_get_indexdef renders indexes on partitioned tables as "ON ONLY", which
+      # creates an invalid index until each partition index is attached.
+      #
+      # @param row [Hash] Row from fetch_indexes
+      # @return [String] CREATE INDEX statement
+      def index_definition(row)
+        return row['indexdef'] unless row['partitioned']
+
+        row['indexdef'].sub(' ON ONLY ', ' ON ')
+      end
+
+      # SQL query for views or materialized views
+      #
+      # @param relkind [String] 'v' for views, 'm' for materialized views
+      # @return [String] SQL query string
+      def relations_query(relkind)
+        <<~SQL.squish
+          SELECT
+            n.nspname AS schema_name,
+            c.relname AS name,
+            pg_get_viewdef(c.oid) AS definition,
+            array_to_string(c.reloptions, ', ') AS options
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.relkind = '#{relkind}'
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND #{not_extension_member('c.oid')}
+          ORDER BY c.relname
+        SQL
+      end
+
+      # Fetch which views (or materialized views) reference each other
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param relkind [String] 'v' for views, 'm' for materialized views
+      # @return [Hash<String, Array<String>>] Hash of relation name => names it depends on
+      def fetch_relation_dependencies(connection, relkind)
+        query = <<~SQL.squish
+          SELECT DISTINCT dependent.relname AS name, referenced.relname AS depends_on
+          FROM pg_depend d
+          JOIN pg_rewrite r ON r.oid = d.objid
+          JOIN pg_class dependent ON dependent.oid = r.ev_class
+          JOIN pg_class referenced ON referenced.oid = d.refobjid
+          JOIN pg_namespace n ON n.oid = dependent.relnamespace
+          WHERE d.classid = 'pg_rewrite'::regclass
+            AND d.refclassid = 'pg_class'::regclass
+            AND dependent.oid <> referenced.oid
+            AND dependent.relkind = '#{relkind}'
+            AND referenced.relkind = '#{relkind}'
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+          ORDER BY 1, 2
+        SQL
+
+        connection.select_all(query).each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |row, deps|
+          deps[row['name']] << row['depends_on']
+        end
+      end
+
+      # Fetch indexes for all materialized views
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Hash<String, Array<String>>] Hash of materialized view name => index definitions
+      def fetch_materialized_view_indexes(connection)
+        query = <<~SQL.squish
+          SELECT t.relname AS matview_name, pg_get_indexdef(i.indexrelid) AS indexdef
+          FROM pg_index i
+          JOIN pg_class ic ON ic.oid = i.indexrelid
+          JOIN pg_class t ON t.oid = i.indrelid
+          JOIN pg_namespace n ON n.oid = t.relnamespace
+          WHERE t.relkind = 'm'
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+          ORDER BY t.relname, ic.relname
+        SQL
+
+        connection.select_all(query).each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |row, indexes|
+          indexes[row['matview_name']] << row['indexdef']
         end
       end
 
       # Convert PostgreSQL constraint type code to symbol
       #
-      # @param type_code [String] PostgreSQL constraint type code ('c' = check, 'u' = unique)
-      # @return [Symbol] Constraint type (:check, :unique, :unknown)
+      # @param type_code [String] PostgreSQL constraint type code
+      # @return [Symbol] Constraint type (:primary_key, :unique, :check, :exclusion, :unknown)
       def constraint_type(type_code)
         case type_code
-        when 'c' then :check
+        when 'p' then :primary_key
         when 'u' then :unique
+        when 'c' then :check
+        when 'x' then :exclusion
         else :unknown
         end
       end
 
       # Convert PostgreSQL type code to category string
       #
-      # @param type_code [String] PostgreSQL type code ('e' = enum, 'c' = composite, 'd' = domain)
-      # @return [String] Type category ('enum', 'composite', 'domain', 'unknown')
+      # @param type_code [String] PostgreSQL type code ('e' = enum, 'c' = composite, 'd' = domain, 'r' = range)
+      # @return [String] Type category ('enum', 'composite', 'domain', 'range', 'unknown')
       def type_category(type_code)
         case type_code
         when 'e' then 'enum'
         when 'c' then 'composite'
         when 'd' then 'domain'
+        when 'r' then 'range'
         else 'unknown'
         end
       end
@@ -761,19 +797,27 @@ module BetterStructureSql
 
       # SQL query for fetching custom types
       #
+      # Composite types backing tables, views and other relations are skipped,
+      # as are types owned by extensions.
+      #
       # @return [String] SQL query string
       def custom_types_query
         <<~SQL.squish
           SELECT
+            t.oid,
             t.typname as name,
             t.typtype as type,
             n.nspname as schema
           FROM pg_type t
           JOIN pg_namespace n ON n.oid = t.typnamespace
-          LEFT JOIN pg_class c ON c.reltype = t.oid AND c.relkind IN ('r', 'v', 'm')
-          WHERE t.typtype IN ('e', 'c', 'd')
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-            AND c.oid IS NULL
+          LEFT JOIN pg_class c ON c.oid = t.typrelid
+          WHERE t.typtype IN ('e', 'c', 'd', 'r')
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND (t.typrelid = 0 OR c.relkind = 'c')
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_depend d
+              WHERE d.classid = 'pg_type'::regclass AND d.objid = t.oid AND d.deptype = 'e'
+            )
           ORDER BY t.typname
         SQL
       end
@@ -785,51 +829,148 @@ module BetterStructureSql
       # @return [Hash] Type hash with name, schema, type, and type-specific attributes
       def build_custom_type(connection, row)
         type_data = {
-          name: row['schema'] == 'public' ? row['name'] : "#{row['schema']}.#{row['name']}",
+          name: row['name'],
           schema: row['schema'],
           type: type_category(row['type'])
         }
 
         case row['type']
         when 'e'
-          type_data[:values] = fetch_enum_values(connection, row['name'])
+          type_data[:values] = fetch_enum_values(connection, row['oid'])
         when 'c'
-          type_data[:attributes] = fetch_composite_attributes(connection, row['name'])
+          type_data[:attributes] = fetch_composite_attributes(connection, row['oid'])
         when 'd'
-          type_data.merge!(fetch_domain_details(connection, row['name']))
+          type_data.merge!(fetch_domain_details(connection, row['oid']))
+        when 'r'
+          type_data.merge!(fetch_range_details(connection, row['oid']))
         end
 
         type_data
       end
 
-      # Fetch comments on tables
+      # Fetch enum values for an enum type
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of table_name => comment
-      def fetch_table_comments(connection)
+      # @param type_oid [Integer] Enum type oid
+      # @return [Array<String>] Array of enum values in sort order
+      def fetch_enum_values(connection, type_oid)
+        query = <<~SQL.squish
+          SELECT enumlabel FROM pg_enum WHERE enumtypid = #{Integer(type_oid)} ORDER BY enumsortorder
+        SQL
+
+        connection.select_all(query).pluck('enumlabel')
+      end
+
+      # Fetch attributes for a composite type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_oid [Integer] Composite type oid
+      # @return [Array<Hash>] Array of attribute hashes with :name, :type
+      def fetch_composite_attributes(connection, type_oid)
+        query = <<~SQL.squish
+          SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type
+          FROM pg_attribute a
+          JOIN pg_type t ON t.typrelid = a.attrelid
+          WHERE t.oid = #{Integer(type_oid)}
+            AND a.attnum > 0
+            AND NOT a.attisdropped
+          ORDER BY a.attnum
+        SQL
+
+        connection.select_all(query).map do |row|
+          { name: row['name'], type: row['type'] }
+        end
+      end
+
+      # Fetch details for a domain type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_oid [Integer] Domain type oid
+      # @return [Hash] Domain details with :base_type, :default, :not_null, :constraints
+      def fetch_domain_details(connection, type_oid)
         query = <<~SQL.squish
           SELECT
-            c.relname as table_name,
-            d.description as comment
+            format_type(t.typbasetype, t.typtypmod) AS base_type,
+            t.typdefault AS default_value,
+            t.typnotnull AS not_null
+          FROM pg_type t
+          WHERE t.oid = #{Integer(type_oid)}
+        SQL
+
+        row = connection.select_all(query).first
+        {
+          base_type: row['base_type'],
+          default: row['default_value'],
+          not_null: row['not_null'],
+          constraints: fetch_domain_constraints(connection, type_oid)
+        }
+      end
+
+      # Fetch CHECK constraints of a domain
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_oid [Integer] Domain type oid
+      # @return [Array<Hash>] Array of constraint hashes with :name, :definition
+      def fetch_domain_constraints(connection, type_oid)
+        query = <<~SQL.squish
+          SELECT conname AS name, pg_get_constraintdef(oid) AS definition
+          FROM pg_constraint
+          WHERE contypid = #{Integer(type_oid)} AND contype = 'c'
+          ORDER BY conname
+        SQL
+
+        connection.select_all(query).map do |row|
+          { name: row['name'], definition: row['definition'] }
+        end
+      end
+
+      # Fetch details for a range type
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param type_oid [Integer] Range type oid
+      # @return [Hash] Range details with :subtype, :subtype_opclass, :collation, :canonical, :subtype_diff
+      def fetch_range_details(connection, type_oid)
+        query = <<~SQL.squish
+          SELECT
+            format_type(r.rngsubtype, NULL) AS subtype,
+            CASE WHEN NOT opc.opcdefault THEN quote_ident(opc.opcname) END AS subtype_opclass,
+            CASE WHEN r.rngcollation <> st.typcollation THEN quote_ident(co.collname) END AS collation,
+            NULLIF(r.rngcanonical, 0)::regproc::text AS canonical,
+            NULLIF(r.rngsubdiff, 0)::regproc::text AS subtype_diff
+          FROM pg_range r
+          JOIN pg_type st ON st.oid = r.rngsubtype
+          JOIN pg_opclass opc ON opc.oid = r.rngsubopc
+          LEFT JOIN pg_collation co ON co.oid = r.rngcollation
+          WHERE r.rngtypid = #{Integer(type_oid)}
+        SQL
+
+        connection.select_all(query).first.symbolize_keys
+      end
+
+      # Fetch comments on relations of the given kinds
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @param relkinds [Array<String>] pg_class relkind codes
+      # @return [Hash<String, String>] Hash of relation name => comment
+      def fetch_relation_comments(connection, relkinds)
+        query = <<~SQL.squish
+          SELECT c.relname AS name, d.description AS comment
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
-          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
-          WHERE c.relkind = 'r'
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          JOIN pg_description d ON d.objoid = c.oid AND d.classoid = 'pg_class'::regclass AND d.objsubid = 0
+          WHERE c.relkind IN (#{relkinds.map { |kind| "'#{kind}'" }.join(', ')})
+            AND n.nspname = '#{DUMPED_SCHEMA}'
+            AND #{not_extension_member('c.oid')}
           ORDER BY c.relname
         SQL
 
-        result = {}
-        connection.execute(query).each do |row|
-          result[row['table_name']] = row['comment']
-        end
-        result
+        connection.select_all(query).to_h { |row| [row['name'], row['comment']] }
       end
 
-      # Fetch comments on columns
+      # Fetch comments on table and view columns
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of "table_name.column_name" => comment
+      # @return [Hash<Array(String, String), String>] Hash of [table_name, column_name] => comment
       def fetch_column_comments(connection)
         query = <<~SQL.squish
           SELECT
@@ -839,91 +980,46 @@ module BetterStructureSql
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
           JOIN pg_attribute a ON a.attrelid = c.oid
-          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
-          WHERE c.relkind = 'r'
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+          JOIN pg_description d ON d.objoid = c.oid AND d.classoid = 'pg_class'::regclass AND d.objsubid = a.attnum
+          WHERE c.relkind IN ('r', 'p', 'v', 'm')
+            AND n.nspname = '#{DUMPED_SCHEMA}'
             AND a.attnum > 0
             AND NOT a.attisdropped
+            AND #{not_extension_member('c.oid')}
           ORDER BY c.relname, a.attnum
         SQL
 
-        result = {}
-        connection.execute(query).each do |row|
-          key = "#{row['table_name']}.#{row['column_name']}"
-          result[key] = row['comment']
+        connection.select_all(query).to_h do |row|
+          [[row['table_name'], row['column_name']], row['comment']]
         end
-        result
       end
 
-      # Fetch comments on indexes
+      # Fetch comments on functions or procedures
+      #
+      # Keys are full signatures (e.g. "add(integer, integer)") so overloads keep
+      # their own comment and the COMMENT ON statement is unambiguous.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of index_name => comment
-      def fetch_index_comments(connection)
+      # @param prokinds [Array<String>] pg_proc prokind codes ('f' function, 'w' window, 'p' procedure)
+      # @return [Hash<String, String>] Hash of routine signature => comment
+      def fetch_routine_comments(connection, prokinds)
         query = <<~SQL.squish
           SELECT
-            c.relname as index_name,
-            d.description as comment
-          FROM pg_class c
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
-          WHERE c.relkind = 'i'
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY c.relname
-        SQL
-
-        result = {}
-        connection.execute(query).each do |row|
-          result[row['index_name']] = row['comment']
-        end
-        result
-      end
-
-      # Fetch comments on views
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of view_name => comment
-      def fetch_view_comments(connection)
-        query = <<~SQL.squish
-          SELECT
-            c.relname as view_name,
-            d.description as comment
-          FROM pg_class c
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = 0
-          WHERE c.relkind = 'v'
-            AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY c.relname
-        SQL
-
-        result = {}
-        connection.execute(query).each do |row|
-          result[row['view_name']] = row['comment']
-        end
-        result
-      end
-
-      # Fetch comments on functions
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of function_name => comment
-      def fetch_function_comments(connection)
-        query = <<~SQL.squish
-          SELECT
-            p.proname as function_name,
-            d.description as comment
+            format('%I(%s)', p.proname, pg_get_function_identity_arguments(p.oid)) AS signature,
+            d.description AS comment
           FROM pg_proc p
           JOIN pg_namespace n ON n.oid = p.pronamespace
-          JOIN pg_description d ON d.objoid = p.oid
-          WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-          ORDER BY p.proname
+          JOIN pg_description d ON d.objoid = p.oid AND d.classoid = 'pg_proc'::regclass
+          WHERE n.nspname = '#{DUMPED_SCHEMA}'
+            AND p.prokind IN (#{prokinds.map { |kind| connection.quote(kind) }.join(', ')})
+            AND NOT EXISTS (
+              SELECT 1 FROM pg_depend dep
+              WHERE dep.classid = 'pg_proc'::regclass AND dep.objid = p.oid AND dep.deptype = 'e'
+            )
+          ORDER BY 1
         SQL
 
-        result = {}
-        connection.execute(query).each do |row|
-          result[row['function_name']] = row['comment']
-        end
-        result
+        connection.select_all(query).to_h { |row| [row['signature'], row['comment']] }
       end
     end
   end

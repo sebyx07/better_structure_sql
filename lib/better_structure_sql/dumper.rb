@@ -7,6 +7,21 @@ module BetterStructureSql
   # Supports both single-file and multi-file dump modes with optional
   # schema version storage.
   class Dumper
+    # Lines an INSERT statement adds around its list of versions
+    MIGRATION_INSERT_OVERHEAD_LINES = 3
+
+    # Titles of the runs a dependency-ordered sequence is split into in the single-file dump
+    SECTION_TITLES = {
+      types: '-- Custom Types',
+      domains: '-- Domains',
+      functions: '-- Functions',
+      views: '-- Views',
+      materialized_views: '-- Materialized Views'
+    }.freeze
+
+    # Sections whose statements are separated by a newline instead of a blank line
+    COMPACT_SECTIONS = %i[types domains].freeze
+
     attr_reader :config, :connection, :adapter
 
     def initialize(config = BetterStructureSql.configuration, connection = ActiveRecord::Base.connection)
@@ -22,17 +37,24 @@ module BetterStructureSql
     # @raise [Error] If configuration is invalid
     def dump(store_version: nil)
       config.validate!
+      @creation_order = @functions = @custom_types = nil
 
       output_mode = detect_output_mode
 
       if output_mode == :multi_file
-        dump_multi_file(store_version: store_version)
+        dump_multi_file(store_version:)
       else
-        dump_single_file(store_version: store_version)
+        dump_single_file(store_version:)
       end
     end
 
     private
+
+    # Whether this dump should also store a schema version (nil defers to configuration)
+    def store_version?(requested)
+      requested = config.enable_schema_versions if requested.nil?
+      requested && config.enable_schema_versions
+    end
 
     # Detect if we're in single-file or multi-file mode
     def detect_output_mode
@@ -45,26 +67,21 @@ module BetterStructureSql
       output << header
       output << extensions_section if config.include_extensions
       output << set_schema_section
-      output << custom_types_section if config.include_custom_types
-      output << domains_section if config.include_domains
-      output << functions_section if config.include_functions
+      output.concat(titled_runs(type_statements))
+      output.concat(titled_runs(early_statements))
       output << sequences_section if config.include_sequences
       output << tables_section
       output << indexes_section
       output << foreign_keys_section
-      output << views_section if config.include_views
-      output << materialized_views_section if config.include_materialized_views
+      output.concat(titled_runs(relation_dependent_statements))
       output << triggers_section if config.include_triggers
       output << comments_section if config.include_comments
       output << schema_migrations_section
       output << footer
 
       formatted_output = Formatter.new(config).format(output.compact.join("\n\n"))
-      write_to_file(formatted_output)
-
-      # Store version if requested and enabled
-      store_version = config.enable_schema_versions if store_version.nil?
-      store_schema_version(formatted_output) if store_version && config.enable_schema_versions
+      FileWriter.new(config).write_single_file(config.output_path, formatted_output)
+      store_schema_version if store_version?(store_version)
 
       formatted_output
     end
@@ -79,22 +96,9 @@ module BetterStructureSql
       header_content = [header, set_schema_section].compact.join("\n\n")
       file_map = writer.write_multi_file(config.output_path, sections, header_content)
 
-      # Generate and write manifest
-      if config.generate_manifest
-        manifest_generator = ManifestGenerator.new(config)
-        manifest_content = manifest_generator.generate(file_map)
-
-        manifest_path = Rails.root.join(config.output_path, '_manifest.json')
-        File.write(manifest_path, manifest_content)
-      end
-
-      # Store version if requested and enabled
-      # For multi-file, combine all sections for storage
-      store_version = config.enable_schema_versions if store_version.nil?
-      if store_version && config.enable_schema_versions
-        combined_content = combine_sections_for_storage(sections, header_content)
-        store_schema_version(combined_content)
-      end
+      manifest_content = ManifestGenerator.new(config).generate(file_map) if config.generate_manifest
+      writer.write_manifest(config.output_path, manifest_content)
+      store_schema_version if store_version?(store_version)
 
       file_map
     end
@@ -106,18 +110,16 @@ module BetterStructureSql
       sections = {}
 
       sections[:extensions] = generate_extensions_section if config.include_extensions
-      sections[:types] = generate_types_section if config.include_custom_types
-      sections[:domains] = generate_domains_section if config.include_domains
-      sections[:functions] = generate_functions_section if config.include_functions
+      sections[:types] = type_statements.map(&:last).presence
+      sections[:functions] = early_statements.map(&:last).presence
       sections[:sequences] = generate_sequences_section if config.include_sequences
       sections[:tables] = generate_tables_section
       sections[:indexes] = generate_indexes_section
       sections[:foreign_keys] = generate_foreign_keys_section unless sqlite_adapter?
-      sections[:views] = generate_views_section if config.include_views
-      sections[:materialized_views] = generate_materialized_views_section if config.include_materialized_views
+      sections[:views] = relation_dependent_statements.map(&:last).presence
       sections[:triggers] = generate_triggers_section if config.include_triggers
       sections[:comments] = generate_comments_section if config.include_comments
-      sections[:migrations] = generate_migrations_section unless sqlite_adapter?
+      sections[:migrations] = generate_migrations_section
 
       sections.compact
     end
@@ -131,39 +133,6 @@ module BetterStructureSql
 
       generator = Generators::ExtensionGenerator.new(config)
       extensions.map { |ext| generator.generate(ext) }
-    end
-
-    # Generate custom types section (enums, composite types)
-    #
-    # @return [Array<String>, nil] Array of CREATE TYPE statements or nil if empty
-    def generate_types_section
-      types = Introspection.fetch_custom_types(connection).reject { |t| t[:type] == 'domain' }
-      return nil if types.empty?
-
-      generator = Generators::TypeGenerator.new(config)
-      types.filter_map { |type| generator.generate(type) }
-    end
-
-    # Generate domains section
-    #
-    # @return [Array<String>, nil] Array of CREATE DOMAIN statements or nil if empty
-    def generate_domains_section
-      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == 'domain' }
-      return nil if domains.empty?
-
-      generator = Generators::DomainGenerator.new(config)
-      domains.map { |domain| generator.generate(domain) }
-    end
-
-    # Generate functions section
-    #
-    # @return [Array<String>, nil] Array of CREATE FUNCTION statements or nil if empty
-    def generate_functions_section
-      functions = Introspection.fetch_functions(connection)
-      return nil if functions.empty?
-
-      generator = Generators::FunctionGenerator.new(config)
-      functions.map { |func| generator.generate(func) }
     end
 
     # Generate sequences section
@@ -181,11 +150,8 @@ module BetterStructureSql
     #
     # @return [Array<String>, nil] Array of CREATE TABLE statements or nil if empty
     def generate_tables_section
-      tables = Introspection.fetch_tables(connection)
-      tables = tables.sort_by { |t| t[:name] } if config.sort_tables
+      tables = ordered_tables
       return nil if tables.empty?
-
-      attach_foreign_keys_for_sqlite(tables) if sqlite_adapter?
 
       generator = Generators::TableGenerator.new(config, adapter)
       tables.map { |table| generator.generate(table) }
@@ -213,28 +179,6 @@ module BetterStructureSql
       foreign_keys.map { |fk| generator.generate(fk) }
     end
 
-    # Generate views section
-    #
-    # @return [Array<String>, nil] Array of CREATE VIEW statements or nil if empty
-    def generate_views_section
-      views = Introspection.fetch_views(connection)
-      return nil if views.empty?
-
-      generator = Generators::ViewGenerator.new(config)
-      views.map { |view| generator.generate(view) }
-    end
-
-    # Generate materialized views section
-    #
-    # @return [Array<String>, nil] Array of CREATE MATERIALIZED VIEW statements or nil if empty
-    def generate_materialized_views_section
-      matviews = Introspection.fetch_materialized_views(connection)
-      return nil if matviews.empty?
-
-      generator = Generators::MaterializedViewGenerator.new(config)
-      matviews.map { |mv| generator.generate(mv) }
-    end
-
     # Generate triggers section
     #
     # @return [Array<String>, nil] Array of CREATE TRIGGER statements or nil if empty
@@ -255,34 +199,19 @@ module BetterStructureSql
       all_comments = adapter.fetch_comments(connection)
       generator = Generators::CommentGenerator.new(config)
 
-      # Generate table comments
-      comments_array = all_comments[:tables].map do |table_name, comment|
-        generator.generate(object_type: :table, object_name: table_name, comment: comment)
+      comments = all_comments[:tables].map do |table_name, comment|
+        generator.generate(object_type: :table, object_name: table_name, comment:)
+      end
+      all_comments[:columns].each do |(table_name, column_name), comment|
+        comments << generator.generate(object_type: :column, table_name:, object_name: column_name, comment:)
+      end
+      { index: :indexes, view: :views, function: :functions, procedure: :procedures }.each do |object_type, key|
+        all_comments.fetch(key).each do |object_name, comment|
+          comments << generator.generate(object_type:, object_name:, comment:)
+        end
       end
 
-      # Generate column comments
-      all_comments[:columns].each do |column_identifier, comment|
-        comments_array << generator.generate(object_type: :column, object_name: column_identifier, comment: comment)
-      end
-
-      # Generate index comments (PostgreSQL only)
-      all_comments[:indexes].each do |index_name, comment|
-        comments_array << generator.generate(object_type: :index, object_name: index_name, comment: comment)
-      end
-
-      # Generate view comments (PostgreSQL only)
-      all_comments[:views].each do |view_name, comment|
-        comments_array << generator.generate(object_type: :view, object_name: view_name, comment: comment)
-      end
-
-      # Generate function comments (PostgreSQL only)
-      all_comments[:functions].each do |function_name, comment|
-        comments_array << generator.generate(object_type: :function, object_name: function_name, comment: comment)
-      end
-
-      return nil if comments_array.empty?
-
-      comments_array
+      comments.presence
     end
 
     # Generate migrations section
@@ -294,21 +223,14 @@ module BetterStructureSql
       versions = fetch_schema_migration_versions
       return nil if versions.empty?
 
-      chunk_size = config.max_lines_per_file - 3
-      version_chunks = versions.each_slice(chunk_size).to_a
-
-      version_chunks.map { |chunk| generate_migrations_batch(chunk) }
+      versions.each_slice(migrations_per_insert).map { |chunk| generate_migrations_batch(chunk) }
     end
 
-    # Attach foreign keys to tables for SQLite inline generation
+    # Versions per INSERT statement, leaving room for the INSERT and conflict lines in a file
     #
-    # @param tables [Array<Hash>] Array of table hashes
-    # @return [void]
-    def attach_foreign_keys_for_sqlite(tables)
-      all_foreign_keys = Introspection.fetch_foreign_keys(connection)
-      tables.each do |table|
-        table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
-      end
+    # @return [Integer] Number of versions (at least one)
+    def migrations_per_insert
+      [config.max_lines_per_file - MIGRATION_INSERT_OVERHEAD_LINES, 1].max
     end
 
     # Check if current adapter is SQLite
@@ -318,42 +240,13 @@ module BetterStructureSql
       adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
     end
 
-    # Combine sections for database storage (when versioning is enabled)
-    def combine_sections_for_storage(sections, header_content)
-      output = [header_content]
-
-      section_order = %i[
-        extensions types domains functions sequences
-        tables indexes foreign_keys views materialized_views triggers
-      ]
-
-      section_order.each do |section_key|
-        next unless sections.key?(section_key)
-
-        section_content = sections[section_key]
-        next if section_content.blank?
-
-        # Add section header
-        header = "-- #{section_key.to_s.split('_').map(&:capitalize).join(' ')}"
-        output << header
-        output << section_content.join("\n\n")
-      end
-
-      # Add schema migrations
-      migrations = schema_migrations_section
-      output << migrations if migrations
-
-      output << footer
-
-      Formatter.new(config).format(output.compact.join("\n\n"))
-    end
-
     def header
       case adapter.class.name
       when 'BetterStructureSql::Adapters::PostgresqlAdapter'
         <<~HEADER.strip
           SET client_encoding = 'UTF8';
           SET standard_conforming_strings = on;
+          SET check_function_bodies = false;
         HEADER
       when 'BetterStructureSql::Adapters::SqliteAdapter'
         # SQLite PRAGMA statements for optimal behavior and compatibility
@@ -394,18 +287,6 @@ module BetterStructureSql
       end
     end
 
-    def custom_types_section
-      # Only include enums and composite types (not domains, they have their own section)
-      types = Introspection.fetch_custom_types(connection).reject { |t| t[:type] == 'domain' }
-      return nil if types.empty?
-
-      generator = Generators::TypeGenerator.new(config)
-      lines = types.filter_map { |type| generator.generate(type) }
-      return nil if lines.empty?
-
-      (['-- Custom Types'] + lines).join("\n")
-    end
-
     def sequences_section
       sequences = Introspection.fetch_sequences(connection)
       return nil if sequences.empty?
@@ -416,19 +297,34 @@ module BetterStructureSql
       lines.join("\n")
     end
 
-    def tables_section
+    # Tables in dump order: by name when sort_tables is set, except that an
+    # inheritance child is deferred until right after the last of its parents
+    def ordered_tables
       tables = Introspection.fetch_tables(connection)
       tables = tables.sort_by { |t| t[:name] } if config.sort_tables
+      names = tables.to_set { |table| table[:name] }
+
+      placed = Set.new
+      waiting = []
+      ordered = []
+      place = lambda do |table|
+        ordered << table
+        placed << table[:name]
+        ready, waiting = waiting.partition { |child| parents_placed?(child, names, placed) }
+        ready.each(&place)
+      end
+      tables.each { |table| parents_placed?(table, names, placed) ? place.call(table) : waiting << table }
+      ordered + waiting
+    end
+
+    def parents_placed?(table, names, placed)
+      Array(table[:inherits]).all? { |parent| placed.include?(parent) || names.exclude?(parent) }
+    end
+
+    def tables_section
+      tables = ordered_tables
 
       return '-- Tables' if tables.empty?
-
-      # For SQLite, attach foreign keys to each table for inline generation
-      if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
-        all_foreign_keys = Introspection.fetch_foreign_keys(connection)
-        tables.each do |table|
-          table[:foreign_keys] = all_foreign_keys.select { |fk| fk[:table] == table[:name] }
-        end
-      end
 
       generator = Generators::TableGenerator.new(config, adapter)
       lines = []
@@ -469,44 +365,101 @@ module BetterStructureSql
       lines.join("\n")
     end
 
-    def domains_section
-      domains = Introspection.fetch_custom_types(connection).select { |t| t[:type] == 'domain' }
-      return nil if domains.empty?
-
-      generator = Generators::DomainGenerator.new(config)
-      lines = ['-- Domains']
-      lines += domains.map { |domain| generator.generate(domain) }
-      lines.join("\n")
+    # Dependency information for this dump (queried once)
+    def creation_order
+      @creation_order ||= CreationOrder.for(adapter, connection)
     end
 
-    def functions_section
-      functions = Introspection.fetch_functions(connection)
-      return nil if functions.empty?
+    def functions
+      @functions ||= config.include_functions ? Introspection.fetch_functions(connection) : []
+    end
 
+    def keyed_functions
+      functions.map { |function| [CreationOrder.function_key(function), function] }
+    end
+
+    # Enums, composites, ranges and domains the dump includes, in name order within each kind
+    def custom_types
+      @custom_types ||= begin
+        types = Introspection.fetch_custom_types(connection)
+        domains, others = types.partition { |type| type[:type] == 'domain' }
+        (config.include_custom_types ? others : []) + (config.include_domains ? domains : [])
+      end
+    end
+
+    def keyed_type_statements
+      generator = Generators::TypeGenerator.new(config)
+      custom_types.filter_map do |type|
+        statement = generator.generate(type)
+        statement && [CreationOrder.type_key(type[:name]), [type[:type] == 'domain' ? :domains : :types, statement]]
+      end
+    end
+
+    # Custom types that need no routine, dependency-ordered: created first
+    #
+    # @return [Array<Array(Symbol, String)>] Pairs of section and SQL statement
+    def type_statements
+      creation_order.sort(keyed_type_statements.reject { |key, _statement| creation_order.needs_function?(key) })
+    end
+
+    # Functions that need no relation, together with the custom types that need a
+    # routine (a domain CHECK calling a function, a range's canonical function),
+    # dependency-ordered: created before tables, whose defaults, checks and indexes may use them
+    #
+    # @return [Array<Array(Symbol, String)>] Pairs of section and SQL statement
+    def early_statements
       generator = Generators::FunctionGenerator.new(config)
-      lines = ['-- Functions']
-      lines += functions.map { |func| generator.generate(func) }
-      lines.join("\n\n")
+      function_statements = keyed_functions.reject { |key, _function| creation_order.needs_relation?(key) }.map do |key, function|
+        [key, [:functions, generator.generate(function)]]
+      end
+      type_statements = keyed_type_statements.select { |key, _statement| creation_order.needs_function?(key) }
+
+      creation_order.sort(type_statements + function_statements)
     end
 
-    def views_section
-      views = Introspection.fetch_views(connection)
-      return nil if views.empty?
+    # Views, materialized views and the functions that need a relation, as one
+    # sequence in which every object follows the objects it depends on
+    #
+    # @return [Array<Array(Symbol, String)>] Pairs of section and SQL statement
+    def relation_dependent_statements
+      creation_order.sort(view_statements + materialized_view_statements + relation_dependent_function_statements)
+    end
+
+    def view_statements
+      return [] unless config.include_views
 
       generator = Generators::ViewGenerator.new(config)
-      lines = ['-- Views']
-      lines += views.map { |view| generator.generate(view) }
-      lines.join("\n\n")
+      Introspection.fetch_views(connection).map do |view|
+        [CreationOrder.relation_key(view[:name]), [:views, generator.generate(view)]]
+      end
     end
 
-    def materialized_views_section
-      matviews = Introspection.fetch_materialized_views(connection)
-      return nil if matviews.empty?
+    def materialized_view_statements
+      return [] unless config.include_materialized_views
 
       generator = Generators::MaterializedViewGenerator.new(config)
-      lines = ['-- Materialized Views']
-      lines += matviews.map { |mv| generator.generate(mv) }
-      lines.join("\n\n")
+      Introspection.fetch_materialized_views(connection).map do |matview|
+        [CreationOrder.relation_key(matview[:name]), [:materialized_views, generator.generate(matview)]]
+      end
+    end
+
+    def relation_dependent_function_statements
+      generator = Generators::FunctionGenerator.new(config)
+      keyed_functions.select { |key, _function| creation_order.needs_relation?(key) }.map do |key, function|
+        [key, [:functions, generator.generate(function)]]
+      end
+    end
+
+    # Groups dependency-ordered statements into titled runs for the single-file dump
+    #
+    # @param statements [Array<Array(Symbol, String)>] Pairs of section and SQL statement
+    # @return [Array<String>] One text block per run of statements of the same section
+    def titled_runs(statements)
+      statements.chunk_while { |(left, _), (right, _)| left == right }.map do |run|
+        section = run.first.first
+        separator = COMPACT_SECTIONS.include?(section) ? "\n" : "\n\n"
+        ([SECTION_TITLES.fetch(section)] + run.map(&:last)).join(separator)
+      end
     end
 
     def triggers_section
@@ -520,90 +473,21 @@ module BetterStructureSql
     end
 
     def comments_section
-      return nil unless adapter.supports_comments?
-
-      all_comments = adapter.fetch_comments(connection)
-      generator = Generators::CommentGenerator.new(config)
-
-      # Generate table comments
-      comments_array = all_comments[:tables].map do |table_name, comment|
-        generator.generate(object_type: :table, object_name: table_name, comment: comment)
-      end
-
-      # Generate column comments
-      all_comments[:columns].each do |column_identifier, comment|
-        comments_array << generator.generate(object_type: :column, object_name: column_identifier, comment: comment)
-      end
-
-      # Generate index comments (PostgreSQL only)
-      all_comments[:indexes].each do |index_name, comment|
-        comments_array << generator.generate(object_type: :index, object_name: index_name, comment: comment)
-      end
-
-      # Generate view comments (PostgreSQL only)
-      all_comments[:views].each do |view_name, comment|
-        comments_array << generator.generate(object_type: :view, object_name: view_name, comment: comment)
-      end
-
-      # Generate function comments (PostgreSQL only)
-      all_comments[:functions].each do |function_name, comment|
-        comments_array << generator.generate(object_type: :function, object_name: function_name, comment: comment)
-      end
-
-      return nil if comments_array.empty?
-
-      lines = ['-- Comments']
-      lines += comments_array
-      lines.join("\n")
+      statements = generate_comments_section
+      statements && (['-- Comments'] + statements).join("\n")
     end
 
     def schema_migrations_section
-      # SQLite doesn't include schema_migrations in structure.sql
-      # Rails manages this table separately
-      return nil if adapter.class.name == 'BetterStructureSql::Adapters::SqliteAdapter'
-
       return nil unless table_exists?('schema_migrations')
 
       versions = fetch_schema_migration_versions
       return nil if versions.empty?
 
-      # Use adapter-specific quoting
-      table_quote = quote_table_name('schema_migrations')
-
-      lines = ['-- Schema Migrations']
-
-      # Use adapter-specific conflict resolution and quoting
-      case adapter.class.name
-      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
-        lines << "INSERT INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << 'ON CONFLICT DO NOTHING;'
-      when 'BetterStructureSql::Adapters::MysqlAdapter'
-        # MySQL uses INSERT IGNORE and backticks
-        lines << "INSERT IGNORE INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << ';'
-      else
-        lines << "INSERT INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << ';'
-      end
-
-      lines.join("\n")
-    end
-
-    def search_path_section
-      "SET search_path TO #{config.search_path};"
+      "-- Schema Migrations\n#{generate_migrations_batch(versions)}"
     end
 
     def footer
       '' # Just a blank line to ensure newline at end
-    end
-
-    def write_to_file(content)
-      file_path = Rails.root.join(config.output_path)
-      FileUtils.mkdir_p(File.dirname(file_path))
-      File.write(file_path, content)
     end
 
     def table_exists?(table_name)
@@ -612,38 +496,21 @@ module BetterStructureSql
 
     def fetch_schema_migration_versions
       connection.select_values('SELECT version FROM schema_migrations ORDER BY version')
-    rescue ActiveRecord::StatementInvalid
-      []
     end
 
     def generate_migrations_batch(versions)
-      return '' if versions.empty?
+      values = versions.map { |version| "(#{connection.quote(version)})" }.join(",\n")
 
-      # Use adapter-specific quoting
-      table_quote = quote_table_name('schema_migrations')
+      [migrations_insert_prefix, values, migrations_insert_suffix].join("\n")
+    end
 
-      # Generate single batch INSERT with all versions
-      # This will be chunked by FileWriter if it exceeds max_lines_per_file
-      lines = []
+    def migrations_insert_prefix
+      keyword = adapter.class.name == 'BetterStructureSql::Adapters::MysqlAdapter' ? 'INSERT IGNORE' : 'INSERT'
+      "#{keyword} INTO #{quote_table_name('schema_migrations')} (version) VALUES"
+    end
 
-      # Use adapter-specific conflict resolution and quoting
-      case adapter.class.name
-      when 'BetterStructureSql::Adapters::PostgresqlAdapter'
-        lines << "INSERT INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << 'ON CONFLICT DO NOTHING;'
-      when 'BetterStructureSql::Adapters::MysqlAdapter'
-        # MySQL uses INSERT IGNORE and backticks
-        lines << "INSERT IGNORE INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << ';'
-      else
-        lines << "INSERT INTO #{table_quote} (version) VALUES"
-        lines << versions.map { |v| "('#{v}')" }.join(",\n")
-        lines << ';'
-      end
-
-      lines.join("\n")
+    def migrations_insert_suffix
+      adapter.class.name == 'BetterStructureSql::Adapters::PostgresqlAdapter' ? 'ON CONFLICT DO NOTHING;' : ';'
     end
 
     def quote_table_name(table_name)
@@ -655,18 +522,9 @@ module BetterStructureSql
       end
     end
 
-    def store_schema_version(content)
-      pg_version = PgVersion.detect(connection)
-
-      SchemaVersions.store(
-        content: content,
-        format_type: 'sql',
-        pg_version: pg_version,
-        connection: connection
-      )
-    rescue StandardError => e
-      # Log error but don't fail the dump
-      warn "Warning: Failed to store schema version: #{e.message}"
+    # Stores the schema that was just written; failures propagate so they are never mistaken for success
+    def store_schema_version
+      SchemaVersions.store_current(connection, config:)
     end
   end
 end

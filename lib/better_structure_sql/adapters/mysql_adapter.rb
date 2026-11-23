@@ -4,10 +4,22 @@ module BetterStructureSql
   module Adapters
     # MySQL adapter implementing introspection via information_schema and MySQL system tables.
     #
-    # Provides MySQL-specific SQL generation with proper dialect support.
-    # This adapter handles MySQL's unique features including stored procedures, triggers,
-    # ENUM/SET types, and AUTO_INCREMENT sequences.
+    # Works with both the mysql2 and trilogy drivers (queries go through
+    # ActiveRecord's select_rows, never driver-specific result objects) and
+    # with MariaDB servers.
+    #
+    # Column defaults, CHECK constraint definitions and index definitions are
+    # returned as ready-to-use SQL fragments, matching the PostgreSQL adapter contract.
     class MysqlAdapter < BaseAdapter
+      # Numeric data types whose literal defaults are emitted unquoted
+      NUMERIC_TYPES = %w[tinyint smallint mediumint int integer bigint decimal numeric float double real year].freeze
+
+      # Generation expression of a column line in SHOW CREATE TABLE output
+      GENERATED_EXPRESSION = /GENERATED ALWAYS AS \((.*)\) (?:VIRTUAL|STORED|PERSISTENT)\b/
+
+      # Defaults that MySQL accepts without the parentheses required around other expressions
+      TEMPORAL_DEFAULT = /\A(?:CURRENT_TIMESTAMP|NOW|LOCALTIME|LOCALTIMESTAMP)(?:\(\d*\))?\z/i
+
       # Introspection methods using information_schema
 
       # Fetch database extensions (not supported in MySQL)
@@ -15,7 +27,6 @@ module BetterStructureSql
       # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
       # @return [Array] Empty array as MySQL doesn't support extensions like PostgreSQL
       def fetch_extensions(_connection)
-        # MySQL doesn't support extensions like PostgreSQL
         []
       end
 
@@ -25,101 +36,77 @@ module BetterStructureSql
       # @return [Array] Empty array as MySQL doesn't support standalone custom types
       # @note MySQL has ENUM and SET types, but they are defined inline with columns, not as custom types
       def fetch_custom_types(_connection)
-        # MySQL has limited support for custom types (ENUM and SET are inline)
-        # Return empty array since ENUMs/SETs are defined per-column
         []
       end
 
       # Fetch all tables from the current database
       #
+      # Columns, primary keys and check constraints are fetched with one query each
+      # for the whole schema, avoiding N+1 queries on large schemas.
+      #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of table hashes with :name, :schema, :columns, :primary_key, :constraints
+      # @return [Array<Hash>] Array of table hashes with :name, :schema, :engine, :collation,
+      #   :columns, :primary_key, :constraints
       def fetch_tables(connection)
-        # Performance optimized: Batches all table metadata queries to avoid N+1 queries
-        # For 1000 tables: 4 queries instead of 3001 queries (~750x faster)
-        query = <<~SQL.squish
-          SELECT
-            TABLE_NAME,
-            TABLE_SCHEMA
+        table_rows = connection.select_rows(<<~SQL.squish)
+          SELECT TABLE_NAME, TABLE_SCHEMA, ENGINE, TABLE_COLLATION
           FROM information_schema.TABLES
           WHERE TABLE_SCHEMA = DATABASE()
             AND TABLE_TYPE = 'BASE TABLE'
           ORDER BY TABLE_NAME
         SQL
-
-        table_rows = connection.execute(query).to_a
         return [] if table_rows.empty?
 
-        table_names = table_rows.pluck(0)
+        columns_by_table = fetch_all_columns(connection)
+        primary_keys_by_table = fetch_all_primary_keys(connection)
+        constraints_by_table = fetch_all_constraints(connection)
 
-        # Batch fetch all columns, primary keys, and constraints
-        columns_by_table = fetch_all_columns(connection, table_names)
-        primary_keys_by_table = fetch_all_primary_keys(connection, table_names)
-        constraints_by_table = fetch_all_constraints(connection, table_names)
+        table_rows.map do |name, schema, engine, collation|
+          columns = with_generation_expressions(connection, name, columns_by_table[name])
+          json_columns = mariadb_json_columns(constraints_by_table[name])
 
-        # Combine results
-        table_rows.map do |row|
-          table_name = row[0] # MySQL returns arrays not hashes by default
           {
-            name: table_name,
-            schema: row[1],
-            columns: columns_by_table[table_name] || [],
-            primary_key: primary_keys_by_table[table_name] || [],
-            constraints: constraints_by_table[table_name] || []
+            name:,
+            schema:,
+            engine:,
+            collation:,
+            columns: columns.map { |column| json_columns.include?(column[:name]) ? as_json_column(column) : column },
+            primary_key: primary_keys_by_table[name],
+            constraints: constraints_by_table[name].reject { |constraint| json_columns.include?(constraint[:name]) }
           }
         end
       end
 
-      # Fetch all indexes from the current database
+      # Fetch all secondary indexes from the current database
+      #
+      # Each index carries a complete CREATE INDEX :definition covering prefix
+      # lengths, descending key parts, functional key parts (MySQL 8.0.13+),
+      # FULLTEXT/SPATIAL indexes and invisible indexes.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of index hashes with :table, :name, :columns, :unique, :type
+      # @return [Array<Hash>] Array of index hashes with :table, :name, :columns, :unique, :type, :definition
       def fetch_indexes(connection)
-        query = <<~SQL.squish
-          SELECT
-            TABLE_NAME,
-            INDEX_NAME,
-            COLUMN_NAME,
-            SEQ_IN_INDEX,
-            NON_UNIQUE,
-            INDEX_TYPE
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE, INDEX_TYPE, SUB_PART, COLLATION,
+                 #{index_expression_columns}
           FROM information_schema.STATISTICS
           WHERE TABLE_SCHEMA = DATABASE()
             AND INDEX_NAME != 'PRIMARY'
           ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
         SQL
 
-        # Group by table and index name to build multi-column indexes
-        indexes_by_key = {}
-
-        connection.execute(query).each do |row|
-          table_name = row[0]
-          index_name = row[1]
-          column_name = row[2]
-          # seq_in_index = row[3] # Used for ordering, handled by ORDER BY in query
-          non_unique = row[4]
-          index_type = row[5]
-
-          key = "#{table_name}.#{index_name}"
-          indexes_by_key[key] ||= {
-            table: table_name,
-            name: index_name,
-            columns: [],
-            unique: non_unique.to_i.zero?,
-            type: index_type
-          }
-          indexes_by_key[key][:columns] << column_name
-        end
-
-        indexes_by_key.values
+        rows.group_by { |row| row[0..1] }.map { |(table, name), parts| build_index(table, name, parts) }
       end
 
       # Fetch all foreign keys from the current database
       #
+      # Composite foreign keys are returned as one entry whose :columns and
+      # :foreign_columns list the columns in key order.
+      #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :column, :foreign_table, :foreign_column, :on_update, :on_delete
+      # @return [Array<Hash>] Array of foreign key hashes with :table, :name, :columns, :foreign_table, :foreign_columns, :on_update, :on_delete
       def fetch_foreign_keys(connection)
-        query = <<~SQL.squish
+        rows = connection.select_rows(<<~SQL.squish)
           SELECT
             kcu.TABLE_NAME,
             kcu.CONSTRAINT_NAME,
@@ -130,51 +117,43 @@ module BetterStructureSql
             rc.DELETE_RULE
           FROM information_schema.KEY_COLUMN_USAGE kcu
           JOIN information_schema.REFERENTIAL_CONSTRAINTS rc
-            ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
-            AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA
+            ON rc.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA
+            AND rc.TABLE_NAME = kcu.TABLE_NAME
+            AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
           WHERE kcu.TABLE_SCHEMA = DATABASE()
             AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
-          ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME
+          ORDER BY kcu.TABLE_NAME, kcu.CONSTRAINT_NAME, kcu.ORDINAL_POSITION
         SQL
 
-        connection.execute(query).map do |row|
-          {
-            table: row[0],
-            name: row[1],
-            column: row[2],
-            foreign_table: row[3],
-            foreign_column: row[4],
-            on_update: row[5],
-            on_delete: row[6]
-          }
-        end
+        rows.group_by { |row| row[0..1] }.map { |(table, name), key_rows| build_foreign_key(table, name, key_rows) }
       end
 
-      # Fetch all views from the current database
+      # Fetch all views from the current database, ordered so a view follows the views it reads
+      #
+      # The definition comes from SHOW CREATE VIEW, which (unlike
+      # information_schema.VIEWS) does not qualify objects of the current
+      # database with its name, so the dump loads into any database.
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of view hashes with :schema, :name, :definition, :check_option, :updatable
       def fetch_views(connection)
-        query = <<~SQL.squish
-          SELECT
-            TABLE_NAME,
-            VIEW_DEFINITION,
-            CHECK_OPTION,
-            IS_UPDATABLE
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT TABLE_NAME, CHECK_OPTION, IS_UPDATABLE
           FROM information_schema.VIEWS
           WHERE TABLE_SCHEMA = DATABASE()
           ORDER BY TABLE_NAME
         SQL
 
-        connection.execute(query).map do |row|
+        views = rows.map do |name, check_option, updatable|
           {
             schema: 'public', # MySQL doesn't use schemas like PostgreSQL
-            name: row[0],
-            definition: row[1],
-            check_option: row[2],
-            updatable: row[3] == 'YES'
+            name:,
+            definition: view_select(connection, name),
+            check_option:,
+            updatable: updatable == 'YES'
           }
         end
+        order_by_dependencies(views, view_dependencies(connection, views))
       end
 
       # Fetch materialized views (not supported in MySQL)
@@ -182,7 +161,6 @@ module BetterStructureSql
       # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
       # @return [Array] Empty array as MySQL doesn't support materialized views
       def fetch_materialized_views(_connection)
-        # MySQL doesn't support materialized views
         []
       end
 
@@ -191,35 +169,19 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of routine hashes with :schema, :name, :definition
       def fetch_functions(connection)
-        query = <<~SQL.squish
-          SELECT
-            ROUTINE_NAME,
-            ROUTINE_TYPE
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT ROUTINE_NAME, ROUTINE_TYPE
           FROM information_schema.ROUTINES
           WHERE ROUTINE_SCHEMA = DATABASE()
             AND ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
           ORDER BY ROUTINE_NAME
         SQL
 
-        connection.execute(query).map do |row|
-          routine_name = row[0]
-          routine_type = row[1]
-
-          # Get complete CREATE statement using SHOW CREATE
-          create_query = if routine_type == 'PROCEDURE'
-                           "SHOW CREATE PROCEDURE `#{routine_name}`"
-                         else
-                           "SHOW CREATE FUNCTION `#{routine_name}`"
-                         end
-
-          create_result = connection.execute(create_query).first
-          # SHOW CREATE returns: [procedure_name, sql_mode, create_statement, ...]
-          create_statement = create_result[2] if create_result
-
+        rows.map do |name, type|
           {
             schema: 'public',
-            name: routine_name,
-            definition: create_statement
+            name:,
+            definition: show_create(connection, "SHOW CREATE #{type} #{quote_identifier(name)}", 2)
           }
         end
       end
@@ -229,40 +191,31 @@ module BetterStructureSql
       # @param _connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection (unused)
       # @return [Array] Empty array as MySQL doesn't support sequences (uses AUTO_INCREMENT instead)
       def fetch_sequences(_connection)
-        # MySQL doesn't have sequences (uses AUTO_INCREMENT)
         []
       end
 
       # Fetch all triggers from the current database
       #
+      # Triggers sharing a table, timing and event are returned in firing order
+      # (ACTION_ORDER) so that re-creating them in dump order keeps that order.
+      #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of trigger hashes with :table, :name, :event, :timing, :definition
       def fetch_triggers(connection)
-        query = <<~SQL.squish
-          SELECT
-            TRIGGER_NAME,
-            EVENT_MANIPULATION,
-            EVENT_OBJECT_TABLE,
-            ACTION_TIMING
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_TIMING
           FROM information_schema.TRIGGERS
           WHERE TRIGGER_SCHEMA = DATABASE()
-          ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME
+          ORDER BY EVENT_OBJECT_TABLE, ACTION_TIMING, EVENT_MANIPULATION, ACTION_ORDER
         SQL
 
-        connection.execute(query).map do |row|
-          trigger_name = row[0]
-
-          # Get complete CREATE statement using SHOW CREATE
-          create_result = connection.execute("SHOW CREATE TRIGGER `#{trigger_name}`").first
-          # SHOW CREATE TRIGGER returns: [trigger_name, sql_mode, create_statement, ...]
-          create_statement = create_result[2] if create_result
-
+        rows.map do |name, event, table, timing|
           {
-            table: row[2],
-            name: trigger_name,
-            event: row[1],     # INSERT, UPDATE, DELETE
-            timing: row[3],    # BEFORE, AFTER
-            definition: create_statement
+            table:,
+            name:,
+            event:,
+            timing:,
+            definition: show_create(connection, "SHOW CREATE TRIGGER #{quote_identifier(name)}", 2)
           }
         end
       end
@@ -277,7 +230,8 @@ module BetterStructureSql
           columns: fetch_column_comments(connection),
           indexes: {},  # MySQL doesn't support index comments via information_schema
           views: {},    # MySQL doesn't expose view comments via information_schema
-          functions: {} # MySQL doesn't expose function comments via information_schema
+          functions: {}, # MySQL doesn't expose function comments via information_schema
+          procedures: {}
         }
       end
 
@@ -301,7 +255,7 @@ module BetterStructureSql
       #
       # @return [Boolean] Always false (ENUM/SET are inline with columns, not custom types)
       def supports_custom_types?
-        false # ENUM/SET are inline with columns, not custom types
+        false
       end
 
       # Indicates whether MySQL supports domains
@@ -315,7 +269,7 @@ module BetterStructureSql
       #
       # @return [Boolean] Always true for MySQL
       def supports_functions?
-        true # Stored procedures and functions
+        true
       end
 
       # Indicates whether MySQL supports triggers
@@ -329,21 +283,28 @@ module BetterStructureSql
       #
       # @return [Boolean] Always false (uses AUTO_INCREMENT instead)
       def supports_sequences?
-        false # Uses AUTO_INCREMENT instead
+        false
       end
 
       # Indicates whether MySQL supports check constraints
       #
-      # @return [Boolean] True for MySQL 8.0.16+, false for earlier versions
+      # @return [Boolean] True for MySQL 8.0.16+ and MariaDB 10.2+
       def supports_check_constraints?
-        version_at_least?(database_version, '8.0.16')
+        version_at_least?(database_version, mariadb? ? '10.2' : '8.0.16')
       end
 
       # Indicates whether MySQL supports comments on database objects
       #
       # @return [Boolean] Always true for MySQL (tables and columns only)
       def supports_comments?
-        true # MySQL supports table and column comments
+        true
+      end
+
+      # Indicates whether the server is MariaDB rather than Oracle MySQL
+      #
+      # @return [Boolean] True when VERSION() reports a MariaDB server
+      def mariadb?
+        server_version.include?('MariaDB')
       end
 
       # Version detection
@@ -352,10 +313,7 @@ module BetterStructureSql
       #
       # @return [String] Normalized version string (e.g., "8.0.35")
       def database_version
-        @database_version ||= begin
-          version_string = connection.select_value('SELECT VERSION()')
-          parse_version(version_string)
-        end
+        @database_version ||= parse_version(server_version)
       end
 
       # Parse MySQL version string into normalized format
@@ -363,8 +321,6 @@ module BetterStructureSql
       # @param version_string [String] Raw version string from MySQL (e.g., "8.0.35" or "5.7.44-log")
       # @return [String] Normalized version (e.g., "8.0.35") or "unknown" if parsing fails
       def parse_version(version_string)
-        # Example: "8.0.35" or "5.7.44-log"
-        # Extract major.minor.patch version
         match = version_string.match(/(\d+\.\d+\.\d+)/)
         return 'unknown' unless match
 
@@ -373,256 +329,337 @@ module BetterStructureSql
 
       private
 
-      # Helper methods for introspection
-
-      # Fetch columns for a specific table
+      # Raw VERSION() string, e.g. "8.0.35" or "11.4.2-MariaDB-ubu2404"
       #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<Hash>] Array of column hashes with :name, :type, :nullable, :default, etc.
-      def fetch_columns(connection, table_name)
-        query = <<~SQL.squish
-          SELECT
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            COLUMN_DEFAULT,
-            CHARACTER_MAXIMUM_LENGTH,
-            NUMERIC_PRECISION,
-            NUMERIC_SCALE,
-            COLUMN_TYPE,
-            EXTRA
-          FROM information_schema.COLUMNS
-          WHERE TABLE_NAME = #{connection.quote(table_name)}
-            AND TABLE_SCHEMA = DATABASE()
-          ORDER BY ORDINAL_POSITION
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            name: row[0],
-            type: resolve_column_type(row),
-            nullable: row[2] == 'YES',
-            default: row[3],
-            length: row[4],
-            precision: row[5],
-            scale: row[6],
-            column_type: row[7], # Full type with ENUM values, etc.
-            extra: row[8] # AUTO_INCREMENT, etc.
-          }
-        end
+      # @return [String]
+      def server_version
+        @server_version ||= connection.select_value('SELECT VERSION()')
       end
 
-      # Fetch primary key columns for a specific table
+      # Batch fetch all columns of the current database
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<String>] Array of primary key column names
-      def fetch_primary_key(connection, table_name)
-        query = <<~SQL.squish
-          SELECT COLUMN_NAME
-          FROM information_schema.KEY_COLUMN_USAGE
-          WHERE TABLE_NAME = #{connection.quote(table_name)}
-            AND TABLE_SCHEMA = DATABASE()
-            AND CONSTRAINT_NAME = 'PRIMARY'
-          ORDER BY ORDINAL_POSITION
-        SQL
-
-        connection.execute(query).pluck(0)
-      end
-
-      # Fetch check constraints for a specific table (MySQL 8.0.16+)
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_name [String] Name of the table
-      # @return [Array<Hash>] Array of constraint hashes with :name, :definition, :type
-      def fetch_constraints(connection, table_name)
-        # MySQL 8.0.16+ supports check constraints
-        return [] unless supports_check_constraints?
-
-        query = <<~SQL.squish
-          SELECT
-            CONSTRAINT_NAME,
-            CHECK_CLAUSE
-          FROM information_schema.CHECK_CONSTRAINTS
-          WHERE CONSTRAINT_SCHEMA = DATABASE()
-            AND TABLE_NAME = #{connection.quote(table_name)}
-          ORDER BY CONSTRAINT_NAME
-        SQL
-
-        connection.execute(query).map do |row|
-          {
-            name: row[0],
-            definition: row[1],
-            type: :check
-          }
-        end
-      rescue StandardError
-        # If CHECK_CONSTRAINTS table doesn't exist (MySQL < 8.0.16), return empty
-        []
-      end
-
-      # Batch fetch all columns for multiple tables (performance optimization)
-      #
-      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
       # @return [Hash<String, Array<Hash>>] Hash of table_name => array of column hashes
-      def fetch_all_columns(connection, table_names)
-        return {} if table_names.empty?
-
-        # Build IN clause with quoted table names
-        quoted_names = table_names.map { |t| connection.quote(t) }.join(', ')
-
-        query = <<~SQL.squish
+      def fetch_all_columns(connection)
+        rows = connection.select_all(<<~SQL.squish)
           SELECT
-            TABLE_NAME,
-            COLUMN_NAME,
-            DATA_TYPE,
-            IS_NULLABLE,
-            COLUMN_DEFAULT,
-            CHARACTER_MAXIMUM_LENGTH,
-            NUMERIC_PRECISION,
-            NUMERIC_SCALE,
-            COLUMN_TYPE,
-            EXTRA,
-            ORDINAL_POSITION
+            TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA,
+            CHARACTER_SET_NAME, COLLATION_NAME,
+            CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE
           FROM information_schema.COLUMNS
-          WHERE TABLE_NAME IN (#{quoted_names})
-            AND TABLE_SCHEMA = DATABASE()
+          WHERE TABLE_SCHEMA = DATABASE()
           ORDER BY TABLE_NAME, ORDINAL_POSITION
         SQL
 
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.execute(query).each do |row|
-          # Build row array compatible with resolve_column_type expectations
-          # resolve_column_type expects: [nil, DATA_TYPE, nil, nil, LENGTH, PRECISION, SCALE, COLUMN_TYPE]
-          column_row = [nil, row[2], nil, nil, row[5], row[6], row[7], row[8]]
-
-          result[row[0]] << {
-            name: row[1],
-            type: resolve_column_type(column_row),
-            nullable: row[3] == 'YES',
-            default: row[4],
-            length: row[5],
-            precision: row[6],
-            scale: row[7],
-            column_type: row[8],
-            extra: row[9]
-          }
+        rows.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |row, result|
+          result[row['TABLE_NAME']] << build_column(row)
         end
-
-        result
       end
 
-      # Batch fetch all primary keys for multiple tables (performance optimization)
+      # Build a column hash from an information_schema.COLUMNS row
+      #
+      # @param row [Hash] information_schema.COLUMNS row keyed by column name
+      # @return [Hash] Column hash; :type is the full COLUMN_TYPE (e.g. "int unsigned",
+      #   "datetime(6)", "enum('a','b')") and :default is a SQL fragment
+      def build_column(row)
+        extra = row['EXTRA']
+        {
+          name: row['COLUMN_NAME'],
+          type: row['COLUMN_TYPE'],
+          data_type: row['DATA_TYPE'],
+          nullable: row['IS_NULLABLE'] == 'YES',
+          default: column_default_sql(row['DATA_TYPE'], row['COLUMN_DEFAULT'], extra),
+          length: row['CHARACTER_MAXIMUM_LENGTH'],
+          precision: row['NUMERIC_PRECISION'],
+          scale: row['NUMERIC_SCALE'],
+          column_type: row['COLUMN_TYPE'],
+          extra:,
+          auto_increment: extra.include?('auto_increment'),
+          on_update: extra[/on update (.+)\z/i, 1],
+          generated: generated_column(extra),
+          charset: row['CHARACTER_SET_NAME'],
+          collation: row['COLLATION_NAME']
+        }
+      end
+
+      # Convert COLUMN_DEFAULT into the SQL that recreates it
+      #
+      # MySQL stores literal defaults unquoted and flags expression defaults
+      # with DEFAULT_GENERATED; MariaDB already stores SQL (quoted literals,
+      # bare expressions, and the string 'NULL' for no default).
+      #
+      # @return [String, nil] SQL default fragment or nil when the column has no default
+      def column_default_sql(data_type, default, extra)
+        return mariadb_default(default) if mariadb?
+        return nil if default.nil?
+        return expression_default(unescape_expression(default)) if extra.include?('DEFAULT_GENERATED')
+        return default if data_type == 'bit' || NUMERIC_TYPES.include?(data_type)
+
+        quote_string(default)
+      end
+
+      # @return [String, nil] MariaDB default (already SQL) or nil for NULL
+      def mariadb_default(default)
+        default unless default.nil? || default == 'NULL'
+      end
+
+      # Wrap expression defaults in parentheses, as MySQL 8.0.13+ requires
+      #
+      # @return [String] SQL default fragment
+      def expression_default(expression)
+        TEMPORAL_DEFAULT.match?(expression) ? expression : "(#{expression})"
+      end
+
+      # @return [Hash, nil] { kind: } for generated columns, kind being "STORED" or
+      #   "VIRTUAL" (MariaDB's PERSISTENT is its alias for STORED); the expression
+      #   is added by #with_generation_expressions
+      def generated_column(extra)
+        storage = extra[/\b(VIRTUAL|STORED|PERSISTENT) GENERATED\b/i, 1]
+        return nil unless storage
+
+        { kind: storage.casecmp?('VIRTUAL') ? 'VIRTUAL' : 'STORED' }
+      end
+
+      # Add generation expressions to a table's generated columns
+      #
+      # information_schema.COLUMNS.GENERATION_EXPRESSION keeps the expression as
+      # the creating session printed it (its charset introducers, no implicit
+      # CONVERT), which MySQL canonicalizes differently once the dump is loaded.
+      # SHOW CREATE TABLE prints the canonical form, keeping dump/load/dump stable.
+      #
+      # @return [Array<Hash>] The columns, generated ones carrying :expression
+      def with_generation_expressions(connection, table, columns)
+        return columns if columns.none? { |column| column[:generated] }
+
+        create_table = show_create(connection, "SHOW CREATE TABLE #{quote_identifier(table)}", 1)
+        columns.each do |column|
+          next unless column[:generated]
+
+          line = create_table.lines.find { |text| text.start_with?("  #{quote_identifier(column[:name])} ") }
+          column[:generated][:expression] = line&.[](GENERATED_EXPRESSION, 1)
+          raise Error, "Unable to find expression of generated column #{table}.#{column[:name]}" unless column[:generated][:expression]
+        end
+      end
+
+      # Batch fetch all primary keys of the current database
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
-      # @return [Hash<String, Array<String>>] Hash of table_name => array of primary key column names
-      def fetch_all_primary_keys(connection, table_names)
-        return {} if table_names.empty?
-
-        quoted_names = table_names.map { |t| connection.quote(t) }.join(', ')
-
-        query = <<~SQL.squish
-          SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION
+      # @return [Hash<String, Array<String>>] Hash of table_name => primary key column names in key order
+      def fetch_all_primary_keys(connection)
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT TABLE_NAME, COLUMN_NAME
           FROM information_schema.KEY_COLUMN_USAGE
-          WHERE TABLE_NAME IN (#{quoted_names})
-            AND TABLE_SCHEMA = DATABASE()
+          WHERE TABLE_SCHEMA = DATABASE()
             AND CONSTRAINT_NAME = 'PRIMARY'
           ORDER BY TABLE_NAME, ORDINAL_POSITION
         SQL
 
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.execute(query).each do |row|
-          result[row[0]] << row[1]
+        rows.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |(table, column), result|
+          result[table] << column
         end
-
-        result
       end
 
-      # Batch fetch all constraints for multiple tables (performance optimization)
+      # Batch fetch all CHECK constraints of the current database
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @param table_names [Array<String>] Array of table names
-      # @return [Hash<String, Array<Hash>>] Hash of table_name => array of constraint hashes
-      def fetch_all_constraints(connection, table_names)
-        return {} if table_names.empty?
-        return {} unless supports_check_constraints? # MySQL < 8.0.16
+      # @return [Hash<String, Array<Hash>>] Hash of table_name => constraint hashes whose
+      #   :definition is a complete "CHECK (...)" clause
+      def fetch_all_constraints(connection)
+        result = Hash.new { |hash, key| hash[key] = [] }
+        return result unless supports_check_constraints?
 
-        quoted_names = table_names.map { |t| connection.quote(t) }.join(', ')
-
-        query = <<~SQL.squish
-          SELECT
-            TABLE_NAME,
-            CONSTRAINT_NAME,
-            CHECK_CLAUSE
-          FROM information_schema.CHECK_CONSTRAINTS
-          WHERE CONSTRAINT_SCHEMA = DATABASE()
-            AND TABLE_NAME IN (#{quoted_names})
-          ORDER BY TABLE_NAME, CONSTRAINT_NAME
-        SQL
-
-        result = Hash.new { |h, k| h[k] = [] }
-
-        connection.execute(query).each do |row|
-          result[row[0]] << {
-            name: row[1],
-            definition: row[2],
-            type: :check
-          }
+        connection.select_rows(check_constraints_query).each do |table, name, clause, enforced|
+          definition = "CHECK (#{unescape_expression(clause)})"
+          definition += ' NOT ENFORCED' if enforced == 'NO'
+          result[table] << { name:, definition:, type: :check }
         end
-
         result
-      rescue StandardError
-        # If CHECK_CONSTRAINTS table doesn't exist, return empty hash
-        {}
       end
 
-      # Resolve MySQL column type into normalized format
+      # MariaDB implements JSON as LONGTEXT plus a column-level CHECK
+      # (json_valid(`col`)) named after the column; such columns are dumped as
+      # JSON so loading recreates exactly that, not a table-level constraint.
       #
-      # @param row [Array] Column information row from information_schema.COLUMNS
-      # @return [String] Normalized column type with length/precision if applicable
-      def resolve_column_type(row)
-        data_type = row[1]
-        column_type = row[7] # Full type definition
+      # @param constraints [Array<Hash>] A table's CHECK constraints
+      # @return [Array<String>] Names of the table's JSON columns
+      def mariadb_json_columns(constraints)
+        return [] unless mariadb?
 
-        case data_type
-        when 'varchar', 'char'
-          # Use CHARACTER_MAXIMUM_LENGTH
-          length = row[4]
-          length ? "#{data_type}(#{length})" : data_type
-        when 'decimal', 'numeric'
-          precision = row[5]
-          scale = row[6]
-          if precision && scale
-            "#{data_type}(#{precision},#{scale})"
-          else
-            data_type
-          end
-        when 'enum', 'set'
-          # Return full column_type which includes values: enum('admin','user','guest')
-          column_type
-        when 'int', 'integer'
-          'int'
-        when 'bigint'
-          'bigint'
-        when 'tinyint'
-          # Check if it's boolean (tinyint(1))
-          column_type.include?('tinyint(1)') ? 'boolean' : 'tinyint'
-        when 'datetime', 'timestamp'
-          data_type
-        when 'text', 'mediumtext', 'longtext'
-          data_type
-        when 'blob', 'mediumblob', 'longblob'
-          data_type
-        when 'json'
-          'json'
+        constraints.select { |constraint| constraint[:definition] == "CHECK (json_valid(`#{constraint[:name]}`))" }
+                   .pluck(:name)
+      end
+
+      # @return [Hash] Column hash declared as JSON (charset and collation are implied)
+      def as_json_column(column)
+        column.merge(type: 'json', charset: nil, collation: nil)
+      end
+
+      # MySQL keys CHECK constraints by schema (TABLE_NAME lives in TABLE_CONSTRAINTS);
+      # MariaDB keys them by table and has no ENFORCED column.
+      #
+      # @return [String] SQL query returning table, name, clause, enforced
+      def check_constraints_query
+        if mariadb?
+          <<~SQL.squish
+            SELECT TABLE_NAME, CONSTRAINT_NAME, CHECK_CLAUSE, 'YES'
+            FROM information_schema.CHECK_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = DATABASE()
+            ORDER BY TABLE_NAME, CONSTRAINT_NAME
+          SQL
         else
-          data_type
+          <<~SQL.squish
+            SELECT tc.TABLE_NAME, cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE, tc.ENFORCED
+            FROM information_schema.TABLE_CONSTRAINTS tc
+            JOIN information_schema.CHECK_CONSTRAINTS cc
+              ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA
+              AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+            WHERE tc.TABLE_SCHEMA = DATABASE()
+              AND tc.CONSTRAINT_TYPE = 'CHECK'
+            ORDER BY tc.TABLE_NAME, cc.CONSTRAINT_NAME
+          SQL
         end
+      end
+
+      # STATISTICS.EXPRESSION and IS_VISIBLE exist only on MySQL 8.0.13+
+      #
+      # @return [String] SELECT list fragment yielding expression and visibility
+      def index_expression_columns
+        if !mariadb? && version_at_least?(database_version, '8.0.13')
+          'EXPRESSION, IS_VISIBLE'
+        else
+          "NULL AS EXPRESSION, 'YES' AS IS_VISIBLE"
+        end
+      end
+
+      # Build an index hash from its STATISTICS rows (one per key part)
+      #
+      # @return [Hash] Index hash with complete :definition
+      def build_index(table, name, parts)
+        _table, _name, _column, non_unique, index_type, = parts.first
+        unique = non_unique.to_i.zero?
+        key_parts = parts.map { |part| index_key_part(*part.values_at(2, 5, 6, 7)) }
+        visibility = parts.first[8] == 'NO' ? ' INVISIBLE' : ''
+
+        {
+          table:,
+          name:,
+          columns: parts.filter_map { |part| part[2] },
+          unique:,
+          type: index_type,
+          definition: "CREATE #{index_kind(index_type, unique)}INDEX #{quote_identifier(name)} " \
+                      "ON #{quote_identifier(table)} (#{key_parts.join(', ')})#{visibility}"
+        }
+      end
+
+      # @return [String] One key part: `col`, `col`(10), (expression), optionally DESC
+      def index_key_part(column, sub_part, collation, expression)
+        part = expression ? "(#{unescape_expression(expression)})" : quote_identifier(column)
+        part += "(#{sub_part})" if sub_part
+        part += ' DESC' if collation == 'D'
+        part
+      end
+
+      # @return [String] Index modifier keyword ("UNIQUE ", "FULLTEXT ", "SPATIAL " or "")
+      def index_kind(index_type, unique)
+        return "#{index_type} " if %w[FULLTEXT SPATIAL].include?(index_type)
+
+        unique ? 'UNIQUE ' : ''
+      end
+
+      # Build a foreign key hash from its KEY_COLUMN_USAGE rows (one per column)
+      #
+      # @return [Hash] Foreign key hash
+      def build_foreign_key(table, name, key_rows)
+        _table, _name, _column, foreign_table, _foreign_column, on_update, on_delete = key_rows.first
+
+        {
+          table:,
+          name:,
+          columns: key_rows.pluck(2),
+          foreign_table:,
+          foreign_columns: key_rows.pluck(4),
+          on_update:,
+          on_delete:
+        }
+      end
+
+      # Extract the SELECT statement (plus any WITH CHECK OPTION) from SHOW CREATE VIEW
+      #
+      # @return [String] View query
+      # @raise [Error] If the statement cannot be parsed
+      def view_select(connection, name)
+        create_statement = show_create(connection, "SHOW CREATE VIEW #{quote_identifier(name)}", 1)
+        select = create_statement[/\sVIEW\s+`(?:[^`]|``)+`\s+AS\s+(.*)\z/m, 1]
+        raise Error, "Unable to parse definition of view #{name}: #{create_statement}" unless select
+
+        select
+      end
+
+      # Which views of the current database each view reads
+      #
+      # information_schema.VIEW_TABLE_USAGE exists on MySQL 8.0.13+ only. On
+      # MariaDB and older MySQL the view's own definition is scanned instead:
+      # SHOW CREATE VIEW backtick-quotes every identifier, so a quoted name
+      # equal to another view's name is a reference to it (an alias with the
+      # same name adds a harmless extra edge).
+      #
+      # @param views [Array<Hash>] Views with :name and :definition
+      # @return [Hash<String, Array<String>>] View name => names of views it reads
+      def view_dependencies(connection, views)
+        return view_table_usage(connection) if !mariadb? && version_at_least?(database_version, '8.0.13')
+
+        names = views.to_set { |view| view[:name] }
+        views.to_h do |view|
+          referenced = view[:definition].scan(/`((?:[^`]|``)+)`/).flatten.map { |name| name.gsub('``', '`') }
+          [view[:name], referenced.select { |name| names.include?(name) }.uniq - [view[:name]]]
+        end
+      end
+
+      # @return [Hash<String, Array<String>>] View name => names of the relations it reads
+      def view_table_usage(connection)
+        rows = connection.select_rows(<<~SQL.squish)
+          SELECT VIEW_NAME, TABLE_NAME
+          FROM information_schema.VIEW_TABLE_USAGE
+          WHERE VIEW_SCHEMA = DATABASE() AND TABLE_SCHEMA = DATABASE()
+          ORDER BY VIEW_NAME, TABLE_NAME
+        SQL
+
+        rows.group_by(&:first).transform_values { |pairs| pairs.map(&:last) }
+      end
+
+      # Run a SHOW CREATE statement and return its CREATE statement column
+      #
+      # @param column [Integer] Result column holding the statement (views: 1;
+      #   routines and triggers, which report sql_mode first: 2)
+      # @return [String] CREATE statement
+      # @raise [Error] If the statement is hidden (missing privileges)
+      def show_create(connection, statement, column)
+        create_statement = connection.select_rows(statement).first&.at(column)
+        raise Error, "#{statement} returned no definition; check the user's privileges" if create_statement.nil?
+
+        create_statement
+      end
+
+      # MySQL's information_schema escapes quotes and backslashes inside
+      # expressions (CHECK_CLAUSE, expression defaults)
+      # as if they were string literals; undo it to get the SQL SHOW CREATE
+      # TABLE shows. MariaDB stores the SQL unescaped.
+      #
+      # @return [String] SQL expression
+      def unescape_expression(expression)
+        return expression if mariadb?
+
+        expression.gsub(/\\([\\'])/, '\1')
+      end
+
+      # @return [String] Single-quoted MySQL string literal
+      def quote_string(value)
+        "'#{value.gsub(/[\\']/) { |char| char * 2 }}'"
+      end
+
+      # @return [String] Backtick-quoted identifier
+      def quote_identifier(name)
+        "`#{name.gsub('`', '``')}`"
       end
 
       # Fetch comments on tables
@@ -630,7 +667,7 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Hash<String, String>] Hash of table_name => comment
       def fetch_table_comments(connection)
-        query = <<~SQL.squish
+        connection.select_rows(<<~SQL.squish).to_h
           SELECT TABLE_NAME, TABLE_COMMENT
           FROM information_schema.TABLES
           WHERE TABLE_SCHEMA = DATABASE()
@@ -638,20 +675,14 @@ module BetterStructureSql
             AND TABLE_COMMENT != ''
           ORDER BY TABLE_NAME
         SQL
-
-        result = {}
-        connection.execute(query).each do |row|
-          result[row[0]] = row[1]
-        end
-        result
       end
 
       # Fetch comments on columns
       #
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
-      # @return [Hash<String, String>] Hash of "table_name.column_name" => comment
+      # @return [Hash<Array(String, String), String>] Hash of [table_name, column_name] => comment
       def fetch_column_comments(connection)
-        query = <<~SQL.squish
+        rows = connection.select_rows(<<~SQL.squish)
           SELECT TABLE_NAME, COLUMN_NAME, COLUMN_COMMENT
           FROM information_schema.COLUMNS
           WHERE TABLE_SCHEMA = DATABASE()
@@ -659,12 +690,7 @@ module BetterStructureSql
           ORDER BY TABLE_NAME, ORDINAL_POSITION
         SQL
 
-        result = {}
-        connection.execute(query).each do |row|
-          key = "#{row[0]}.#{row[1]}"
-          result[key] = row[2]
-        end
-        result
+        rows.to_h { |table, column, comment| [[table, column], comment] }
       end
     end
   end

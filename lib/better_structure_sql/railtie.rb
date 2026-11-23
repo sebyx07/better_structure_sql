@@ -32,38 +32,47 @@ module BetterStructureSql
         BetterStructureSql::MigrationPatch.apply!
 
         if config.replace_default_dump && !is_ruby_format
-          # Automatically set Rails to use SQL schema format
+          # Rails copies app config into ActiveRecord before this hook can run, so set both
           Rails.application.config.active_record.schema_format = :sql
+          ActiveRecord.schema_format = :sql
 
-          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksExtension)
-          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksDumpInfoExtension)
-          # Also prepend path override for dump
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksPathExtension)
+          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksExtension)
         end
 
         if config.replace_default_load && !is_ruby_format
-          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksLoadExtension)
-          # Also prepend path override for load
           ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksPathExtension)
+          ActiveRecord::Tasks::DatabaseTasks.singleton_class.prepend(DatabaseTasksLoadExtension)
         end
       end
     end
 
+    # Resolves the schema format Rails would use for a database
+    #
+    # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
+    # @param format [Symbol, String, nil] Explicit format, nil for the database's default
+    # @return [Symbol] :sql or :ruby
+    def self.schema_format_for(db_config, format)
+      format ||= db_config.respond_to?(:schema_format) ? db_config.schema_format : ActiveRecord.schema_format
+      format.to_sym
+    end
+
     # Extension to override schema_dump_path for BetterStructureSql
     module DatabaseTasksPathExtension
-      # Returns schema dump path based on configuration
+      # Returns the configured output path for the primary database's SQL schema
+      #
+      # Other databases of a multi-database app keep the path Rails derives from
+      # their name, so every database gets its own schema file.
       #
       # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
-      # @param format [Symbol] Schema format (:sql or :ruby)
-      # @return [Pathname] Path to schema file
-      def schema_dump_path(db_config, format = ActiveRecord.schema_format)
-        if format.to_sym == :sql && !BetterStructureSql.configuration.output_path.to_s.end_with?('.rb')
-          # Return our configured path for SQL format
-          Rails.root.join(BetterStructureSql.configuration.output_path)
-        else
-          # Use default Rails path for Ruby format
-          super
-        end
+      # @param format [Symbol, nil] Schema format (:sql or :ruby), nil for the database's default
+      # @return [Pathname, String, nil] Path to schema file or directory
+      def schema_dump_path(db_config, format = nil)
+        format = Railtie.schema_format_for(db_config, format)
+        return super unless format == :sql && db_config.primary? && db_config.schema_dump(format)
+        return super if ENV['SCHEMA']
+
+        Rails.root.join(BetterStructureSql.configuration.output_path)
       end
     end
 
@@ -71,53 +80,41 @@ module BetterStructureSql
     module DatabaseTasksExtension
       # Dumps schema using BetterStructureSql for SQL format
       #
+      # Each database is dumped through its own connection into its own path.
+      #
       # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
-      # @param format [Symbol] Schema format
+      # @param format [Symbol, nil] Schema format, nil for the database's default
       # @return [void]
-      def dump_schema(db_config, format = db_config.schema_format)
-        # Only override SQL format dumps
-        if format.to_sym == :sql
-          return unless db_config.schema_dump
+      def dump_schema(db_config, format = nil)
+        format = Railtie.schema_format_for(db_config, format)
+        return super unless format == :sql
 
-          filename = schema_dump_path(db_config, format)
-          return unless filename
+        filename = schema_dump_path(db_config, format)
+        return unless filename
 
-          FileUtils.mkdir_p(File.dirname(filename))
-
-          # Call our dumper which already includes schema_migrations
-          # Don't auto-store version here - use explicit db:schema:store task
-          BetterStructureSql::Dumper.new.dump(store_version: false)
-        else
-          # For Ruby format, call the original method
-          super
+        # Don't auto-store version here - use explicit db:schema:store task
+        with_temporary_connection(db_config) do |connection|
+          BetterStructureSql::Dumper.new(dump_configuration(filename), connection).dump(store_version: false)
         end
+      end
+
+      private
+
+      def dump_configuration(filename)
+        BetterStructureSql.configuration.dup.tap { |config| config.output_path = filename }
       end
     end
 
-    # No longer needed - we override dump_schema instead
-    module DatabaseTasksDumpInfoExtension
-      # This module is kept for backward compatibility but is no longer used
-    end
-
-    # Extension to override DatabaseTasks#load_schema for multi-file support
+    # Extension to load SQL schemas (single file or multi-file directory) with SchemaLoader
     module DatabaseTasksLoadExtension
-      # Override load_schema to handle both file and directory schemas
-      def load_schema(db_config, format = ActiveRecord.schema_format, *_args)
-        if format.to_sym == :sql
-          # Get the configured schema path (could be file or directory)
-          config = BetterStructureSql.configuration
-          schema_path = Rails.root.join(config.output_path)
-
-          # Check if schema exists (file or directory)
-          abort "#{schema_path} doesn't exist yet. Run `bin/rails db:migrate` to create it, then try again." unless File.exist?(schema_path)
-
-          # Use our loader which handles both file and directory
-          loader = BetterStructureSql::SchemaLoader.new(config)
-          loader.load
-        else
-          # For Ruby format, call the original method
-          super
-        end
+      # Rails calls this from load_schema with the database's connection already
+      # established, then records the environment and schema checksum itself.
+      #
+      # @param _configuration [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database configuration
+      # @param filename [String, Pathname] Schema file or directory
+      # @return [void]
+      def structure_load(_configuration, filename, *)
+        BetterStructureSql::SchemaLoader.new(BetterStructureSql.configuration).load(filename)
       end
     end
   end

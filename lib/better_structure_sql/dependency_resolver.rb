@@ -10,6 +10,7 @@ module BetterStructureSql
 
     def initialize
       @objects = []
+      @names = Set.new
       @dependencies = Hash.new { |h, k| h[k] = [] }
     end
 
@@ -20,7 +21,8 @@ module BetterStructureSql
     # @param depends_on [Array<String>] Names of objects this depends on
     # @return [void]
     def add_object(name, type, depends_on: [])
-      @objects << { name: name, type: type }
+      @objects << { name:, type: }
+      @names << name
       @dependencies[name] = Array(depends_on)
     end
 
@@ -52,7 +54,7 @@ module BetterStructureSql
       temp_mark.add(name)
 
       @dependencies[name].each do |dep|
-        visit(dep, visited, temp_mark, sorted) if @objects.any? { |o| o[:name] == dep }
+        visit(dep, visited, temp_mark, sorted) if @names.include?(dep)
       end
 
       temp_mark.delete(name)

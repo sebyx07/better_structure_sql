@@ -13,7 +13,7 @@ RSpec.describe BetterStructureSql::StoreResult do
 
     it 'returns false when stored' do
       version = double('SchemaVersion', id: 3, content_hash: 'abc123')
-      result = described_class.new(skipped: false, version: version)
+      result = described_class.new(skipped: false, version:)
 
       expect(result.skipped?).to be false
       expect(result.stored?).to be true
@@ -23,7 +23,7 @@ RSpec.describe BetterStructureSql::StoreResult do
   describe '#stored?' do
     it 'returns true when stored' do
       version = double('SchemaVersion', id: 7, content_hash: 'abc123')
-      result = described_class.new(skipped: false, version: version, total_count: 15)
+      result = described_class.new(skipped: false, version:, total_count: 15)
 
       expect(result.stored?).to be true
       expect(result.skipped?).to be false
@@ -71,7 +71,7 @@ RSpec.describe BetterStructureSql::StoreResult do
         version = double('SchemaVersion', id: 15, content_hash: '123abc456def')
         result = described_class.new(
           skipped: false,
-          version: version,
+          version:,
           total_count: 25
         )
 
@@ -85,7 +85,7 @@ RSpec.describe BetterStructureSql::StoreResult do
         version = double('SchemaVersion', id: 20, content_hash: 'abc123')
         result = described_class.new(
           skipped: false,
-          version: version,
+          version:,
           version_id: 99, # Explicit override
           total_count: 30
         )
@@ -107,7 +107,7 @@ RSpec.describe BetterStructureSql::StoreResult do
       version = double('SchemaVersion', id: 25, content_hash: 'version_hash')
       result = described_class.new(
         skipped: false,
-        version: version,
+        version:,
         version_id: 100,
         hash: 'custom_hash',
         total_count: 50

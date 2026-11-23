@@ -99,7 +99,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
         content = 'CREATE TABLE test (id serial);'
         expected_hash = Digest::MD5.hexdigest(content)
         version = described_class.new(valid_attributes.merge(
-                                        content: content,
+                                        content:,
                                         content_hash: expected_hash
                                       ))
         expect(version).to be_valid

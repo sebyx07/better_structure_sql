@@ -38,11 +38,11 @@ module BetterStructureSql
             PostgresqlAdapter.new(connection)
           when :mysql
             require_relative 'mysql_adapter'
-            validate_mysql_gem!
+            require_driver!(mysql_driver_gem(connection), 'MySQL')
             MysqlAdapter.new(connection)
           when :sqlite
             require_relative 'sqlite_adapter'
-            validate_sqlite_gem!
+            require_driver!('sqlite3', 'SQLite')
             SqliteAdapter.new(connection)
           else
             raise Error, "Unknown database adapter: #{adapter_name}"
@@ -78,7 +78,7 @@ module BetterStructureSql
             :sqlite
           else
             raise Error, "Unsupported database adapter: #{adapter_name}. " \
-                         'Supported: postgresql, mysql2, sqlite3'
+                         'Supported: postgresql, postgis, mysql2, trilogy, sqlite3'
           end
         end
 
@@ -94,20 +94,23 @@ module BetterStructureSql
                        "Valid options: #{valid_adapters.join(', ')}"
         end
 
-        # Validate mysql2 gem is available
-        # @raise [Error] If mysql2 gem is not installed
-        def validate_mysql_gem!
-          require 'mysql2'
-        rescue LoadError
-          raise Error, 'MySQL adapter requires the mysql2 gem. Add to your Gemfile: gem "mysql2"'
+        # Driver gem backing a MySQL connection: trilogy (the Rails 7.1+
+        # default) or mysql2
+        # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter]
+        # @return [String] Gem name
+        def mysql_driver_gem(connection)
+          connection.adapter_name.casecmp?('trilogy') ? 'trilogy' : 'mysql2'
         end
 
-        # Validate sqlite3 gem is available
-        # @raise [Error] If sqlite3 gem is not installed
-        def validate_sqlite_gem!
-          require 'sqlite3'
-        rescue LoadError
-          raise Error, 'SQLite adapter requires the sqlite3 gem. Add to your Gemfile: gem "sqlite3"'
+        # Require a database driver gem, failing with installation instructions
+        # @param gem_name [String] Driver gem (mysql2, trilogy, sqlite3)
+        # @param database [String] Human-readable database name
+        # @raise [Error] If the gem is not installed
+        def require_driver!(gem_name, database)
+          require gem_name
+        rescue LoadError => e
+          raise Error, "#{database} support requires the #{gem_name} gem (#{e.message}). " \
+                       "Add to your Gemfile: gem \"#{gem_name}\""
         end
       end
     end

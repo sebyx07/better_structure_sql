@@ -313,7 +313,7 @@ integration/
 
 - [Main README](../README.md)
 - [Configuration Guide](../docs/configuration.md)
-- [Multi-File Schema Documentation](../docs/features/multi-file-schema-output/README.md)
+- [Multi-File Schema Documentation](../docs/features/multi-file-output.md)
 - [Schema Versioning Guide](../docs/schema_versions.md)
 
 ## License

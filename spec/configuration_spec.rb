@@ -88,6 +88,20 @@ RSpec.describe BetterStructureSql::Configuration do
   end
 
   describe '#validate!' do
+    context 'with blank search_path' do
+      it 'raises an error instead of generating an invalid SET search_path' do
+        config.search_path = ' '
+
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /search_path cannot be blank/)
+      end
+
+      it 'raises an error for nil' do
+        config.search_path = nil
+
+        expect { config.validate! }.to raise_error(BetterStructureSql::ConfigurationError, /search_path cannot be blank/)
+      end
+    end
+
     context 'when output_path is blank' do
       it 'raises an error' do
         config.output_path = ''

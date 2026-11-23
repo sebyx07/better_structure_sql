@@ -9,20 +9,7 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of trigger metadata hashes
       def fetch_triggers(connection)
-        adapter = get_adapter(connection)
-        adapter.fetch_triggers(connection)
-      rescue StandardError => e
-        warn "Warning: Failed to fetch triggers: #{e.message}"
-        []
-      end
-
-      private
-
-      def get_adapter(connection)
-        @get_adapter ||= Adapters::Registry.adapter_for(
-          connection,
-          adapter_override: BetterStructureSql.configuration.adapter
-        )
+        adapter_for(connection).fetch_triggers(connection)
       end
     end
   end

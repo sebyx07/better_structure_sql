@@ -5,45 +5,28 @@ BetterStructureSql has been installed!
 Configuration file created at:
   config/initializers/better_structure_sql.rb
 
-To generate a clean schema dump, run:
+Generate a clean schema dump:
   rails db:schema:dump_better
 
-To replace Rails' default schema dump task, set in the initializer:
+To replace Rails' default dump and load tasks, set in the initializer:
   config.replace_default_dump = true
+  config.replace_default_load = true
 
-Then you can use the standard command:
+Then the standard commands use BetterStructureSql:
   rails db:schema:dump
+  rails db:schema:load
 
-Phase 1 features available:
-  ✓ Tables with columns, primary keys, and constraints
-  ✓ Indexes (including unique and partial)
-  ✓ Foreign keys with CASCADE/RESTRICT/SET NULL
-  ✓ PostgreSQL extensions
-  ✓ Clean, deterministic output
+Schema versioning (optional):
+  1. Set config.enable_schema_versions = true in the initializer
+  2. rails db:migrate             # creates the schema versions table
+  3. rails db:schema:store        # store the current dump
+  4. rails db:schema:versions     # list stored versions
+  5. rails db:schema:cleanup      # apply the retention limit
 
-Phase 2 features available:
-  ✓ Schema version storage
-  ✓ Version retention management
-  ✓ PostgreSQL version tracking
+The web UI for stored versions fails closed outside development and test:
+configure access with BetterStructureSql::Engine.authenticate_with { ... }
+or BetterStructureSql::Engine.authentication_handled_by_routes!
 
-To enable schema versioning:
-  1. Enable in config/initializers/better_structure_sql.rb:
-       config.enable_schema_versions = true
-  2. Run the migration (if not already generated):
-       rails db:migrate
-  3. Store current schema:
-       rails db:schema:store
-  4. List versions:
-       rails db:schema:versions
-  5. Cleanup old versions:
-       rails db:schema:cleanup
-
-Coming in Phase 3:
-  - Views and materialized views
-  - Functions and triggers
-  - Advanced PostgreSQL features
-
-For more information, visit:
-  https://github.com/sebyx07/better_structure_sql
+Documentation: https://github.com/sebyx07/better_structure_sql
 
 ===============================================================================

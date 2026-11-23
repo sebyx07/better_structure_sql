@@ -4,8 +4,8 @@ module BetterStructureSql
   # Controller for browsing and downloading stored schema versions
   #
   # Provides web UI actions for listing, viewing, and downloading schema
-  # versions stored in the database. Implements memory-efficient streaming
-  # for large files and multi-file ZIP archive support.
+  # versions stored in the database. Large columns (content, zip_archive)
+  # are only read by the actions that send them.
   #
   # @see SchemaVersion
   class SchemaVersionsController < ApplicationController
@@ -14,206 +14,147 @@ module BetterStructureSql
     # Maximum file size to display in browser (1MB)
     # Large enough for most schemas but keeps browser responsive
     MAX_DISPLAY_SIZE = 1.megabyte
+    # Schema versions listed per page
+    PER_PAGE = 100
+    # Characters read from the database per streamed chunk
+    STREAM_CHUNK_CHARS = 512.kilobytes
+    # Columns that are cheap to load (everything except content and zip_archive)
+    METADATA_COLUMNS = %i[
+      id pg_version format_type output_mode created_at
+      content_size line_count file_count content_hash
+    ].freeze
+    # Content type of every schema text response
+    TEXT_CONTENT_TYPE = 'text/plain; charset=utf-8'
 
-    # Lists stored schema versions with pagination
+    # Lists stored schema versions, newest first, one page at a time
     #
     # Loads only metadata (no content or zip_archive) for performance.
-    # Displays up to 100 most recent versions ordered by creation date.
     #
     # @return [void]
-    # GET /better_structure_sql/schema_versions
+    # GET /better_structure_sql/schema_versions?page=2
     def index
-      # Load only metadata for listing (no content or zip_archive)
-      @schema_versions = SchemaVersion
-                         .select(:id, :pg_version, :format_type, :output_mode, :created_at,
-                                 :content_size, :file_count, :content_hash)
-                         .order(created_at: :desc)
-                         .limit(100)
+      @total_count = SchemaVersion.count
+      @total_pages = [(@total_count.to_f / PER_PAGE).ceil, 1].max
+      @page = requested_page.clamp(1, @total_pages)
+      @schema_versions = SchemaVersion.select(*METADATA_COLUMNS)
+                                      .order(created_at: :desc, id: :desc)
+                                      .limit(PER_PAGE)
+                                      .offset((@page - 1) * PER_PAGE)
+                                      .load
     end
 
     # Displays details of a specific schema version
     #
-    # Loads metadata first for performance. For small single-file versions
-    # (under 200KB), loads content for inline display. For multi-file versions,
-    # extracts and parses the embedded manifest JSON.
+    # Content is loaded for inline display only when it is at most
+    # MAX_DISPLAY_SIZE; otherwise +content+ is nil. The ZIP archive is never
+    # loaded.
     #
     # @return [void]
-    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id
     def show
-      # Load metadata first (no content or ZIP to minimize memory usage)
-      @schema_version = SchemaVersion
-                        .select(:id, :pg_version, :format_type, :output_mode, :created_at,
-                                :content_size, :line_count, :file_count, :content_hash)
-                        .find(params[:id])
-
-      # Only load content for small files to display inline
-      # For large files, metadata is sufficient
-      if @schema_version.content_size <= MAX_DISPLAY_SIZE
-        # Reload full record with content column
-        # Note: We don't select zip_archive to avoid loading large binary data
-        @schema_version = SchemaVersion.select(
-          :id, :pg_version, :format_type, :output_mode, :created_at,
-          :content_size, :line_count, :file_count, :content_hash, :content
-        ).find(params[:id])
-      end
-
-      # NOTE: Manifest extraction intentionally skipped to avoid loading
-      # potentially large ZIP archives into memory. Manifest is primarily
-      # useful for tooling and can be extracted from the download if needed.
-    rescue ActiveRecord::RecordNotFound
-      render plain: 'Schema version not found', status: :not_found
+      @schema_version = SchemaVersion.select(*METADATA_COLUMNS, displayable_content_sql).find(params[:id])
     end
 
     # Downloads raw content of a schema version as plain text
     #
-    # Streams large files (>2MB) in chunks to avoid memory issues.
-    # Smaller files are sent directly using send_data.
-    #
     # @return [void]
-    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id/raw
     def raw
-      version = SchemaVersion.select(:id, :format_type, :content_size).find(params[:id])
-
-      filename = "schema_version_#{version.id}_#{version.format_type}.txt"
-
-      # For large files, stream from database to avoid loading into memory
-      if version.content_size > MAX_MEMORY_SIZE
-        stream_large_file(version.id, filename)
-      else
-        # For smaller files, use regular send_data
-        content = SchemaVersion.find(version.id).content
-        send_data content,
-                  filename: filename,
-                  type: 'text/plain',
-                  disposition: 'attachment'
-      end
-    rescue ActiveRecord::RecordNotFound
-      render plain: 'Schema version not found', status: :not_found
+      version = find_metadata
+      send_content(version, "schema_version_#{version.id}_#{file_extension(version)}.txt")
     end
 
     # Downloads schema version in appropriate format
     #
     # Multi-file versions with ZIP archives are sent as .zip files.
-    # Single-file versions are sent as .sql or .rb files based on format_type.
+    # Single-file versions are sent as structure.sql or structure.rb.
     #
     # @return [void]
-    # @raise [ActiveRecord::RecordNotFound] if schema version not found
     # GET /better_structure_sql/schema_versions/:id/download
     def download
-      version = SchemaVersion.find(params[:id])
+      version = find_metadata
+      zip_archive = SchemaVersion.where(id: version.id).pick(:zip_archive) if version.multi_file?
 
-      if version.multi_file? && version.zip_archive?
-        send_zip_download(version)
+      if zip_archive.present?
+        send_zip_download(version, zip_archive)
       else
-        send_file_download(version)
+        send_content(version, "structure.#{file_extension(version)}")
       end
-    rescue ActiveRecord::RecordNotFound
-      render plain: 'Schema version not found', status: :not_found
     end
 
     private
 
-    # Sends ZIP archive download for multi-file schema versions
-    #
-    # Validates ZIP archive before sending to prevent corrupted downloads.
-    # Filename includes version ID and timestamp.
-    #
-    # @param version [SchemaVersion] the schema version to download
-    # @return [void]
-    def send_zip_download(version)
-      # Validate ZIP
-      BetterStructureSql::ZipGenerator.validate_zip!(version.zip_archive)
+    def requested_page
+      Integer(params[:page].to_s, 10)
+    rescue ArgumentError
+      1
+    end
 
-      filename = "schema_version_#{version.id}_#{version.created_at.to_i}.zip"
+    # Selects content only when small enough to display, in a single query
+    def displayable_content_sql
+      Arel.sql("CASE WHEN content_size <= #{MAX_DISPLAY_SIZE.to_i} THEN content END AS content")
+    end
 
-      send_data version.zip_archive,
-                filename: filename,
+    def find_metadata
+      SchemaVersion.select(*METADATA_COLUMNS).find(params[:id])
+    end
+
+    # Maps the stored format to a known extension so the stored value never
+    # reaches a response header
+    def file_extension(version)
+      version.format_type == 'rb' ? 'rb' : 'sql'
+    end
+
+    # Sends the validated ZIP archive of a multi-file schema version
+    def send_zip_download(version, zip_archive)
+      BetterStructureSql::ZipGenerator.validate_zip!(zip_archive)
+
+      send_data zip_archive,
+                filename: "schema_version_#{version.id}_#{version.created_at.to_i}.zip",
                 type: 'application/zip',
+                disposition: 'attachment'
+    rescue Zip::Error, BetterStructureSql::ZipGenerator::ZipError => e
+      logger&.error("[BetterStructureSql] Invalid ZIP archive for schema version #{version.id}: #{e.message}")
+      render plain: 'Stored ZIP archive is invalid', status: :internal_server_error
+    end
+
+    # Sends content as a text attachment, streaming it when larger than MAX_MEMORY_SIZE
+    def send_content(version, filename)
+      return stream_content(version.id, filename) if version.content_size > MAX_MEMORY_SIZE
+
+      send_data SchemaVersion.where(id: version.id).pick(:content),
+                filename:,
+                type: TEXT_CONTENT_TYPE,
                 disposition: 'attachment'
     end
 
-    # Sends single-file schema version download
-    #
-    # Streams large files (>2MB) to avoid memory issues. Filename is
-    # structure.sql or structure.rb based on format_type.
-    #
-    # @param version [SchemaVersion] the schema version to download
-    # @return [void]
-    def send_file_download(version)
-      extension = version.format_type == 'rb' ? 'rb' : 'sql'
-      filename = "structure.#{extension}"
-
-      # Handle large files with streaming
-      if version.content_size > MAX_MEMORY_SIZE
-        stream_large_content(version, filename)
-      else
-        send_data version.content,
-                  filename: filename,
-                  type: 'text/plain',
-                  disposition: 'attachment'
-      end
-    end
-
-    # Streams large content in 64KB chunks to avoid memory issues
-    #
-    # Sets response headers for streaming and disables proxy buffering.
-    # Fetches content from database and yields chunks via Enumerator.
-    #
-    # @param version [SchemaVersion] the schema version to stream
-    # @param filename [String] the filename for Content-Disposition header
-    # @return [void]
-    def stream_large_content(version, filename)
-      response.headers['Content-Type'] = 'text/plain'
-      response.headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
-      response.headers['X-Accel-Buffering'] = 'no'
-
-      self.response_body = Enumerator.new do |yielder|
-        content = SchemaVersion.connection.select_value(
-          "SELECT content FROM #{SchemaVersion.table_name} WHERE id = #{version.id}"
-        )
-
-        chunk_size = 64.kilobytes
-        offset = 0
-        while offset < content.bytesize
-          yielder << content.byteslice(offset, chunk_size)
-          offset += chunk_size
-        end
-      end
-    end
-
-    # Streams large file content from database in chunks
-    #
-    # Sets appropriate headers for streaming downloads and disables proxy buffering.
-    # Fetches content from database and streams in 64KB chunks via Enumerator.
-    #
-    # @param version_id [Integer] the schema version ID
-    # @param filename [String] the filename for Content-Disposition header
-    # @return [void]
-    def stream_large_file(version_id, filename)
-      # Set headers for streaming
-      response.headers['Content-Type'] = 'text/plain'
-      response.headers['Content-Disposition'] = "attachment; filename=\"#{filename}\""
-      response.headers['Cache-Control'] = 'no-cache'
+    def stream_content(version_id, filename)
+      response.headers['Content-Type'] = TEXT_CONTENT_TYPE
+      response.headers['Content-Disposition'] =
+        ActionDispatch::Http::ContentDisposition.format(disposition: 'attachment', filename:)
       response.headers['X-Accel-Buffering'] = 'no' # Disable proxy buffering
 
-      # Stream the content in chunks
-      self.response_body = Enumerator.new do |yielder|
-        # Fetch content in a streaming fashion from database
-        SchemaVersion.connection.select_value(
-          "SELECT content FROM #{SchemaVersion.table_name} WHERE id = #{version_id}"
-        ).tap do |content|
-          # Stream in 64KB chunks
-          chunk_size = 64.kilobytes
-          offset = 0
+      self.response_body = content_chunks(version_id)
+    end
 
-          while offset < content.bytesize
-            yielder << content.byteslice(offset, chunk_size)
-            offset += chunk_size
-          end
+    # Reads content from the database one slice at a time, so a large schema
+    # is never held in memory as a whole
+    def content_chunks(version_id)
+      Enumerator.new do |yielder|
+        position = 1
+        loop do
+          chunk = content_slice(version_id, position)
+          break if chunk.to_s.empty?
+
+          yielder << chunk
+          position += STREAM_CHUNK_CHARS
         end
       end
+    end
+
+    def content_slice(version_id, position)
+      SchemaVersion.where(id: version_id)
+                   .pick(Arel.sql("SUBSTR(content, #{position.to_i}, #{STREAM_CHUNK_CHARS.to_i})"))
     end
   end
 end

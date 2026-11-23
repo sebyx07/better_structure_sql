@@ -20,7 +20,7 @@ module BetterStructureSql
         migration_template(
           'migration.rb.erb',
           'db/migrate/create_better_structure_sql_schema_versions.rb',
-          migration_version: migration_version
+          migration_version:
         )
       end
 

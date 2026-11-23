@@ -14,7 +14,8 @@ module BetterStructureSql
   # Introspection facade for database metadata extraction
   #
   # Provides a unified interface for querying database objects across
-  # all supported adapters (PostgreSQL, MySQL, SQLite).
+  # all supported adapters (PostgreSQL, MySQL, SQLite). Introspection errors
+  # propagate: a dump silently missing objects is worse than a failed dump.
   module Introspection
     class << self
       include Extensions
@@ -26,6 +27,16 @@ module BetterStructureSql
       include Views
       include Functions
       include Triggers
+
+      private
+
+      # Adapter for the given connection (cached per connection by the Registry)
+      #
+      # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
+      # @return [Adapters::BaseAdapter] Adapter instance
+      def adapter_for(connection)
+        Adapters::Registry.adapter_for(connection, adapter_override: BetterStructureSql.configuration.adapter)
+      end
     end
   end
 end

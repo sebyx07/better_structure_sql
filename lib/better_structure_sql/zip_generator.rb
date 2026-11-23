@@ -8,6 +8,7 @@ module BetterStructureSql
   class ZipGenerator
     MAX_FILES_IN_ZIP = 300_000
     MAX_UNCOMPRESSED_SIZE = 800.megabytes
+    EXTRACT_CHUNK_SIZE = 1.megabyte
 
     class ZipError < StandardError; end
 
@@ -16,7 +17,7 @@ module BetterStructureSql
     # @return [String] ZIP file binary data
     def self.create_from_directory(dir_path)
       buffer = Zip::OutputStream.write_buffer do |zip|
-        Dir.glob("#{dir_path}/**/*").sort.each do |file_path|
+        Dir.glob("#{dir_path}/**/*").each do |file_path|
           next if File.directory?(file_path)
 
           relative_path = file_path.sub("#{dir_path}/", '')
@@ -43,19 +44,22 @@ module BetterStructureSql
     end
 
     # Extract ZIP to directory
+    #
+    # Enforces the safety limits and refuses entries that would land outside the target.
+    #
     # @param zip_binary [String] ZIP file binary data
     # @param target_dir [String, Pathname] Target directory path
+    # @raise [ZipError] if the ZIP exceeds safety limits or contains an unsafe path
     def self.extract_to_directory(zip_binary, target_dir)
+      validate_zip!(zip_binary)
       FileUtils.mkdir_p(target_dir)
+      remaining_bytes = MAX_UNCOMPRESSED_SIZE
 
       Zip::File.open_buffer(StringIO.new(zip_binary)) do |zip_file|
         zip_file.each do |entry|
-          # Security: rubyzip already prevents path traversal, but verify anyway
-          next if entry.name.include?('..')
+          next if entry.directory?
 
-          path = File.join(target_dir, entry.name)
-          FileUtils.mkdir_p(File.dirname(path))
-          entry.extract(path) unless File.exist?(path)
+          remaining_bytes -= extract_entry(entry, safe_entry_path(entry.name, target_dir), remaining_bytes)
         end
       end
     end
@@ -77,5 +81,38 @@ module BetterStructureSql
         end
       end
     end
+
+    # Resolve an entry name inside the target directory
+    # @raise [ZipError] if the entry would be written outside the target directory
+    def self.safe_entry_path(entry_name, target_dir)
+      root = File.expand_path(target_dir)
+      path = File.expand_path(File.join(root, entry_name))
+      return path if path.start_with?("#{root}#{File::SEPARATOR}")
+
+      raise ZipError, "Unsafe path in ZIP: #{entry_name}"
+    end
+    private_class_method :safe_entry_path
+
+    # Write one entry, trusting the bytes actually decompressed rather than the declared size
+    # @return [Integer] Bytes written
+    # @raise [ZipError] if the entry inflates past the remaining byte budget
+    def self.extract_entry(entry, path, remaining_bytes)
+      FileUtils.mkdir_p(File.dirname(path))
+      written = 0
+
+      File.open(path, 'wb') do |file|
+        entry.get_input_stream do |stream|
+          while (chunk = stream.read(EXTRACT_CHUNK_SIZE))
+            written += chunk.bytesize
+            raise ZipError, "ZIP content too large (max #{MAX_UNCOMPRESSED_SIZE} bytes)" if written > remaining_bytes
+
+            file.write(chunk)
+          end
+        end
+      end
+
+      written
+    end
+    private_class_method :extract_entry
   end
 end

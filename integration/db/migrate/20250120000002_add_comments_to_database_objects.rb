@@ -3,53 +3,53 @@
 class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
   def up
     # Add table comments
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON TABLE users IS 'User accounts and authentication data';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON TABLE posts IS 'Blog posts created by users';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON TABLE products IS 'Product catalog with pricing and inventory';
     SQL
 
     # Add column comments
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN users.email IS 'Unique email address for authentication';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN users.encrypted_password IS 'BCrypt hashed password for secure storage';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN posts.title IS 'Post title displayed in search results and feeds';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN posts.body IS 'Full post content in Markdown format';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN products.name IS 'Product name displayed to customers';
     SQL
 
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON COLUMN products.price IS 'Current selling price in cents (to avoid floating point errors)';
     SQL
 
     # Add index comments
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       COMMENT ON INDEX index_users_on_email IS 'Unique index for fast email lookup during authentication';
     SQL
 
     # Add view comments (if user_posts view exists)
     return unless view_exists?('user_posts')
 
-    execute <<-SQL.squish
-        COMMENT ON VIEW user_posts IS 'Denormalized view joining users with their posts for reporting';
+    execute <<~SQL.squish
+      COMMENT ON VIEW user_posts IS 'Denormalized view joining users with their posts for reporting';
     SQL
   end
 
@@ -79,7 +79,7 @@ class AddCommentsToDatabaseObjects < ActiveRecord::Migration[7.0]
   private
 
   def view_exists?(view_name)
-    connection.select_value(<<-SQL.squish).positive?
+    connection.select_value(<<~SQL.squish).positive?
       SELECT COUNT(*)
       FROM pg_catalog.pg_views
       WHERE schemaname = 'public'

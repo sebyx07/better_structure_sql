@@ -62,10 +62,9 @@ namespace :db do
       loader = BetterStructureSql::SchemaLoader.new(config)
 
       begin
-        loader.load
+        loader.load_and_record
       rescue BetterStructureSql::SchemaLoader::LoadError => e
-        puts "Error loading schema: #{e.message}"
-        exit 1
+        abort "Error loading schema: #{e.message}"
       end
     end
 
@@ -89,8 +88,7 @@ namespace :db do
         puts "  Current schema matches version ##{result.version_id}"
         puts "  Hash: #{result.hash}"
         puts '  No new version stored'
-        puts "  Total versions: #{result.total_count}"
-      elsif result.stored?
+      else
         version = result.version
         puts "\nStored schema version ##{version.id}"
         puts "  Format: #{version.format_type}"
@@ -99,15 +97,10 @@ namespace :db do
         puts "  PostgreSQL: #{version.pg_version}"
         puts "  Size: #{version.formatted_size}"
         puts "  Hash: #{version.content_hash}"
-        puts "  Total versions: #{result.total_count}"
-      else
-        puts "\nNo schema file found to store"
-        exit 1
       end
-    rescue StandardError => e
-      puts "\nError storing schema version: #{e.message}"
-      puts e.backtrace.first(5).join("\n") if ENV['VERBOSE']
-      exit 1
+      puts "  Total versions: #{result.total_count}"
+    rescue BetterStructureSql::Error => e
+      abort "Error storing schema version: #{e.message}"
     end
 
     desc 'List all stored schema versions'
@@ -155,7 +148,7 @@ namespace :db do
       config = BetterStructureSql.configuration
       if config.schema_versions_limit.zero?
         puts 'Retention limit is set to unlimited (0). No cleanup needed.'
-        exit 0
+        next
       end
 
       deleted_count = BetterStructureSql::SchemaVersions.cleanup!
@@ -164,41 +157,27 @@ namespace :db do
       puts "Retention limit: #{config.schema_versions_limit}"
     end
 
-    desc 'Restore schema from stored version'
-    task :restore, [:version_id] => :environment do |_t, args|
+    desc 'Replace the database schema with a stored version (drops all data; needs CONFIRM=1)'
+    task :restore, [:version_id] => %i[environment check_protected_environments] do |_t, args|
       require 'better_structure_sql'
 
       version_id = args[:version_id] || ENV.fetch('VERSION_ID', nil)
-      raise 'Usage: rails db:schema:restore[VERSION_ID]' unless version_id
+      raise 'Usage: CONFIRM=1 rails db:schema:restore[VERSION_ID]' unless version_id
 
       version = BetterStructureSql::SchemaVersions.find(version_id)
       raise "Version #{version_id} not found" unless version
 
-      connection = ActiveRecord::Base.connection
-      connection.execute('SET client_min_messages TO warning')
-
-      if version.multi_file?
-        # Extract ZIP to temp directory
-        temp_dir = Rails.root.join('tmp', "schema_restore_#{version.id}")
-        FileUtils.rm_rf(temp_dir)
-
-        BetterStructureSql::ZipGenerator.extract_to_directory(version.zip_archive, temp_dir)
-
-        # Load from temp directory
-        loader = BetterStructureSql::SchemaLoader.new
-        loader.load(temp_dir)
-
-        # Cleanup
-        FileUtils.rm_rf(temp_dir)
-
-        puts "Schema version #{version.id} restored from #{version.file_count} files"
-      else
-        # Single file - load from content
-        connection.execute(version.content)
-
-        puts "Schema version #{version.id} restored"
+      db_config = ActiveRecord::Base.connection_db_config
+      unless ENV['CONFIRM'] == '1'
+        abort "db:schema:restore replaces the schema of database #{db_config.database}: it drops every table and all data, " \
+              "the stored schema versions included, then loads version #{version.id}.\n" \
+              "Run it again with CONFIRM=1 to proceed: CONFIRM=1 rails db:schema:restore[#{version.id}]"
       end
 
+      BetterStructureSql::SchemaVersions.restore(version, db_config:)
+
+      puts "Schema version #{version.id} restored into #{db_config.database}"
+      puts "  Files: #{version.file_count}" if version.multi_file?
       puts "  Format: #{version.format_type}"
       puts "  PostgreSQL: #{version.pg_version}"
       puts "  Size: #{version.formatted_size}"

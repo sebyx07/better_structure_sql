@@ -1,9 +1,13 @@
-ALTER TABLE order_items ADD CONSTRAINT fk_rails_e3cb28f071 FOREIGN KEY (order_id) REFERENCES orders (id);
+ALTER TABLE `entries` ADD CONSTRAINT `fk_entries_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE order_items ADD CONSTRAINT fk_rails_f1a29ddd47 FOREIGN KEY (product_id) REFERENCES products (id);
+ALTER TABLE `entries` ADD CONSTRAINT `fk_entries_region_code` FOREIGN KEY (`region`, `code`) REFERENCES `accounts` (`region`, `code`) ON DELETE CASCADE;
 
-ALTER TABLE orders ADD CONSTRAINT fk_rails_f868b47f6a FOREIGN KEY (user_id) REFERENCES users (id);
+ALTER TABLE `order_items` ADD CONSTRAINT `fk_rails_e3cb28f071` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`);
 
-ALTER TABLE posts ADD CONSTRAINT fk_rails_5b5ddfd518 FOREIGN KEY (user_id) REFERENCES users (id);
+ALTER TABLE `order_items` ADD CONSTRAINT `fk_rails_f1a29ddd47` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`);
 
-ALTER TABLE products ADD CONSTRAINT fk_rails_fb915499a4 FOREIGN KEY (category_id) REFERENCES categories (id);
+ALTER TABLE `orders` ADD CONSTRAINT `fk_rails_f868b47f6a` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+ALTER TABLE `posts` ADD CONSTRAINT `fk_rails_5b5ddfd518` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+ALTER TABLE `products` ADD CONSTRAINT `fk_rails_fb915499a4` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`);
