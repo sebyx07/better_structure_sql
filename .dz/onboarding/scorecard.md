@@ -7,13 +7,14 @@
 - Computed: 2026-11-22
 - Proof: **not yet proved** — written before the pass merged; items marked *pending* depend on
   sibling changes in the same pass and must be re-checked at head.
-- Score: 6 of 15 items ok, 7 pending, 2 gap
+- Score: 7 of 15 items ok, 6 pending, 2 gap
 
 ## `policy` — ok
 
 - .dz/maintainer/maintainer.yml established (validates against maintainer.v1.json)
 - .dz/maintainer/reviewer.md established
 - .dz/schedules/{release-due,security-release,health,improve}.md established
+- platform-standard briefs: repo-census and repo-score scheduled; hygiene, devops and fix-sweep offered (entries commented)
 - .dz/pipeline/agent-pipeline.json established
 
 ## `brain` — pending
@@ -69,9 +70,9 @@
 
 - single-package repository: integration*/ and site/ are samples and docs, not packages
 
-## `docs_readme` — pending
+## `docs_readme` — ok
 
-- no docs/README.md index yet
+- docs/README.md indexes docs/idea/ (overview, principles, stack, data-model, deployment, direction draft), docs/standards/ and the user guides
 
 ## `gate_proved` — pending
 

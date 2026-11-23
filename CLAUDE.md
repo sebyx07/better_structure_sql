@@ -9,7 +9,7 @@ Guidance for agents in this repository. **Budget: under 12,000 chars** (the deve
 | `.github/`, `RELEASE.md`, `lib/better_structure_sql/version.rb` | [`.github/CLAUDE.md`](.github/CLAUDE.md): CI jobs, canary, release lane |
 | `app/`, `config/routes.rb` | [`app/CLAUDE.md`](app/CLAUDE.md): engine access control, escaping |
 
-`AGENTS.md` is a symlink to this file. User-facing reference: `README.md`, `docs/`, `llms.txt`.
+`AGENTS.md` is a symlink to this file. User-facing reference: `README.md`, `docs/`, `llms.txt`. Intent and direction (draft): `docs/idea/`; index `docs/README.md`.
 
 ## better_structure_sql
 
