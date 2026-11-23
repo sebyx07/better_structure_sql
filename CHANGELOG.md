@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
 ### Upgrading
 
 1. **Web UI access (breaking).** Outside development and test the engine now answers `403 Forbidden` until access control is declared. In `config/initializers/better_structure_sql.rb` add one of:
