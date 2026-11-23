@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "total_files": 7,
-  "total_lines": 267,
+  "total_lines": 274,
   "max_lines_per_file": 500,
   "directories": {
     "03_functions": {
@@ -22,7 +22,7 @@
     },
     "08_views": {
       "files": 1,
-      "lines": 11
+      "lines": 17
     },
     "09_triggers": {
       "files": 1,
@@ -30,7 +30,7 @@
     },
     "20_migrations": {
       "files": 1,
-      "lines": 12
+      "lines": 13
     }
   }
 }

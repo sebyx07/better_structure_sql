@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite: a dump containing views loads (views were written as `CREATE OR REPLACE VIEW`, which SQLite rejects)
 - SQLite: the `schema_migrations` rows are dumped, so a loaded dump has no pending migrations
 - MySQL: a composite foreign key is one statement instead of one per column
+- MariaDB: a view whose column alias, table alias or qualifier is named like another view no longer makes that view count as a dependency, which could create the view before a view it reads
 - MySQL: triggers sharing a table, timing and event keep their firing order (`ACTION_ORDER`) across a dump and load
 - MySQL: loading no longer appends Rails query log tags to routine and trigger bodies
 - `Dumper#dump(store_version: true)` now stores a version (deduplicated, with a ZIP in multi-file mode) instead of failing silently

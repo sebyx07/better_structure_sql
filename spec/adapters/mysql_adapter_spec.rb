@@ -240,6 +240,25 @@ RSpec.describe BetterStructureSql::Adapters::MysqlAdapter do
 
       expect(adapter.fetch_views(connection).pluck(:name)).to eq(%w[z_base m_middle a_top])
     end
+
+    it 'ignores a column alias, table alias or qualifier named like another view on MariaDB' do
+      stub_server('11.4.2-MariaDB')
+      stub_rows(/FROM information_schema.VIEWS/, [%w[a NONE YES], %w[b NONE YES]])
+      # Output of MariaDB 11 for: a reads users and names a column b; b reads a
+      stub_view('a', 'select `u`.`id` AS `id`,`u`.`name` AS `b` from `users` `u`')
+      stub_view('b', 'select `x`.`id` AS `id` from (`a` `x` join `users` on(`users`.`id` = `x`.`id`))')
+
+      expect(adapter.fetch_views(connection).pluck(:name)).to eq(%w[a b])
+    end
+
+    it 'finds views read in joins and subqueries on MariaDB' do
+      stub_server('11.4.2-MariaDB')
+      stub_view('a_top', 'select `users`.`id` AS `id` from ((`users` join `orders` on(`users`.`id` = `orders`.`id`)) ' \
+                         'left join (select `m_middle`.`id` AS `id` from `m_middle`) `s` on(`s`.`id` = `users`.`id`)) ' \
+                         'where exists(select 1 from `z_base` limit 1)')
+
+      expect(adapter.fetch_views(connection).pluck(:name)).to eq(%w[z_base m_middle a_top])
+    end
   end
 
   describe '#fetch_materialized_views' do

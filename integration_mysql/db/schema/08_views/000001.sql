@@ -4,6 +4,12 @@ select `accounts`.`id` AS `id`,`accounts`.`code` AS `code`,'x;y' AS `label` from
 CREATE OR REPLACE VIEW `a_active_account_codes` AS
 select `active_accounts`.`code` AS `code` from `active_accounts`;
 
+CREATE OR REPLACE VIEW `b_codes` AS
+select `accounts`.`code` AS `code`,`accounts`.`id` AS `c_codes` from `accounts`;
+
+CREATE OR REPLACE VIEW `c_codes` AS
+select `b_codes`.`code` AS `code` from `b_codes`;
+
 CREATE OR REPLACE VIEW `product_inventory` AS
 select `products`.`id` AS `id`,`products`.`name` AS `name`,`products`.`price` AS `price`,`products`.`stock_quantity` AS `stock_quantity`,`categories`.`name` AS `category_name` from (`products` join `categories` on((`categories`.`id` = `products`.`category_id`))) where (`products`.`stock_quantity` > 0);
 

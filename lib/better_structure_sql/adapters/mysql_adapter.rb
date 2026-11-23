@@ -14,6 +14,10 @@ module BetterStructureSql
       # Numeric data types whose literal defaults are emitted unquoted
       NUMERIC_TYPES = %w[tinyint smallint mediumint int integer bigint decimal numeric float double real year].freeze
 
+      # A relation in a canonical (SHOW CREATE VIEW) view definition: the identifier
+      # after FROM or [STRAIGHT_]JOIN, past any opening parentheses
+      VIEW_RELATION_REFERENCE = /(?<![\w`])(?:from|(?:straight_)?join)\s*(?:\(\s*)*`((?:[^`]|``)+)`/i
+
       # Generation expression of a column line in SHOW CREATE TABLE output
       GENERATED_EXPRESSION = /GENERATED ALWAYS AS \((.*)\) (?:VIRTUAL|STORED|PERSISTENT)\b/
 
@@ -599,9 +603,11 @@ module BetterStructureSql
       #
       # information_schema.VIEW_TABLE_USAGE exists on MySQL 8.0.13+ only. On
       # MariaDB and older MySQL the view's own definition is scanned instead:
-      # SHOW CREATE VIEW backtick-quotes every identifier, so a quoted name
-      # equal to another view's name is a reference to it (an alias with the
-      # same name adds a harmless extra edge).
+      # SHOW CREATE VIEW backtick-quotes every identifier and writes every
+      # relation right after FROM or JOIN (comma joins become JOIN), so only
+      # those count. A column alias, table alias or qualifier named like
+      # another view is not a reference: as an edge it could close a cycle
+      # and put a view before the view it reads.
       #
       # @param views [Array<Hash>] Views with :name and :definition
       # @return [Hash<String, Array<String>>] View name => names of views it reads
@@ -610,7 +616,7 @@ module BetterStructureSql
 
         names = views.to_set { |view| view[:name] }
         views.to_h do |view|
-          referenced = view[:definition].scan(/`((?:[^`]|``)+)`/).flatten.map { |name| name.gsub('``', '`') }
+          referenced = view[:definition].scan(VIEW_RELATION_REFERENCE).flatten.map { |name| name.gsub('``', '`') }
           [view[:name], referenced.select { |name| names.include?(name) }.uniq - [view[:name]]]
         end
       end
