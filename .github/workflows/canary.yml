@@ -1,0 +1,95 @@
+name: Canary
+
+# Monthly look ahead: Ruby head, Rails edge (rails/rails main) and the newest
+# PostgreSQL image. Not part of "CI OK", so an upstream break never blocks a
+# pull request; the developerz.ai monthly improve checkup reads the latest run
+# and fixes what it finds before the next Ruby, Rails or PostgreSQL release
+# ships it.
+on:
+  schedule:
+    - cron: '0 4 1 * *' # 04:00 UTC on the 1st
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: '1'
+  RAILS_ENV: test
+
+jobs:
+  canary:
+    name: Canary / Ruby ${{ matrix.ruby }} · Rails ${{ matrix.rails }} · postgres:latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { ruby: head, rails: '8.1' }
+          - { ruby: .ruby-version, rails: edge }
+          - { ruby: head, rails: edge }
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: better_structure_sql_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/matrix.gemfile
+      RAILS_VERSION: ${{ matrix.rails }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Resolved versions
+        run: |
+          ruby -v
+          bundle list | grep -E ' (rails|pg|sqlite3|rubyzip|rspec-rails) '
+      - run: bundle exec rspec
+
+  integration-postgresql:
+    name: Canary / Integration app on postgres:latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: integration
+    env:
+      RAILS_ENV: development
+      BUNDLE_GEMFILE: ${{ github.workspace }}/integration/Gemfile
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      REPLACE_DEFAULT_DUMP: 'true'
+      REPLACE_DEFAULT_LOAD: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+      - run: bundle install --jobs 4
+      - name: Migrate from scratch (dumps through the gem)
+        run: |
+          rm -rf db/schema db/structure.sql
+          bin/rails db:create db:migrate
+          test -s db/schema/_manifest.json
+      - name: Load the dump into an empty database and dump it again
+        run: bin/rails db:drop db:create db:schema:load db:schema:dump

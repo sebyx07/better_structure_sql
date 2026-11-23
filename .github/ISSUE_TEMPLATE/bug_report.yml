@@ -1,0 +1,76 @@
+name: Bug report
+description: A dump, load, schema version or web UI behaviour that is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are triaged by an AI maintainer. It can only act on a report it can reproduce, so every field below is required.
+
+        Security problem? Do not file it here: follow [SECURITY.md](https://github.com/sebyx07/better_structure_sql/blob/main/SECURITY.md).
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest schema (migration or SQL), your initializer, and the command you ran.
+      placeholder: |
+        1. Migration:
+           create_table :orders do |t| ... end
+        2. config/initializers/better_structure_sql.rb:
+           config.output_path = 'db/schema'
+        3. rails db:schema:dump_better
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: The SQL or behaviour you expected.
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: The SQL that was written, or the full error with its backtrace.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: better_structure_sql version
+      description: "Output of: bundle info better_structure_sql"
+      placeholder: "x.y.z"
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - PostgreSQL
+        - MySQL
+        - SQLite
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Database server version, Ruby version, Rails version.
+      placeholder: "PostgreSQL 17.2, ruby 3.4.1, rails 8.0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: output-mode
+    attributes:
+      label: Output mode
+      options:
+        - Single file (db/structure.sql)
+        - Multi-file (directory)
+        - Not relevant
+    validations:
+      required: true

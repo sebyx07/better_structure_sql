@@ -1,0 +1,79 @@
+version: 2
+# Weekly, grouped updates. The developerz.ai maintainer agent reviews them and
+# merges on a green "CI OK"; it is the only merger (no auto-merge workflow).
+#
+# cooldown: a release must be 14 days old before it is proposed, so broken or
+# compromised releases are usually yanked first. Security updates skip it.
+#
+# gemfiles/matrix.gemfile needs no entry: it has no lockfile and the CI matrix
+# resolves the newest compatible gems on every run.
+updates:
+  - package-ecosystem: bundler
+    directories:
+      - /
+      - /integration
+      - /integration_mysql
+      - /integration_sqlite
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      rails:
+        patterns: ['rails', 'action*', 'active*', 'railties', 'rspec*', 'factory_bot*', 'database_cleaner*']
+      dev-tools:
+        patterns: ['rubocop*', 'rake', 'pry*', 'debug', 'annotaterb']
+      database-drivers:
+        patterns: ['pg', 'mysql2', 'sqlite3']
+      other:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 10
+    groups:
+      site-dev-tools:
+        dependency-type: development
+        patterns: ['*']
+      site:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      docker:
+        patterns: ['*']
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    groups:
+      docker-compose:
+        patterns: ['*']

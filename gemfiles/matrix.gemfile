@@ -1,0 +1,5 @@
+# frozen_string_literal: true
+
+# Unlocked entry point for the CI matrix (RAILS_VERSION / DB_ADAPTER, see
+# ../Gemfile). Its lockfile is resolved per run and never committed.
+eval_gemfile File.expand_path('../Gemfile', __dir__)

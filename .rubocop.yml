@@ -1,5 +1,7 @@
 AllCops:
-  TargetRubyVersion: 2.7
+  TargetRubyVersion: 3.3
+  # The gemspec floor (rails >= 7.1): keeps Rails 8-only APIs such as params.expect out
+  TargetRailsVersion: 7.1
   NewCops: enable
   Exclude:
     - 'vendor/**/*'
