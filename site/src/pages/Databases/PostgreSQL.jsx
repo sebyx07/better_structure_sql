@@ -638,7 +638,7 @@ ActiveRecord::Base.connection.execute('REFRESH MATERIALIZED VIEW CONCURRENTLY us
               are read from the <code>public</code> schema only.
             </li>
             <li>
-              Section order is fixed, so views that depend on other views are not reordered.
+              Comments on types, sequences, constraints and triggers.
             </li>
           </ul>
         </div>

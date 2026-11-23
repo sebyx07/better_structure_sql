@@ -6,7 +6,7 @@
 
 | Check | Why |
 |---|---|
-| Your objects are in the [feature matrix](../../README.md#feature-matrix) | Table inheritance, rules, policies and non-`public` PostgreSQL schemas are not dumped |
+| Your objects are in the [feature matrix](../../README.md#feature-matrix) | Aggregates, rules, row-level security policies and non-`public` PostgreSQL schemas are not dumped |
 | Everyone can run migrations locally | The first SQL dump must come from a fully migrated database |
 
 ## Steps
