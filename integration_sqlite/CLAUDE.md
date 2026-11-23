@@ -1,16 +1,20 @@
-# sebyx07/better_structure_sql — integration_sqlite
+# integration_sqlite/ (SQLite app)
 
-> Workspace brain — established by the developerz.ai maintainer agent for the maintainers of this repository from this workspace, then owned by
-> its maintainers. Correct it in place; setup never overwrites a brain that exists.
+A minimal Rails app (no `bin/`, run tasks with `bundle exec rake`) that uses the gem from the checkout
+(`path: '..'`, own `Gemfile` and lockfile) to dump and load a SQLite schema. Databases are files under `db/`.
 
-Full Rails app exercising the gem on SQLite. CI runs the round-trip test.
+## Run it
 
-The gate is the repo root’s: `bin/check` (see the root `CLAUDE.md`).
+- `bin/check` does **not** run this app. CI does, in the `integration-sqlite` job of `.github/workflows/ci.yml`:
+  `bundle exec rake db:create db:migrate db:schema:dump_better`, then `bundle exec rake bss:round_trip`,
+  once as a single file and once with `ROUND_TRIP_LAYOUT=multi_file`.
+- `bss:round_trip` (`lib/tasks/round_trip.rake`) dumps development, loads the dump into a purged test
+  database, dumps again and fails unless both dumps are byte-identical and `sqlite_master` matches.
 
-## Structure
+## Rules
 
-Same layout. **config/database.yml** — SQLite (file-based). **db/structure/** — multi-file dump; SQLite outputs exact CREATE TABLE statements verbatim.
-
-## Conventions
-
-SQLite only. No sequences, functions, custom types. Foreign keys inline. The dump replays verbatim `sqlite_master.sql` entries. CI: `integration-sqlite` job. Same `bss:round_trip` task.
+- Output goes to `db/structure/` (multi-file; `config/initializers/better_structure_sql.rb`). The initializer
+  turns off functions, sequences, domains, custom types and materialized views: SQLite has none.
+- Tables come from the original `CREATE TABLE` text in `sqlite_master`, so foreign keys stay inline and
+  there is no foreign key section.
+- Dump files under `db/` are gem output, never edited by hand.

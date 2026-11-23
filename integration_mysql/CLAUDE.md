@@ -1,16 +1,22 @@
-# sebyx07/better_structure_sql — integration_mysql
+# integration_mysql/ (MySQL and MariaDB app)
 
-> Workspace brain — established by the developerz.ai maintainer agent for the maintainers of this repository from this workspace, then owned by
-> its maintainers. Correct it in place; setup never overwrites a brain that exists.
+A minimal Rails app that uses the gem from the checkout (`path: '..'`, own `Gemfile` and lockfile) to dump
+and load a MySQL or MariaDB schema through `mysql2` or `trilogy` (`DB_ADAPTER`).
 
-Full Rails app exercising the gem on MySQL/MariaDB. CI runs the round-trip test.
+## Run it
 
-The gate is the repo root’s: `bin/check` (see the root `CLAUDE.md`).
+- `bin/check` does **not** run this app. CI does, in the `integration-mysql` job of `.github/workflows/ci.yml`
+  (servers and adapters are its matrix; do not restate them): migrate from scratch, schema load and dump,
+  then `bin/rails bss:round_trip` for the single-file and the multi-file layout.
+- `bss:round_trip` (`lib/tasks/round_trip.rake`) dumps development, loads the dump into a fresh test
+  database, dumps again and fails unless the two dumps are byte-identical and `SHOW CREATE` output matches.
+- Locally: point `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` at a server (`config/database.yml`),
+  then run the same commands as the CI job. `docker compose -f docker-compose.mysql.yml up mysql` at the root
+  starts one on 127.0.0.1:3306 (root password `password`).
 
-## Structure
+## Rules
 
-Same layout as `integration/`. **config/database.yml** — MySQL. **db/schema/** — multi-file dump. Proves MySQL adapter works end-to-end.
-
-## Conventions
-
-MySQL/MariaDB only. The gem reads views from SHOW CREATE VIEW (no `information_schema` joins). Foreign keys are inline in CREATE TABLE. CI configuration in `.github/workflows/ci.yml`: `integration-mysql` job. Same `bss:round_trip` task as PostgreSQL.
+- No extensions, custom types, domains, sequences or materialized views on MySQL. Foreign keys are a
+  separate section, as on PostgreSQL; only SQLite inlines them.
+- View, routine and trigger definitions come from `SHOW CREATE ...`; the object list from `information_schema`.
+- `db/schema/` and `db/structure.sql` are gem output, never edited by hand.
