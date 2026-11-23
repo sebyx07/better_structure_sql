@@ -1,81 +1,80 @@
 # AI-first scorecard
 
-> Hand-written for the AI-maintenance onboarding pass of 2026-11-22, describing the repository as
-> it stands once that pass's pull request merges. The next developerz.ai onboarding run rewrites
-> this file whole; the latest run wins, and the same card is stored on the platform.
+> This card is the repository's own — established by the developerz.ai maintainer agent for the maintainers of this repository; each onboarding run rewrites the file whole, the latest run wins, and the same card is stored on the platform.
 
-- Computed: 2026-11-22
-- Proof: **not yet proved** — written before the pass merged; items marked *pending* depend on
-  sibling changes in the same pass and must be re-checked at head.
-- Score: 7 of 15 items ok, 6 pending, 2 gap
+- Run: `run_8346fc6783c54c1db4a8db86ca6f01da`
+- Computed: 2026-11-23T08:19:55.040Z
+- Proof: **proved** — every command ran green at head.
+- Score: 14 of 15 items ok
 
 ## `policy` — ok
 
-- .dz/maintainer/maintainer.yml established (validates against maintainer.v1.json)
-- .dz/maintainer/reviewer.md established
-- .dz/schedules/{release-due,security-release,health,improve}.md established
-- platform-standard briefs: repo-census and repo-score scheduled; hygiene, devops and fix-sweep offered (entries commented)
-- .dz/pipeline/agent-pipeline.json established
+- .dz/maintainer/maintainer.yml already present, left alone
+- .dz/maintainer/reviewer.md already present, left alone
 
-## `brain` — pending
+## `brain` — ok
 
-- CLAUDE.md present, being rewritten in this pass (today it documents a section order and
-  directory names, `1_extensions`, that differ from `FileWriter::SECTION_DIRECTORIES`)
+- CLAUDE.md already present, left alone
 
 ## `roster` — ok
 
-- .claude/agents/schema-export-specialist.md present
+- .claude/agents already present, left alone
 
-## `skills` — gap
+## `skills` — ok
 
-- no .claude/skills/
-- .claude/commands/release.md describes a manual build-and-push release, which the policy forbids
-  (merging a version bump is the release); it must be rewritten or removed
+- .claude/skills already present, left alone
 
-## `scripts` — pending
+## `scripts` — ok
 
-- bin/setup, bin/check, bin/dev, bin/stop being added in this pass
-- bin/check exits 75 when PostgreSQL is unreachable, matching `services: [postgres]`
+- bin/setup already present, left alone
+- bin/dev already present, left alone
+- bin/check already present, left alone
+- bin/stop already present, left alone
+- down: ./bin/stop (bin)
+- ./bin/setup exited 0 at head (1.2s)
 
-## `wiring` — gap
+## `wiring` — ok
 
-- no .mcp.json
+- .mcp.json established
 
 ## `commands` — ok
 
-- .claude/commands/feature.md present
+- .claude/commands already present, left alone
 
 ## `access` — ok
 
-- no secrets needed: RubyGems publishing is OIDC trusted publishing (no API key)
+- asked for 0 credentials
+- ./bin/check exited 0 at head (11.7s) without one
 
-## `layout` — ok
+## `layout` — gap
 
-- single gem at the root; integration apps under integration*/; docs site under site/
+- migration to the house layout filed as tasks
+- apps/better-structure-sql: 27 move(s) planned as one task
 
-## `smoke_test` — pending
+## `smoke_test` — ok
 
-- spec/integration/ present; a round-trip (dump, load, re-dump, diff) spec is the `improve`
-  checkup's first determinism row if none lands in this pass
+- spec/integration/postgresql_round_trip_spec.rb in the repository
+- run by ./bin/check exited 0 at head (11.7s)
 
-## `env_example` — pending
+## `env_example` — ok
 
-- no .env.example yet; bin/check documents DATABASE_URL and its default
+- .env.example established
 
-## `agents_md` — pending
+## `agents_md` — ok
 
-- no AGENTS.md / llms.txt yet (llms.txt is referenced by the reviewer and improve briefs)
+- AGENTS.md already present, left alone
 
 ## `per_workspace_brains` — ok
 
-- single-package repository: integration*/ and site/ are samples and docs, not packages
+- integration/CLAUDE.md established
+- integration_mysql/CLAUDE.md established
+- integration_sqlite/CLAUDE.md established
+- site/CLAUDE.md established
 
 ## `docs_readme` — ok
 
-- docs/README.md indexes docs/idea/ (overview, principles, stack, data-model, deployment, direction draft), docs/standards/ and the user guides
+- docs/README.md already present, left alone
 
-## `gate_proved` — pending
+## `gate_proved` — ok
 
-- `CI OK` aggregate job, canary.yml, dependabot.yml and version-bump-triggered release.yml are
-  being added in this pass; until they merge, ci.yml has no `CI OK` job and release.yml still fires
-  on a pushed tag
+- ./bin/check exited 0 at head (11.7s)
