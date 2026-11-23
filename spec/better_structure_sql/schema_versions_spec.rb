@@ -10,6 +10,10 @@ RSpec.describe BetterStructureSql::SchemaVersions do
   let(:rails_root) { Pathname.new(Dir.tmpdir) }
 
   before do
+    # instance_double(SchemaVersion) defines the model's attribute methods, which
+    # Rails 7.1 does through ActiveRecord::Base.connection, stubbed below. Define them first.
+    BetterStructureSql::SchemaVersion.define_attribute_methods if ActiveRecord::Base.connection_handler.connection_pool_list.any?
+
     # Stub ActiveRecord::Base.connection to return our mock connection
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
 
