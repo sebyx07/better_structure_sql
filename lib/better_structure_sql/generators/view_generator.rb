@@ -6,21 +6,25 @@ module BetterStructureSql
     class ViewGenerator < Base
       # Generates CREATE VIEW statement
       #
-      # @param view [Hash] View metadata with definition
+      # Views carrying their original CREATE VIEW statement (:sql, supplied by
+      # the SQLite adapter) are emitted verbatim: SQLite has no CREATE OR
+      # REPLACE VIEW, and replaying the stored statement keeps sqlite_master
+      # identical after a load.
+      #
+      # @param view [Hash] View metadata with definition and optional :options
+      #   (PostgreSQL reloptions such as "check_option=local, security_barrier=true")
+      #   and :sql (original CREATE VIEW statement)
       # @return [String] SQL statement
       def generate(view)
-        # Only add schema prefix for non-default schemas
-        # PostgreSQL default: 'public'
-        # SQLite default: 'main'
-        # MySQL default: current database
-        default_schemas = %w[public main]
-        schema_prefix = default_schemas.include?(view[:schema]) ? '' : "#{view[:schema]}."
+        return "#{view[:sql]};" if view[:sql]
+
         definition = view[:definition].strip
 
         # Ensure definition ends with semicolon
         definition += ';' unless definition.end_with?(';')
 
-        "CREATE OR REPLACE VIEW #{schema_prefix}#{view[:name]} AS\n#{definition}"
+        options = view[:options].present? ? " WITH (#{view[:options]})" : ''
+        "CREATE OR REPLACE VIEW #{qualified_identifier(view[:schema], view[:name])}#{options} AS\n#{definition}"
       end
     end
   end

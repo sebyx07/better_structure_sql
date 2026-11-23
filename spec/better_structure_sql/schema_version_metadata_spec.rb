@@ -9,7 +9,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'automatically sets content_size on create' do
         content = 'A' * 1000
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -22,7 +22,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'automatically sets line_count on create' do
         content = "Line 1\nLine 2\nLine 3"
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -35,7 +35,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'updates metadata when content changes' do
         content = 'Original content'
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -55,7 +55,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'does not update metadata when content has not changed' do
         content = 'Test content'
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -79,7 +79,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'returns stored content_size' do
         content = 'A' * 500
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -97,7 +97,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'calculates size from current content' do
         content = 'A' * 500
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -115,7 +115,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'formats bytes correctly' do
       content = 'A' * 500
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',
@@ -128,7 +128,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'formats kilobytes correctly' do
       content = 'A' * 2048
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',
@@ -141,7 +141,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'formats megabytes correctly' do
       content = 'A' * (2 * 1024 * 1024)
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',
@@ -155,7 +155,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
       it 'uses stored content_size' do
         content = 'A' * 2048
         version = described_class.create!(
-          content: content,
+          content:,
           content_hash: Digest::MD5.hexdigest(content),
           pg_version: 'PostgreSQL 15.1',
           format_type: 'sql',
@@ -174,7 +174,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'handles very small content' do
       content = 'a'
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',
@@ -189,7 +189,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'handles single line without newline' do
       content = 'Single line'
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',
@@ -202,7 +202,7 @@ RSpec.describe BetterStructureSql::SchemaVersion, type: :model do
     it 'handles content with multiple newlines' do
       content = "a\n\n\n"
       version = described_class.create!(
-        content: content,
+        content:,
         content_hash: Digest::MD5.hexdigest(content),
         pg_version: 'PostgreSQL 15.1',
         format_type: 'sql',

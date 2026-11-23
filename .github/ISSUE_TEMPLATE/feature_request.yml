@@ -1,0 +1,43 @@
+name: Feature request
+description: A database object or behaviour the gem should support.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals the project declines are listed under `triage.non_goals` in
+        [.dz/maintainer/maintainer.yml](https://github.com/sebyx07/better_structure_sql/blob/main/.dz/maintainer/maintainer.yml):
+        for example shelling out to `pg_dump`, dumping data, or non-deterministic output.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you cannot do today. Include the schema object or workflow involved.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: The SQL you expect in the dump, or the task / option / API you expect.
+      render: sql
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      multiple: true
+      options:
+        - PostgreSQL
+        - MySQL
+        - SQLite
+        - All / not database specific
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workaround in use today
+    validations:
+      required: false

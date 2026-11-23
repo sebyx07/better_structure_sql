@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Stops what bin/dev and bin/setup started. Safe to run any time; idempotent.
+#
+#   bin/stop             stop the bin/dev server, and the bss-pg container if bin/setup started it
+#   bin/stop --keep-db   stop only the bin/dev server
+#
+# A Postgres that was already running when bin/setup ran (yours, or another session's)
+# is left alone: bin/setup records the containers it started in tmp/dx/.
+# The container is stopped, never removed — its data survives and bin/setup restarts it.
+set -euo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+
+keep_db=false
+case "${1:-}" in
+  "") ;;
+  --keep-db) keep_db=true ;;
+  -h | --help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  *) echo "usage: bin/stop [--keep-db]" >&2; exit 2 ;;
+esac
+
+stop_dev_server() {
+  local pid waited=0
+  if [ ! -f "$DEV_PID_FILE" ]; then
+    echo "bin/dev server: not running"
+    return
+  fi
+  pid="$(cat "$DEV_PID_FILE")"
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid"
+    while kill -0 "$pid" 2>/dev/null; do
+      waited=$((waited + 1))
+      if [ "$waited" -ge 20 ]; then
+        kill -KILL "$pid" 2>/dev/null || true
+        break
+      fi
+      sleep 0.5
+    done
+    echo "bin/dev server: stopped (pid $pid)"
+  else
+    echo "bin/dev server: not running (stale pid file removed)"
+  fi
+  rm -f "$DEV_PID_FILE"
+}
+
+stop_private_postgres() {
+  local container
+  if [ ! -f "$PG_STARTED_MARKER" ]; then
+    echo "postgres: not started by bin/setup — left running"
+    return
+  fi
+  container="$(cat "$PG_STARTED_MARKER")"
+  if docker container inspect "$container" >/dev/null 2>&1; then
+    docker stop "$container" >/dev/null
+    echo "postgres: stopped container $container (data kept; bin/setup restarts it)"
+  else
+    echo "postgres: container $container is gone"
+  fi
+  rm -f "$PG_STARTED_MARKER"
+}
+
+stop_dev_server
+[ "$keep_db" = true ] || stop_private_postgres

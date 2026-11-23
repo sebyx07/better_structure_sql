@@ -231,7 +231,7 @@ Rails.logger.debug 'Creating sample sessions...'
 sessions = []
 users.each_with_index do |user, index|
   sessions << Session.create!(
-    user: user,
+    user:,
     token: SecureRandom.hex(32),
     ip_address: "192.168.1.#{index + 1}",
     user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
@@ -385,8 +385,15 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   # Create sample versions with timestamps spread over time
   versions_created = 0
 
+  # content_hash and output_mode are required columns the gem fills in when it stores a dump
+  create_version = lambda do |content:, **attributes|
+    BetterStructureSql::SchemaVersion.create!(
+      content:, content_hash: Digest::MD5.hexdigest(content), output_mode: 'single_file', **attributes
+    )
+  end
+
   # Version 1: Simple SQL schema (30 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: simple_schema_sql,
     pg_version: 'PostgreSQL 14.10',
     format_type: 'sql',
@@ -395,7 +402,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 2: Ruby schema (25 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: simple_schema_rb,
     pg_version: 'PostgreSQL 14.10',
     format_type: 'rb',
@@ -404,7 +411,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 3: Complex SQL schema (20 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: complex_schema_sql,
     pg_version: 'PostgreSQL 15.0',
     format_type: 'sql',
@@ -413,7 +420,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 4: SQL schema with different PG version (15 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.1'),
     pg_version: 'PostgreSQL 15.1',
     format_type: 'sql',
@@ -422,7 +429,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 5: Another Ruby schema (10 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: simple_schema_rb.gsub('2025_01_01_000003', '2025_01_01_000005'),
     pg_version: 'PostgreSQL 15.1',
     format_type: 'rb',
@@ -431,7 +438,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 6: Recent SQL schema (5 days ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.2'),
     pg_version: 'PostgreSQL 15.2',
     format_type: 'sql',
@@ -440,7 +447,7 @@ if BetterStructureSql.configuration.enable_schema_versions &&
   versions_created += 1
 
   # Version 7: Most recent (1 day ago)
-  BetterStructureSql::SchemaVersion.create!(
+  create_version.call(
     content: complex_schema_sql.gsub('PostgreSQL 15.0', 'PostgreSQL 15.3'),
     pg_version: 'PostgreSQL 15.3',
     format_type: 'sql',

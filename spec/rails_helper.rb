@@ -15,20 +15,25 @@ require 'factory_bot_rails'
 # Minimal Rails app for testing
 module Dummy
   class Application < Rails::Application
+    # The gem's root (config/database.yml, app/views, spec/factories). First:
+    # config.paths is built from the root on first access.
+    config.root = File.expand_path('..', __dir__)
+    # That root's config/routes.rb is the engine's (loaded below, once the engine
+    # exists), not this app's. Rails < 8.0 draws an app's routes during
+    # initialize!, before BetterStructureSql::Engine is defined.
+    config.paths['config/routes.rb'] = []
     config.load_defaults Rails::VERSION::STRING.to_f
     config.eager_load = false
     config.secret_key_base = 'test'
     config.hosts.clear if config.respond_to?(:hosts)
     config.active_record.check_schema_cache_dump_version = false
-    config.root = File.expand_path('../..', __dir__)
-    config.paths.add 'config/database', with: 'config/database.yml'
-    # Add engine views path
-    config.paths['app/views'].unshift File.expand_path('../app/views', __dir__)
   end
 end
 
-# Initialize app
-Rails.application = Dummy::Application.new
+# Initialize the app. Defining the class already made its instance Rails.application;
+# assigning `Dummy::Application.new` instead would leave Rails.application a second,
+# unconfigured instance (no secret_key_base, so any request made while Rails.env is
+# stubbed to production raised, depending on spec order).
 Dummy::Application.initialize!
 
 # Establish connection
@@ -38,11 +43,11 @@ ActiveRecord::Base.establish_connection(:test)
 require_relative '../lib/better_structure_sql/engine'
 
 # Load helpers first (before controllers that may reference them)
-Dir[File.expand_path('../app/helpers/**/*.rb', __dir__)].sort.each { |f| require f }
+Dir[File.expand_path('../app/helpers/**/*.rb', __dir__)].each { |f| require f }
 
 # Load engine controllers, models, and routes
-Dir[File.expand_path('../app/controllers/**/*.rb', __dir__)].sort.each { |f| require f }
-Dir[File.expand_path('../app/models/**/*.rb', __dir__)].sort.each { |f| require f }
+Dir[File.expand_path('../app/controllers/**/*.rb', __dir__)].each { |f| require f }
+Dir[File.expand_path('../app/models/**/*.rb', __dir__)].each { |f| require f }
 require_relative '../config/routes'
 
 # Create schema_versions table

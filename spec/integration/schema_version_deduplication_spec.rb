@@ -75,14 +75,22 @@ RSpec.describe 'Schema version deduplication', type: :integration do
       expect(BetterStructureSql::SchemaVersion.count).to eq(2)
     end
 
-    it 'returns nil when schema file does not exist' do
+    it 'raises instead of reporting a skip when the schema file does not exist' do
       File.delete(output_path)
 
-      result = BetterStructureSql::SchemaVersions.store_current(connection)
+      expect { BetterStructureSql::SchemaVersions.store_current(connection) }
+        .to raise_error(BetterStructureSql::SchemaVersionError, /No schema found at .*structure\.sql/)
+    end
 
-      expect(result.skipped?).to be true
-      expect(result.version_id).to be_nil
-      expect(result.total_count).to eq(0)
+    it 'treats the most recently inserted version as latest when timestamps tie' do
+      timestamp = Time.current.change(usec: 0)
+      first = BetterStructureSql::SchemaVersions.store_current(connection).version
+      File.write(output_path, '-- Schema content v2')
+      second = BetterStructureSql::SchemaVersions.store_current(connection).version
+      BetterStructureSql::SchemaVersion.where(id: [first.id, second.id]).update_all(created_at: timestamp)
+
+      expect(BetterStructureSql::SchemaVersions.latest.id).to eq(second.id)
+      expect(BetterStructureSql::SchemaVersions.store_current(connection).skipped?).to be true
     end
   end
 
@@ -220,7 +228,7 @@ RSpec.describe 'Schema version deduplication', type: :integration do
     end
   end
 
-  describe 'filesystem cleanup' do
+  describe 'schema on disk' do
     let(:multi_file_path) { temp_dir.join('db', 'schema') }
 
     before do
@@ -232,49 +240,48 @@ RSpec.describe 'Schema version deduplication', type: :integration do
       File.write(multi_file_path.join('01_tables', '000001.sql'), 'CREATE TABLE users (id serial);')
     end
 
-    it 'deletes directory after storing ZIP archive' do
-      # Directory exists before storage
-      expect(Dir.exist?(multi_file_path)).to be true
+    def files_on_disk
+      Dir.glob(multi_file_path.join('**', '*')).select { |path| File.file?(path) }.sort.index_with { |path| File.read(path) }
+    end
 
-      # Store creates ZIP and deletes directory
+    it 'leaves the multi-file directory untouched after storing its ZIP archive' do
+      files_before = files_on_disk
+
       result = BetterStructureSql::SchemaVersions.store_current(connection)
 
       expect(result.stored?).to be true
       expect(result.version.zip_archive).to be_present
-      expect(Dir.exist?(multi_file_path)).to be false # Directory deleted
+      expect(files_on_disk).to eq(files_before)
     end
 
-    it 'does not delete directory when storage skipped' do
-      # First store (directory deleted after ZIP created)
+    it 'skips a second store of the same directory' do
       BetterStructureSql::SchemaVersions.store_current(connection)
-      expect(Dir.exist?(multi_file_path)).to be false
 
-      # Recreate directory with same content
-      FileUtils.mkdir_p(multi_file_path.join('01_tables'))
-      File.write(multi_file_path.join('_header.sql'), '-- Header')
-      File.write(multi_file_path.join('01_tables', '000001.sql'), 'CREATE TABLE users (id serial);')
-
-      expect(Dir.exist?(multi_file_path)).to be true
-
-      # Second store skipped (directory remains for re-use)
       result = BetterStructureSql::SchemaVersions.store_current(connection)
+
       expect(result.skipped?).to be true
-      expect(Dir.exist?(multi_file_path)).to be true # Directory NOT deleted
+      expect(Dir.exist?(multi_file_path)).to be true
     end
 
     it 'does not delete single file after storing' do
       config.output_path = output_path # Switch back to single-file mode
       File.write(output_path, '-- Schema')
 
-      # File exists before storage
-      expect(File.exist?(output_path)).to be true
-
-      # Store version (single-file, no ZIP, no cleanup)
       result = BetterStructureSql::SchemaVersions.store_current(connection)
 
       expect(result.stored?).to be true
       expect(result.version.zip_archive).to be_nil
-      expect(File.exist?(output_path)).to be true # File NOT deleted
+      expect(File.exist?(output_path)).to be true
+    end
+
+    it 'reads the schema from the given configuration' do
+      other_config = BetterStructureSql::Configuration.new
+      other_config.output_path = output_path
+
+      result = BetterStructureSql::SchemaVersions.store_current(connection, config: other_config)
+
+      expect(result.version.output_mode).to eq('single_file')
+      expect(result.version.content).to eq('-- Schema content v1')
     end
 
     it 'handles cleanup errors gracefully' do
@@ -283,6 +290,32 @@ RSpec.describe 'Schema version deduplication', type: :integration do
 
       expect(result.stored?).to be true
       # Directory should be deleted, but we'll test error handling in unit tests
+    end
+  end
+
+  describe 'retention cleanup' do
+    it 'deletes exactly the oldest versions beyond the limit' do
+      ids = Array.new(5) do |i|
+        File.write(output_path, "-- Schema v#{i}")
+        BetterStructureSql::SchemaVersions.store_current(connection).version.id
+      end
+      config.schema_versions_limit = 2
+
+      expect(BetterStructureSql::SchemaVersions.cleanup!(connection)).to eq(3)
+      expect(BetterStructureSql::SchemaVersion.order(:id).pluck(:id)).to eq(ids.last(2))
+    end
+
+    it 'does not load version content while deleting' do
+      3.times do |i|
+        File.write(output_path, "-- Schema v#{i}")
+        BetterStructureSql::SchemaVersions.store_current(connection)
+      end
+      config.schema_versions_limit = 1
+      allow(BetterStructureSql::SchemaVersion).to receive(:instantiate).and_call_original
+
+      BetterStructureSql::SchemaVersions.cleanup!(connection)
+
+      expect(BetterStructureSql::SchemaVersion).not_to have_received(:instantiate)
     end
   end
 

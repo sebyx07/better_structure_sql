@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sebyx07.github.io/better_structure_sql/sitemap.xml

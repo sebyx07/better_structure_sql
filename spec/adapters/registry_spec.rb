@@ -35,6 +35,22 @@ RSpec.describe BetterStructureSql::Adapters::Registry do
         expect(adapter).to be_a(BetterStructureSql::Adapters::MysqlAdapter)
       end
 
+      it 'detects Trilogy as MySQL without requiring mysql2' do
+        allow(connection).to receive(:adapter_name).and_return('Trilogy')
+        allow(described_class).to receive(:require).with('trilogy').and_return(true)
+        adapter = described_class.adapter_for(connection, adapter_override: :auto)
+        expect(adapter).to be_a(BetterStructureSql::Adapters::MysqlAdapter)
+        expect(described_class).not_to have_received(:require).with('mysql2')
+      end
+
+      it 'raises an actionable error when the driver gem is missing' do
+        allow(connection).to receive(:adapter_name).and_return('Mysql2')
+        allow(described_class).to receive(:require).with('mysql2').and_raise(LoadError, 'cannot load such file -- mysql2')
+        expect do
+          described_class.adapter_for(connection, adapter_override: :auto)
+        end.to raise_error(BetterStructureSql::Error, /requires the mysql2 gem.*gem "mysql2"/)
+      end
+
       it 'detects SQLite adapter' do
         allow(connection).to receive(:adapter_name).and_return('SQLite3')
         allow(described_class).to receive(:require).with('sqlite3').and_return(true)

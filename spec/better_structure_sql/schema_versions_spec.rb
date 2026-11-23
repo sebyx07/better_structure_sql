@@ -10,6 +10,10 @@ RSpec.describe BetterStructureSql::SchemaVersions do
   let(:rails_root) { Pathname.new(Dir.tmpdir) }
 
   before do
+    # instance_double(SchemaVersion) defines the model's attribute methods, which
+    # Rails 7.1 does through ActiveRecord::Base.connection, stubbed below. Define them first.
+    BetterStructureSql::SchemaVersion.define_attribute_methods if ActiveRecord::Base.connection_handler.connection_pool_list.any?
+
     # Stub ActiveRecord::Base.connection to return our mock connection
     allow(ActiveRecord::Base).to receive(:connection).and_return(connection)
 
@@ -36,11 +40,11 @@ RSpec.describe BetterStructureSql::SchemaVersions do
         .and_return(version)
 
       result = described_class.store(
-        content: content,
-        content_hash: content_hash,
-        format_type: format_type,
-        pg_version: pg_version,
-        connection: connection
+        content:,
+        content_hash:,
+        format_type:,
+        pg_version:,
+        connection:
       )
 
       expect(result).to eq(version)
@@ -58,7 +62,7 @@ RSpec.describe BetterStructureSql::SchemaVersions do
           format_type: 'sql',
           output_mode: 'single_file',
           pg_version: '14.5',
-          connection: connection
+          connection:
         )
       end.to raise_error(BetterStructureSql::Error, /Schema versions table does not exist/)
     end
@@ -161,14 +165,14 @@ RSpec.describe BetterStructureSql::SchemaVersions do
       config = instance_double(BetterStructureSql::Configuration, schema_versions_limit: 3)
       allow(BetterStructureSql).to receive(:configuration).and_return(config)
 
-      version1 = instance_double(BetterStructureSql::SchemaVersion)
-      version2 = instance_double(BetterStructureSql::SchemaVersion)
-      relation = double('relation')
+      oldest = double('oldest relation')
+      excess = double('excess relation')
+      doomed = double('doomed relation', delete_all: 2)
 
-      allow(BetterStructureSql::SchemaVersion).to receive_messages(count: 5, oldest_first: relation)
-      allow(relation).to receive(:limit).with(2).and_return([version1, version2])
-      allow(version1).to receive(:destroy)
-      allow(version2).to receive(:destroy)
+      allow(BetterStructureSql::SchemaVersion).to receive_messages(count: 5, oldest_first: oldest)
+      allow(oldest).to receive(:limit).with(2).and_return(excess)
+      allow(excess).to receive(:pluck).with(:id).and_return([1, 2])
+      allow(BetterStructureSql::SchemaVersion).to receive(:where).with(id: [1, 2]).and_return(doomed)
 
       expect(described_class.cleanup!(connection)).to eq(2)
     end

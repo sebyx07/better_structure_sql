@@ -1,12 +1,13 @@
-import { Helmet } from 'react-helmet-async';
+import Seo from '../../components/Seo/Seo';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function Configuration() {
   return (
     <>
-      <Helmet>
-        <title>Configuration - BetterStructureSql</title>
-      </Helmet>
+      <Seo
+        title="Configuration"
+        description="All BetterStructureSql configuration options: output path, feature toggles, schema versioning and multi-file output."
+      />
 
       <div className="container py-5">
         <div className="row">
@@ -28,7 +29,7 @@ function Configuration() {
   # Directory (recommended): 'db/schema'
   config.output_path = 'db/structure.sql'
 
-  # Replace default rake tasks
+  # Make rails db:schema:dump / db:schema:load use BetterStructureSql (opt-in, default false)
   config.replace_default_dump = true
   config.replace_default_load = true
 
@@ -57,10 +58,21 @@ end`}
 end`}
               </CodeBlock>
 
-              <p className="mt-3">Store a version manually:</p>
+              <p className="mt-3">
+                Store a version manually. <code>db:schema:store</code> reads the dumped schema at{' '}
+                <code>output_path</code>, so dump first. Storage is skipped when the content hash
+                matches the latest stored version.
+              </p>
               <CodeBlock language="bash">
-                rails db:schema:store
+                {`rails db:schema:dump_better
+rails db:schema:store`}
               </CodeBlock>
+
+              <div className="alert alert-info mt-3">
+                <i className="bi bi-info-circle me-2" />
+                In multi-file mode <code>db:schema:store</code> also stores a ZIP of the directory.
+                The file or directory on disk is never modified.
+              </div>
             </section>
 
             <section className="mb-5">
@@ -71,13 +83,14 @@ end`}
                 {`BetterStructureSql.configure do |config|
   # All enabled by default (features auto-skip if not supported by database)
   config.include_extensions = true          # PostgreSQL only
-  config.include_custom_types = true        # PostgreSQL (ENUM, composite), MySQL (ENUM/SET)
+  config.include_custom_types = true        # PostgreSQL (ENUM, composite)
   config.include_domains = true             # PostgreSQL only
   config.include_sequences = true           # PostgreSQL only
   config.include_functions = true           # PostgreSQL, MySQL (stored procedures)
   config.include_triggers = true            # All databases
   config.include_views = true               # All databases
   config.include_materialized_views = true  # PostgreSQL only
+  config.include_comments = true            # PostgreSQL; MySQL table comments
 end`}
               </CodeBlock>
 
@@ -90,10 +103,10 @@ end`}
               <table className="table table-sm">
                 <thead>
                   <tr>
-                    <th>Feature</th>
-                    <th>PostgreSQL</th>
-                    <th>MySQL</th>
-                    <th>SQLite</th>
+                    <th scope="col">Option</th>
+                    <th scope="col">PostgreSQL</th>
+                    <th scope="col">MySQL</th>
+                    <th scope="col">SQLite</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,7 +119,7 @@ end`}
                   <tr>
                     <td><code>include_custom_types</code></td>
                     <td><span className="badge bg-success">Yes</span></td>
-                    <td><span className="badge bg-warning">ENUM/SET</span></td>
+                    <td><span className="badge bg-warning text-dark">Inline ENUM/SET</span></td>
                     <td><span className="badge bg-secondary">No</span></td>
                   </tr>
                   <tr>
@@ -124,7 +137,7 @@ end`}
                   <tr>
                     <td><code>include_functions</code></td>
                     <td><span className="badge bg-success">Yes</span></td>
-                    <td><span className="badge bg-warning">Stored Procs</span></td>
+                    <td><span className="badge bg-warning text-dark">Stored Procs</span></td>
                     <td><span className="badge bg-secondary">No</span></td>
                   </tr>
                   <tr>
@@ -143,6 +156,12 @@ end`}
                     <td><code>include_materialized_views</code></td>
                     <td><span className="badge bg-success">Yes</span></td>
                     <td><span className="badge bg-secondary">No</span></td>
+                    <td><span className="badge bg-secondary">No</span></td>
+                  </tr>
+                  <tr>
+                    <td><code>include_comments</code></td>
+                    <td><span className="badge bg-success">Yes</span></td>
+                    <td><span className="badge bg-warning text-dark">Tables only</span></td>
                     <td><span className="badge bg-secondary">No</span></td>
                   </tr>
                 </tbody>
@@ -189,39 +208,60 @@ end`}
 
             <section className="mb-5">
               <h2 className="mb-3">All Options Reference</h2>
+              <p>Every option, shown with its default value:</p>
 
               <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
                 {`BetterStructureSql.configure do |config|
   # Core settings
-  config.output_path = 'db/structure.sql'         # File or directory
-  config.replace_default_dump = true              # Override rake db:schema:dump
-  config.replace_default_load = true              # Override rake db:schema:load
-  config.search_path = 'public'                   # PostgreSQL only
+  config.output_path = 'db/structure.sql'         # A path without a file extension means multi-file mode
+  config.replace_default_dump = false             # true: rails db:schema:dump uses this gem
+  config.replace_default_load = false             # true: rails db:schema:load uses this gem
+  config.search_path = '"$user", public'          # PostgreSQL: written as SET search_path TO ...
+  config.adapter = :auto                          # :auto, :postgresql, :mysql, :sqlite
 
   # Schema versioning
-  config.enable_schema_versions = true            # All databases
+  config.enable_schema_versions = false           # Needed by db:schema:store / versions / cleanup
   config.schema_versions_limit = 10               # Keep N versions (0 = unlimited)
 
   # Feature toggles (auto-skip if unsupported)
   config.include_extensions = true                # PostgreSQL only
-  config.include_custom_types = true              # PostgreSQL (ENUM, composite), MySQL (ENUM/SET)
+  config.include_custom_types = true              # PostgreSQL (ENUM, composite)
   config.include_domains = true                   # PostgreSQL only
   config.include_sequences = true                 # PostgreSQL only
   config.include_functions = true                 # PostgreSQL, MySQL (stored procedures)
   config.include_triggers = true                  # All databases
   config.include_views = true                     # All databases
   config.include_materialized_views = true        # PostgreSQL only
+  config.include_comments = true                  # PostgreSQL; MySQL table comments
 
   # Multi-file output settings
-  config.max_lines_per_file = 500                 # Lines per file
-  config.overflow_threshold = 1.1                 # Allow 10% overflow
+  config.max_lines_per_file = 500                 # Soft limit of lines per file
+  config.overflow_threshold = 1.1                 # A file may grow to limit * threshold
   config.generate_manifest = true                 # Create _manifest.json
 
   # Formatting
+  config.indent_size = 2                          # Spaces per indent level
   config.add_section_spacing = true               # Spacing between sections
-  config.sort_tables = false                      # Sort tables alphabetically
+  config.sort_tables = true                       # Alphabetical table order
 end`}
               </CodeBlock>
+
+              <div className="alert alert-info mt-3">
+                <i className="bi bi-info-circle me-2" />
+                The initializer written by <code>rails generate better_structure_sql:install</code>{' '}
+                differs from these defaults in three places: it sets{' '}
+                <code>enable_schema_versions = true</code>, <code>sort_tables = false</code> and{' '}
+                <code>search_path = &apos;public&apos;</code>.
+              </div>
+
+              <div className="alert alert-warning">
+                <i className="bi bi-exclamation-triangle me-2" />
+                <code>config.schemas</code> (default <code>[&apos;public&apos;]</code>) and{' '}
+                <code>config.include_rules</code> exist but have no effect yet: PostgreSQL tables
+                are read from the <code>public</code> schema only and rules are not dumped. Both{' '}
+                <code>replace_default_*</code> options are ignored when <code>output_path</code> ends
+                in <code>.rb</code>.
+              </div>
             </section>
           </div>
         </div>

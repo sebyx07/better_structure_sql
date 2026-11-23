@@ -109,12 +109,131 @@ RSpec.describe BetterStructureSql::FileWriter do
 
       # Should create multiple files
       tables_dir = File.join(temp_dir, base_path, '05_tables')
-      files = Dir.glob(File.join(tables_dir, '*.sql')).sort
+      files = Dir.glob(File.join(tables_dir, '*.sql'))
       expect(files.length).to be >= 2
     end
   end
 
+  describe '#write_multi_file with a previous dump on disk' do
+    let(:temp_dir) { Dir.mktmpdir }
+    let(:base_path)  { 'db/schema' }
+    let(:schema_dir) { Pathname.new(temp_dir).join(base_path) }
+
+    before do
+      allow(Rails).to receive(:root).and_return(Pathname.new(temp_dir))
+      config.max_lines_per_file = 1
+      writer.write_multi_file(
+        base_path,
+        { tables: ['CREATE TABLE a (id bigint);', 'CREATE TABLE b (id bigint);'], views: ['CREATE VIEW v AS SELECT 1;'] },
+        '-- header'
+      )
+    end
+
+    after { FileUtils.rm_rf(temp_dir) }
+
+    it 'removes chunk files the smaller dump no longer produces' do
+      writer.write_multi_file(base_path, { tables: ['CREATE TABLE a (id bigint);'], views: ['CREATE VIEW v AS SELECT 1;'] }, '-- header')
+
+      expect(schema_dir.join('05_tables').children.map { |f| f.basename.to_s }).to eq(['000001.sql'])
+    end
+
+    it 'removes directories of sections that no longer exist' do
+      writer.write_multi_file(base_path, { tables: ['CREATE TABLE a (id bigint);'] }, '-- header')
+
+      expect(schema_dir.join('08_views')).not_to exist
+    end
+
+    it 'keeps files it does not own' do
+      FileUtils.touch(schema_dir.join('_schema_cache.yml'))
+      FileUtils.touch(schema_dir.join('05_tables', 'NOTES.md'))
+
+      writer.write_multi_file(base_path, { tables: ['CREATE TABLE a (id bigint);'] }, '-- header')
+
+      expect(schema_dir.join('_schema_cache.yml')).to exist
+      expect(schema_dir.join('05_tables', 'NOTES.md')).to exist
+    end
+
+    it 'writes an empty header when the adapter has none' do
+      writer.write_multi_file(base_path, { tables: ['CREATE TABLE a (id bigint);'] }, nil)
+
+      expect(schema_dir.join('_header.sql').read).to eq('')
+    end
+  end
+
+  describe '#write_manifest' do
+    let(:temp_dir) { Dir.mktmpdir }
+    let(:manifest_path) { File.join(temp_dir, 'db/schema/_manifest.json') }
+
+    before do
+      allow(Rails).to receive(:root).and_return(Pathname.new(temp_dir))
+      FileUtils.mkdir_p(File.dirname(manifest_path))
+    end
+
+    after { FileUtils.rm_rf(temp_dir) }
+
+    it 'writes the manifest content' do
+      writer.write_manifest('db/schema', '{}')
+
+      expect(File.read(manifest_path)).to eq('{}')
+    end
+
+    it 'removes a leftover manifest when there is no content' do
+      File.write(manifest_path, '{"total_files": 99}')
+
+      writer.write_manifest('db/schema', nil)
+
+      expect(File.exist?(manifest_path)).to be false
+    end
+  end
+
+  describe 'atomic writes' do
+    let(:temp_dir) { Dir.mktmpdir }
+    let(:file_path) { File.join(temp_dir, 'db/structure.sql') }
+
+    before do
+      allow(Rails).to receive(:root).and_return(Pathname.new(temp_dir))
+      writer.write_single_file('db/structure.sql', '-- complete previous dump')
+    end
+
+    after { FileUtils.rm_rf(temp_dir) }
+
+    it 'leaves the previous file intact and raises when the write cannot complete' do
+      allow(File).to receive(:rename).and_raise(Errno::ENOSPC)
+
+      expect { writer.write_single_file('db/structure.sql', '-- new dump') }.to raise_error(Errno::ENOSPC)
+      expect(File.read(file_path)).to eq('-- complete previous dump')
+    end
+
+    it 'replaces the file content on success' do
+      writer.write_single_file('db/structure.sql', '-- new dump')
+
+      expect(File.read(file_path)).to eq('-- new dump')
+      expect(Dir.children(File.dirname(file_path))).to eq(['structure.sql'])
+    end
+  end
+
   describe '#chunk_section (private)' do
+    it 'counts the blank separator lines so written files stay within the limit' do
+      objects = Array.new(600) { |i| "CREATE INDEX i#{i} ON t (c#{i});" }
+
+      chunks = writer.send(:chunk_section, objects, 500)
+
+      written_line_counts = chunks.map { |chunk| chunk.join("\n\n").lines.count }
+      expect(written_line_counts.max).to be <= 550
+      expect(chunks.flatten).to eq(objects)
+    end
+
+    it 'keeps an object of exactly max lines in a file of its own without splitting it' do
+      exact = (['line'] * 500).join("\n")
+      chunks = writer.send(:chunk_section, [exact, 'SELECT 2;'], 500)
+
+      expect(chunks).to eq([[exact], ['SELECT 2;']])
+    end
+
+    it 'returns no chunks for an empty section' do
+      expect(writer.send(:chunk_section, [], 500)).to eq([])
+    end
+
     it 'creates single chunk when under limit' do
       objects = ['CREATE TABLE t1 (id bigint);']
       chunks = writer.send(:chunk_section, objects, 500)

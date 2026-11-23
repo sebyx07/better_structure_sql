@@ -1,9 +1,14 @@
 import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
+import Seo from '../../components/Seo/Seo';
 
 function PostgreSQL() {
   return (
     <div className="container my-4">
+      <Seo
+        title="PostgreSQL Guide"
+        description="Using BetterStructureSql with PostgreSQL: extensions, custom types, functions, triggers and materialized views in a clean structure.sql."
+      />
       <div className="row">
         <div className="col-lg-10 offset-lg-1">
           <div className="postgresql-guide">
@@ -14,8 +19,9 @@ function PostgreSQL() {
 
             <div className="alert alert-info">
               <i className="bi bi-info-circle me-2" />
-              PostgreSQL has the most comprehensive feature support in BetterStructureSql with 100% coverage
-              of extensions, custom types, functions, triggers, materialized views, and partitioned tables.
+              PostgreSQL is the primary target of BetterStructureSql: extensions, custom types, domains,
+              sequences, functions, procedures, triggers, views, materialized views, comments,
+              partitioned tables and table inheritance are dumped.
             </div>
 
             <div className="alert alert-warning">
@@ -616,89 +622,38 @@ ActiveRecord::Base.connection.execute('REFRESH MATERIALIZED VIEW CONCURRENTLY us
         </div>
       </section>
 
-      {/* Partitioned Tables */}
+      {/* Not yet supported */}
       <section className="mb-5">
         <h2 className="border-bottom pb-2 mb-3">
-          <i className="bi bi-table me-2" />
-          Partitioned Tables Tutorial
+          <i className="bi bi-cone-striped me-2" />
+          Not Yet Supported
         </h2>
-        <p className="lead">
-          Table partitioning splits large tables into smaller, manageable pieces.
-          Perfect for time-series data and massive datasets.
-        </p>
-
-        <h4 className="mt-4">Example: Time-Series Event Logs</h4>
-
-        <h5>Migration</h5>
-        <CodeBlock language="ruby" filename="db/migrate/20240101000006_create_partitioned_logs.rb">
-          {`class CreatePartitionedLogs < ActiveRecord::Migration[7.0]
-  def up
-    execute <<-SQL
-      CREATE TABLE event_logs (
-        id bigserial,
-        event_type varchar(50) NOT NULL,
-        user_id bigint,
-        created_at timestamp NOT NULL,
-        data jsonb,
-        PRIMARY KEY (id, created_at)
-      ) PARTITION BY RANGE (created_at);
-
-      -- Create partitions for each month
-      CREATE TABLE event_logs_2024_01 PARTITION OF event_logs
-        FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
-
-      CREATE TABLE event_logs_2024_02 PARTITION OF event_logs
-        FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
-
-      CREATE TABLE event_logs_2024_03 PARTITION OF event_logs
-        FOR VALUES FROM ('2024-03-01') TO ('2024-04-01');
-
-      -- Create index on each partition
-      CREATE INDEX ON event_logs_2024_01 (user_id);
-      CREATE INDEX ON event_logs_2024_02 (user_id);
-      CREATE INDEX ON event_logs_2024_03 (user_id);
-    SQL
-  end
-
-  def down
-    execute 'DROP TABLE IF EXISTS event_logs CASCADE;'
-  end
-end`}
-        </CodeBlock>
-
-        <h5>BetterStructureSql Output</h5>
-        <CodeBlock language="sql" filename="db/structure.sql">
-          {`-- Partitioned Tables
-CREATE TABLE event_logs (
-  id bigserial,
-  event_type varchar(50) NOT NULL,
-  user_id bigint,
-  created_at timestamp NOT NULL,
-  data jsonb,
-  PRIMARY KEY (id, created_at)
-) PARTITION BY RANGE (created_at);
-
--- Partitions
-CREATE TABLE event_logs_2024_01 PARTITION OF event_logs
-  FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
-
-CREATE TABLE event_logs_2024_02 PARTITION OF event_logs
-  FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
-
-CREATE TABLE event_logs_2024_03 PARTITION OF event_logs
-  FOR VALUES FROM ('2024-03-01') TO ('2024-04-01');`}
-        </CodeBlock>
-
-        <div className="alert alert-success mt-3">
-          <strong>Benefits:</strong>
+        <div className="alert alert-warning">
           <ul className="mb-0">
-            <li>Handle billions of rows efficiently</li>
-            <li>Automatic partition routing</li>
-            <li>Easy to archive or delete old partitions</li>
-            <li>Improved query performance on time-range queries</li>
-            <li>BetterStructureSql dumps complete partition structure</li>
+            <li>
+              <strong>Rules</strong> and aggregates.
+            </li>
+            <li>
+              <strong>Schemas other than <code>public</code></strong>: columns, keys and constraints
+              are read from the <code>public</code> schema only.
+            </li>
+            <li>
+              Comments on types, sequences, constraints and triggers.
+            </li>
           </ul>
         </div>
+        <p>
+          If your database relies on these, keep using <code>pg_dump</code> for now or track progress
+          in the{' '}
+          <a
+            href="https://github.com/sebyx07/better_structure_sql/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            issue tracker
+          </a>
+          .
+        </p>
       </section>
 
       {/* Summary */}
@@ -710,17 +665,18 @@ CREATE TABLE event_logs_2024_03 PARTITION OF event_logs
               <div className="card-body">
                 <h5 className="card-title">
                   <i className="bi bi-check-circle-fill text-success me-2" />
-                  Fully Supported Features
+                  Supported Features
                 </h5>
                 <ul>
                   <li>Extensions (pgcrypto, uuid-ossp, pg_trgm, etc.)</li>
-                  <li>Custom Types and ENUMs</li>
+                  <li>Custom Types (ENUM, composite) and Domains</li>
+                  <li>Sequences</li>
                   <li>Functions (plpgsql, sql)</li>
                   <li>Triggers (BEFORE, AFTER, INSTEAD OF)</li>
                   <li>Views and Materialized Views</li>
-                  <li>Partitioned Tables (RANGE, LIST, HASH)</li>
                   <li>Indexes (btree, gin, gist, hash, brin)</li>
                   <li>Foreign Keys with all actions</li>
+                  <li>Comments (tables, columns, indexes, views, functions)</li>
                 </ul>
               </div>
             </div>
@@ -736,7 +692,6 @@ CREATE TABLE event_logs_2024_03 PARTITION OF event_logs
                   <li>Use ENUMs for type-safe status fields</li>
                   <li>Leverage triggers for automatic updates</li>
                   <li>Create materialized views for complex analytics</li>
-                  <li>Partition large time-series tables</li>
                   <li>Enable extensions in dedicated migration</li>
                   <li>Version control all database objects</li>
                   <li>Use BetterStructureSql for clean diffs</li>

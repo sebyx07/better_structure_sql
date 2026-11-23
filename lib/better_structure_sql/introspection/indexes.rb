@@ -9,20 +9,7 @@ module BetterStructureSql
       # @param connection [ActiveRecord::ConnectionAdapters::AbstractAdapter] Database connection
       # @return [Array<Hash>] Array of index metadata hashes
       def fetch_indexes(connection)
-        adapter = get_adapter(connection)
-        adapter.fetch_indexes(connection)
-      rescue StandardError => e
-        warn "Warning: Failed to fetch indexes: #{e.message}"
-        []
-      end
-
-      private
-
-      def get_adapter(connection)
-        @get_adapter ||= Adapters::Registry.adapter_for(
-          connection,
-          adapter_override: BetterStructureSql.configuration.adapter
-        )
+        adapter_for(connection).fetch_indexes(connection)
       end
     end
   end

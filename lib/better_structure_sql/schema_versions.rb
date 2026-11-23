@@ -15,51 +15,39 @@ module BetterStructureSql
       #
       # Calculates content hash and compares with latest version.
       # Skips storage if hash matches (no schema changes).
-      # Cleans up filesystem directory after storing ZIP (multi-file mode only).
+      # The schema file or directory on disk is never modified.
       #
       # @param connection [ActiveRecord::Connection] Database connection
+      # @param config [Configuration] Configuration naming the schema output path
       # @return [StoreResult] Result indicating stored or skipped
-      def store_current(connection = ActiveRecord::Base.connection)
-        config = BetterStructureSql.configuration
-        pg_version = PgVersion.detect(connection)
-
-        # Determine format and output mode
-        format_type = deduce_format_type(config.output_path)
+      # @raise [SchemaVersionError] If there is no schema file or directory to store
+      def store_current(connection = ActiveRecord::Base.connection, config: BetterStructureSql.configuration)
         output_mode = detect_output_mode(config.output_path)
-
-        # Read content and calculate hash
         content, zip_archive, file_count = read_schema_content(config.output_path, output_mode)
-        return build_skip_result(nil, count) unless content
+        raise SchemaVersionError, missing_schema_message(config.output_path) unless content
 
         content_hash = calculate_hash(content)
 
         # Compare with latest version's hash
         ensure_table_exists!(connection)
         latest_version = latest
-        if latest_version && latest_version.content_hash == content_hash
-          # Skip storage - no changes detected (directory remains for re-use)
-          return build_skip_result(latest_version, count)
-        end
+        # Skip storage - no changes detected
+        return build_skip_result(latest_version, count) if latest_version&.hash_matches?(content_hash)
 
-        # Proceed with storage - hash differs or no previous versions
         version = store(
-          content: content,
-          content_hash: content_hash,
-          zip_archive: zip_archive,
-          format_type: format_type,
-          output_mode: output_mode,
-          pg_version: pg_version,
-          file_count: file_count,
-          connection: connection
+          content:,
+          content_hash:,
+          zip_archive:,
+          format_type: deduce_format_type(config.output_path),
+          output_mode:,
+          pg_version: PgVersion.detect(connection),
+          file_count:,
+          connection:
         )
-
-        # Cleanup filesystem directory after ZIP stored (multi-file mode only)
-        cleanup_filesystem_directory(config.output_path, output_mode)
 
         # Cleanup old versions (retention management)
         cleanup!(connection)
 
-        # Return stored result
         build_stored_result(version)
       end
 
@@ -80,17 +68,36 @@ module BetterStructureSql
         ensure_table_exists!(connection)
 
         SchemaVersion.create!(
-          content: content,
-          content_hash: content_hash,
+          content:,
+          content_hash:,
           content_size: content.bytesize,
           line_count: content.count("\n"),
-          zip_archive: zip_archive,
-          format_type: format_type,
-          output_mode: output_mode,
-          pg_version: pg_version,
-          file_count: file_count,
+          zip_archive:,
+          format_type:,
+          output_mode:,
+          pg_version:,
+          file_count:,
           created_at: Time.current
         )
+      end
+
+      # Replaces the schema of a database with a stored version
+      #
+      # The database is purged first (every table and all data are dropped, the
+      # stored schema versions included), so the stored schema loads into an empty
+      # database. A schema that fails to load leaves the database purged.
+      #
+      # @param version [SchemaVersion] Version to restore, already read from the database
+      # @param db_config [ActiveRecord::DatabaseConfigurations::DatabaseConfig] Database to replace
+      # @return [void]
+      def restore(version, db_config: ActiveRecord::Base.connection_db_config)
+        Dir.mktmpdir('schema_restore') do |directory|
+          path = write_version_files(version, directory)
+
+          ActiveRecord::Tasks::DatabaseTasks.purge(db_config)
+          ActiveRecord::Base.establish_connection(db_config)
+          SchemaLoader.new.load_and_record(path)
+        end
       end
 
       # Retrieval methods
@@ -116,7 +123,7 @@ module BetterStructureSql
       def find(id)
         return nil unless table_exists?
 
-        SchemaVersion.find_by(id: id)
+        SchemaVersion.find_by(id:)
       end
 
       # Returns total count of stored versions
@@ -194,9 +201,9 @@ module BetterStructureSql
         header_path = full_path.join('_header.sql')
         stream_file_to_digest(digest, header_path) if File.exist?(header_path)
 
-        # Stream all .sql files from numbered directories in order (01_ through 10_)
+        # Stream all .sql files from numbered directories in order (01_extensions through 20_migrations)
         Dir.glob(File.join(full_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
-          Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
+          Dir.glob(File.join(dir, '*.sql')).each do |file|
             stream_file_to_digest(digest, file)
           end
         end
@@ -263,20 +270,12 @@ module BetterStructureSql
         # Skip cleanup if unlimited (0)
         return 0 if limit.zero?
 
-        # Delete oldest versions beyond limit
-        total_count = SchemaVersion.count
-        return 0 if total_count <= limit
+        # Delete oldest versions beyond limit without loading their content into memory
+        excess = SchemaVersion.count - limit
+        return 0 unless excess.positive?
 
-        versions_to_delete = total_count - limit
-        oldest_versions = SchemaVersion.oldest_first.limit(versions_to_delete)
-
-        deleted_count = 0
-        oldest_versions.each do |version|
-          version.destroy
-          deleted_count += 1
-        end
-
-        deleted_count
+        excess_ids = SchemaVersion.oldest_first.limit(excess).pluck(:id)
+        SchemaVersion.where(id: excess_ids).delete_all
       end
 
       private
@@ -291,8 +290,12 @@ module BetterStructureSql
           skipped: true,
           version_id: version&.id,
           hash: version&.content_hash,
-          total_count: total_count
+          total_count:
         )
+      end
+
+      def missing_schema_message(output_path)
+        "No schema found at #{output_path}. Dump it first with: rails db:schema:dump_better"
       end
 
       # Builds a stored result when new version was created
@@ -302,29 +305,25 @@ module BetterStructureSql
       def build_stored_result(version)
         StoreResult.new(
           skipped: false,
-          version: version,
+          version:,
           total_count: count
         )
       end
 
-      # Cleanup filesystem directory after ZIP archive stored
+      # Writes a stored version to disk in the form SchemaLoader loads
       #
-      # Only removes multi-file directories (single files remain).
-      # Gracefully handles errors without failing the storage operation.
-      #
-      # @param output_path [String, Pathname] Path to directory
-      # @param output_mode [String] Output mode ('single_file' or 'multi_file')
-      def cleanup_filesystem_directory(output_path, output_mode)
-        # Only cleanup multi-file directories (single files remain)
-        return unless output_mode == 'multi_file'
-
-        full_path = Rails.root.join(output_path)
-        return unless Dir.exist?(full_path)
-
-        FileUtils.rm_rf(full_path)
-      rescue StandardError => e
-        warn "Warning: Failed to cleanup directory #{output_path}: #{e.message}"
-        # Continue despite cleanup failure - version already stored
+      # @param version [SchemaVersion] Stored version
+      # @param directory [String] Directory to write into
+      # @return [String] Path of the schema file or directory
+      def write_version_files(version, directory)
+        if version.multi_file?
+          path = File.join(directory, 'schema')
+          ZipGenerator.extract_to_directory(version.zip_archive, path)
+        else
+          path = File.join(directory, "schema.#{version.format_type}")
+          File.write(path, version.content)
+        end
+        path
       end
 
       # Streams a file to digest using STREAM_CHUNK_SIZE chunks
@@ -372,10 +371,10 @@ module BetterStructureSql
         header_path = base_path.join('_header.sql')
         content_parts << File.read(header_path) if File.exist?(header_path)
 
-        # Read all .sql files from numbered directories in order (01_ through 10_)
+        # Read all .sql files from numbered directories in order (01_extensions through 20_migrations)
         # Note: Manifest JSON is excluded as it's metadata, not schema content
         Dir.glob(File.join(base_path, '*_*')).select { |f| File.directory?(f) }.sort.each do |dir|
-          Dir.glob(File.join(dir, '*.sql')).sort.each do |file|
+          Dir.glob(File.join(dir, '*.sql')).each do |file|
             content_parts << File.read(file)
           end
         end

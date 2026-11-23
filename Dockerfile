@@ -1,10 +1,12 @@
-# Use Ruby 3.2 Alpine for small image size
-FROM ruby:3.2-alpine
+# Dev image for the integration app (integration/) — see DOCKER.md.
+# Ruby matches .ruby-version; bump both together.
+FROM ruby:4.0.10-alpine
 
-# Install system dependencies
+# Build tools and client libraries for the native gems (pg, sqlite3, nokogiri, psych, puma)
 RUN apk add --no-cache \
     postgresql-dev \
     postgresql-client \
+    sqlite-dev \
     build-base \
     nodejs \
     tzdata \
@@ -13,7 +15,8 @@ RUN apk add --no-cache \
     bash \
     sudo
 
-# Create user matching host user (default to 1000:1000)
+# Create user matching host user (default to 1000:1000) so files written to the
+# mounted checkout keep the host user's ownership
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
@@ -21,61 +24,32 @@ RUN addgroup -g ${GROUP_ID} appuser && \
     adduser -D -u ${USER_ID} -G appuser appuser && \
     echo 'appuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# Set working directory
 WORKDIR /app
+RUN chown -R appuser:appuser /app /usr/local/bundle
 
-# Change ownership
-RUN chown -R appuser:appuser /app
-
-# Copy gemspec and Gemfile for dependency resolution
+# The integration app depends on the gem by path (`path: '..'`), so its bundle
+# needs the gemspec and version file in place. Copied first to keep the gem layer cached.
 COPY --chown=appuser:appuser better_structure_sql.gemspec ./
-COPY --chown=appuser:appuser Gemfile* ./
 COPY --chown=appuser:appuser lib/better_structure_sql/version.rb ./lib/better_structure_sql/
+COPY --chown=appuser:appuser integration/Gemfile integration/Gemfile.lock ./integration/
 
-# Switch to appuser for bundle install
-USER appuser
-
-# Install gem dependencies
-RUN bundle install
-
-# Switch back to root for copying files
-USER root
-
-# Copy the entire gem source
-COPY --chown=appuser:appuser . .
-
-# Switch to integration app directory
 WORKDIR /app/integration
-
-# Copy integration app Gemfile
-COPY --chown=appuser:appuser integration/Gemfile* ./
-
-# Switch to appuser for bundle install
 USER appuser
-
-# Install Rails app dependencies
 RUN bundle install
 
-# Switch back to root for final setup
+# The rest of the source. docker-compose.yml mounts the checkout over /app, so this
+# copy only matters when the image runs without the mount.
 USER root
+COPY --chown=appuser:appuser . /app
 
-# Copy the rest of the integration app
-COPY --chown=appuser:appuser integration ./
-
-# Expose port 3000
-EXPOSE 3000
-
-# Set Rails environment
-ENV RAILS_ENV=development
-
-# Entrypoint script
 COPY docker-entrypoint.sh /usr/bin/
 RUN chmod 755 /usr/bin/docker-entrypoint.sh
 
-# Switch to appuser for running the application
-USER appuser
+EXPOSE 3000
+ENV RAILS_ENV=development
 
+USER appuser
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Default command (can be overridden by docker-compose.yml)
-CMD ["bash", "-c", "rails server -b 0.0.0.0"]
+# Default command (docker-compose.yml overrides it)
+CMD ["bundle", "exec", "rails", "server", "-b", "0.0.0.0"]

@@ -4,16 +4,12 @@ import { describe, it, expect } from 'vitest';
 import Header from '../../src/components/Layout/Header';
 import Footer from '../../src/components/Layout/Footer';
 import Layout from '../../src/components/Layout/Layout';
-
-const routerFutureFlags = {
-  v7_startTransition: true,
-  v7_relativeSplatPath: true,
-};
+import GEM_VERSION from '../../src/version';
 
 describe('Header', () => {
   it('renders brand logo', () => {
     render(
-      <MemoryRouter future={routerFutureFlags}>
+      <MemoryRouter>
         <Header />
       </MemoryRouter>
     );
@@ -22,7 +18,7 @@ describe('Header', () => {
 
   it('renders navigation links', () => {
     render(
-      <MemoryRouter future={routerFutureFlags}>
+      <MemoryRouter>
         <Header />
       </MemoryRouter>
     );
@@ -32,10 +28,35 @@ describe('Header', () => {
   });
 });
 
+describe('Header accessibility', () => {
+  it('labels the navigation landmark', () => {
+    render(
+      <MemoryRouter>
+        <Header />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
+  });
+});
+
 describe('Footer', () => {
   it('displays version', () => {
     render(<Footer />);
-    expect(screen.getByText(/Version 0\.2\.1/i)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Version ${GEM_VERSION} `))).toBeInTheDocument();
+    expect(screen.queryByText(/beta/i)).not.toBeInTheDocument();
+  });
+
+  it('credits developerz.ai and links the repository', () => {
+    render(<Footer />);
+    expect(screen.getByText(/AI-maintained by/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'developerz.ai' })).toHaveAttribute(
+      'href',
+      'https://developerz.ai'
+    );
+    expect(screen.getAllByRole('link', { name: /GitHub/ })[0]).toHaveAttribute(
+      'href',
+      'https://github.com/sebyx07/better_structure_sql'
+    );
   });
 
   it('displays license', () => {
@@ -51,9 +72,21 @@ describe('Footer', () => {
 });
 
 describe('Layout', () => {
+  it('offers a skip link to the main content', () => {
+    render(
+      <MemoryRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Skip to main content' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
+  });
+
   it('renders children content', () => {
     render(
-      <MemoryRouter future={routerFutureFlags}>
+      <MemoryRouter>
         <Layout>
           <div data-testid="test-content">Test Content</div>
         </Layout>
@@ -65,7 +98,7 @@ describe('Layout', () => {
 
   it('includes header and footer', () => {
     render(
-      <MemoryRouter future={routerFutureFlags}>
+      <MemoryRouter>
         <Layout>
           <div>Content</div>
         </Layout>

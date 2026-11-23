@@ -1,51 +1,53 @@
+<% content_for :title, 'Schema Versions' %>
 <div class="row">
   <div class="col-12">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h2">
-        <i class="bi bi-database-fill-gear text-primary"></i>
+        <i class="bi bi-database-fill-gear text-primary" aria-hidden="true"></i>
         Schema Versions
       </h1>
-      <div class="text-muted">
-        <i class="bi bi-info-circle"></i>
-        Total: <%= @schema_versions.count %>
+      <div class="text-body-secondary">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Total: <%= number_with_delimiter(@total_count) %>
       </div>
     </div>
 
     <% if @schema_versions.empty? %>
       <div class="empty-state">
-        <i class="bi bi-inbox" style="font-size: 4rem;"></i>
-        <h3 class="mt-3">No Schema Versions Yet</h3>
-        <p class="text-muted">
+        <i class="bi bi-inbox empty-state-icon" aria-hidden="true"></i>
+        <h2 class="h3 mt-3">No Schema Versions Yet</h2>
+        <p>
           Schema versions will appear here after running:<br>
-          <code>rails db:schema:dump</code> (with versioning enabled)
+          <code>rails db:schema:store</code> (with <code>enable_schema_versions</code> on)
         </p>
       </div>
     <% else %>
       <div class="card shadow-sm">
         <div class="table-responsive">
           <table class="table table-hover table-striped mb-0">
+            <caption class="visually-hidden">Stored schema versions, newest first</caption>
             <thead class="table-light">
               <tr>
-                <th scope="col" class="text-center" style="width: 80px;">ID</th>
-                <th scope="col" style="width: 120px;">Hash</th>
-                <th scope="col" style="width: 120px;">Format</th>
-                <th scope="col" style="width: 150px;">Mode</th>
-                <th scope="col" style="width: 180px;">PostgreSQL</th>
+                <th scope="col" class="text-center">ID</th>
+                <th scope="col">Hash</th>
+                <th scope="col">Format</th>
+                <th scope="col">Mode</th>
+                <th scope="col">Database</th>
                 <th scope="col">Created At</th>
-                <th scope="col" style="width: 100px;">Files</th>
-                <th scope="col" style="width: 120px;">Size</th>
-                <th scope="col" class="text-end" style="width: 200px;">Actions</th>
+                <th scope="col">Files</th>
+                <th scope="col">Size</th>
+                <th scope="col" class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
               <% @schema_versions.each do |version| %>
                 <tr>
-                  <td class="text-center fw-bold text-muted">
+                  <th scope="row" class="text-center">
                     #<%= version.id %>
-                  </td>
+                  </th>
                   <td>
-                    <code class="text-muted small" title="<%= version.content_hash %>">
-                      <%= version.content_hash[0..7] %>
+                    <code class="text-body-secondary small" title="<%= version.content_hash %>">
+                      <%= version.content_hash.to_s[0..7] %>
                     </code>
                   </td>
                   <td>
@@ -55,45 +57,35 @@
                     <%= format_output_mode(version.output_mode) %>
                   </td>
                   <td>
-                    <span class="text-muted">
-                      <i class="bi bi-server"></i>
-                      <%= version.pg_version %>
-                    </span>
+                    <i class="bi bi-server" aria-hidden="true"></i>
+                    <%= version.pg_version %>
                   </td>
                   <td>
-                    <i class="bi bi-calendar-event"></i>
-                    <%= version.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
-                    <small class="text-muted d-block">
+                    <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                    <%= schema_version_timestamp(version) %>
+                    <small class="text-body-secondary d-block">
                       <%= time_ago_in_words(version.created_at) %> ago
                     </small>
                   </td>
                   <td>
-                    <% if version.file_count %>
-                      <span class="badge bg-light text-dark">
-                        <%= version.file_count %> files
-                      </span>
-                    <% else %>
-                      <span class="text-muted">1 file</span>
-                    <% end %>
+                    <%= pluralize(version.file_count || 1, 'file') %>
                   </td>
                   <td>
-                    <span class="badge bg-secondary">
-                      <%= version.formatted_size %>
-                    </span>
+                    <%= version.formatted_size %>
                   </td>
                   <td class="text-end">
-                    <div class="btn-group btn-group-sm" role="group">
-                      <a href="<%= better_structure_sql.schema_version_path(version) %>"
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Actions for version #<%= version.id %>">
+                      <a href="<%= schema_version_path(version) %>"
                          class="btn btn-outline-primary"
-                         title="View details">
-                        <i class="bi bi-eye"></i>
+                         aria-label="View version #<%= version.id %>">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
                         View
                       </a>
-                      <a href="<%= better_structure_sql.download_schema_version_path(version) %>"
+                      <a href="<%= download_schema_version_path(version) %>"
                          class="btn btn-outline-success"
-                         title="Download"
+                         aria-label="Download version #<%= version.id %>"
                          data-turbo="false">
-                        <i class="bi bi-download"></i>
+                        <i class="bi bi-download" aria-hidden="true"></i>
                         Download
                       </a>
                     </div>
@@ -105,11 +97,16 @@
         </div>
       </div>
 
-      <% if @schema_versions.count >= 100 %>
-        <div class="alert alert-info mt-3">
-          <i class="bi bi-info-circle"></i>
-          Showing the 100 most recent versions. Older versions are still stored in the database.
-        </div>
+      <% if @total_pages > 1 %>
+        <nav class="mt-3" aria-label="Schema versions pages">
+          <ul class="pagination justify-content-center mb-0">
+            <%= pagination_item('Newer', @page - 1, enabled: @page > 1) %>
+            <li class="page-item active" aria-current="page">
+              <span class="page-link">Page <%= @page %> of <%= @total_pages %></span>
+            </li>
+            <%= pagination_item('Older', @page + 1, enabled: @page < @total_pages) %>
+          </ul>
+        </nav>
       <% end %>
     <% end %>
   </div>

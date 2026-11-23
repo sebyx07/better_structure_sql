@@ -1,14 +1,17 @@
+# Containerised dev environment for the integration app — see DOCKER.md.
+# The host-native path (bin/setup + bin/dev) is faster; use this when you want
+# nothing but Docker on the box.
 services:
   postgres:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
+    # Same major version as the bss-pg container that bin/setup starts
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: better_structure_sql_development
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Named per major version: a data directory written by another major does not start
+      - postgres17_data:/var/lib/postgresql/data
       - ./integration/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -24,22 +27,21 @@ services:
       args:
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails server -b 0.0.0.0"
+    command: bundle exec rails server -b 0.0.0.0
     volumes:
       - .:/app
       - bundle_cache:/usr/local/bundle
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${PORT:-3000}:3000"
     environment:
-      # Database connection (matching database.yml ENV variables)
+      # Read by integration/config/database.yml
       DB_HOST: postgres
+      DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: better_structure_sql_development
-      # Rails environment
+      DB_TEST_NAME: better_structure_sql_test
       RAILS_ENV: development
-      # Gem configuration
-      BETTER_STRUCTURE_SQL_ROOT: /app
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,7 +49,7 @@ services:
       - app-network
 
 volumes:
-  postgres_data:
+  postgres17_data:
   bundle_cache:
 
 networks:

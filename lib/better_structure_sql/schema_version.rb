@@ -26,11 +26,12 @@ module BetterStructureSql
     scope :by_format, ->(type) { where(format_type: type) }
     scope :by_output_mode, ->(mode) { where(output_mode: mode) }
     scope :recent, ->(limit) { order(created_at: :desc).limit(limit) }
-    scope :oldest_first, -> { order(created_at: :asc) }
+    scope :oldest_first, -> { order(created_at: :asc, id: :asc) }
 
     # Class method to get latest version
+    # Ties on created_at (second-precision columns) resolve to the most recently inserted row
     def self.latest
-      order(created_at: :desc).first
+      order(created_at: :desc, id: :desc).first
     end
 
     # Instance methods

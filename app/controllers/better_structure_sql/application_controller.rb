@@ -3,59 +3,99 @@
 module BetterStructureSql
   # Base controller for BetterStructureSql Rails Engine
   #
-  # Provides authentication and authorization hooks for the web UI
-  # that displays stored schema versions. By default, no authentication
-  # is required (open access), but this should be overridden in production.
+  # The web UI exposes the full database schema, so access control fails
+  # closed: outside development and test every request is answered with
+  # 403 Forbidden until the host application configures one of the following.
   #
-  # @example Using Devise route constraints (recommended)
+  # @example Access check in an initializer
+  #   BetterStructureSql::Engine.authenticate_with do |controller|
+  #     controller.request.env['warden']&.user&.admin?
+  #   end
+  #
+  # @example Route constraints (Devise shown), declared to the engine
+  #   # config/initializers/better_structure_sql.rb
+  #   BetterStructureSql::Engine.authentication_handled_by_routes!
+  #
+  #   # config/routes.rb
   #   authenticate :user, ->(user) { user.admin? } do
   #     mount BetterStructureSql::Engine, at: "/better_structure_sql"
   #   end
   #
-  # @example Using controller-level authentication
+  # @example Overriding the hook
   #   BetterStructureSql::ApplicationController.class_eval do
-  #     before_action :authenticate_admin!
-  #
   #     private
   #
-  #     def authenticate_admin!
+  #     def authenticate_access!
   #       head :unauthorized unless current_user&.admin?
   #     end
   #   end
   class ApplicationController < ActionController::Base
+    # Response body sent when no access control has been configured
+    ACCESS_NOT_CONFIGURED_MESSAGE = <<~MESSAGE
+      BetterStructureSql: access to the schema versions UI is not configured.
+
+      This UI exposes your database schema, so outside development and test it
+      is disabled until the application declares how access is controlled.
+      Add one of these to config/initializers/better_structure_sql.rb:
+
+        # 1. Check access in the engine
+        BetterStructureSql::Engine.authenticate_with do |controller|
+          controller.request.env['warden']&.user&.admin?
+        end
+
+        # 2. The routes mounting the engine already restrict access
+        #    (Devise `authenticate`, a `constraints` block, ...)
+        BetterStructureSql::Engine.authentication_handled_by_routes!
+    MESSAGE
+
+    # Environments where the UI is open when no access control is configured
+    LOCAL_ENVIRONMENTS = %w[development test].freeze
+
     layout 'better_structure_sql/application'
 
-    # Override this method in your host application to add authentication
-    # Example using Devise route constraints (recommended):
-    #   authenticate :user, ->(user) { user.admin? } do
-    #     mount BetterStructureSql::Engine, at: "/better_structure_sql"
-    #   end
-    #
-    # Or override at controller level:
-    #   BetterStructureSql::ApplicationController.class_eval do
-    #     before_action :authenticate_admin!
-    #
-    #     private
-    #
-    #     def authenticate_admin!
-    #       head :unauthorized unless current_user&.admin?
-    #     end
-    #   end
+    protect_from_forgery with: :exception
+
     before_action :authenticate_access!
+    # Schema dumps are sensitive: keep them out of browser and proxy caches
+    before_action :no_store
+
+    rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
 
     private
 
     # Authentication hook for engine access control
     #
-    # Default implementation allows open access. Override this method
-    # in your host application to add authentication and authorization.
-    # This method is called before all controller actions via before_action.
+    # Runs the check registered with {Engine.authenticate_with}. Without one,
+    # access is open only in development and test, or when the host declared
+    # {Engine.authentication_handled_by_routes!}. May be overridden by the
+    # host application.
     #
-    # @return [Boolean] true to allow access, false or head :unauthorized to deny
+    # @return [void]
     def authenticate_access!
-      # Default: no authentication (open access)
-      # Override this in your host application for production use
-      true
+      authenticator = Engine.authenticator
+      return run_authenticator(authenticator) if authenticator
+      return if Engine.authentication_handled_by_routes? || local_environment?
+
+      deny_unconfigured_access
+    end
+
+    def run_authenticator(authenticator)
+      return if authenticator.call(self) || performed?
+
+      render plain: 'Forbidden', status: :forbidden
+    end
+
+    def local_environment?
+      LOCAL_ENVIRONMENTS.include?(Rails.env.to_s)
+    end
+
+    def deny_unconfigured_access
+      logger&.error('[BetterStructureSql] Request denied: engine access control is not configured')
+      render plain: ACCESS_NOT_CONFIGURED_MESSAGE, status: :forbidden
+    end
+
+    def render_not_found
+      render plain: 'Schema version not found', status: :not_found
     end
   end
 end

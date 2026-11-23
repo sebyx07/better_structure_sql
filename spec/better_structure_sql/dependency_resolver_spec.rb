@@ -2,13 +2,6 @@
 
 require 'spec_helper'
 
-# TODO: DependencyResolver not yet integrated - skip these tests for now
-RSpec.describe 'BetterStructureSql::DependencyResolver (Not Yet Implemented)' do
-  skip 'DependencyResolver class exists but is not yet integrated into the dumper'
-end
-
-__END__
-
 RSpec.describe BetterStructureSql::DependencyResolver do
   subject(:resolver) { described_class.new }
 
@@ -75,6 +68,21 @@ RSpec.describe BetterStructureSql::DependencyResolver do
       result = resolver.resolve
 
       expect(result.index('users')).to be < result.index('posts')
+    end
+
+    it 'resolves 20,000 objects with many edges in well under a second' do
+      count = 20_000
+      count.times do |i|
+        resolver.add_object("object_#{i}", :view, depends_on: [i - 1, i / 2, i / 3].uniq.reject(&:zero?).map { |j| "object_#{j}" })
+      end
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      result = resolver.resolve
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      expect(result.size).to eq(count)
+      expect(result.index('object_1')).to be < result.index('object_2')
+      expect(elapsed).to be < 1
     end
   end
 end

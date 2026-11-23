@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW user_stats AS
+CREATE VIEW user_stats AS
 SELECT
   u.id,
   u.email,
@@ -7,4 +7,5 @@ SELECT
 FROM users u
 LEFT JOIN posts p ON p.user_id = u.id
 LEFT JOIN comments c ON c.user_id = u.id
-GROUP BY u.id, u.email;
+GROUP BY u.id, u.email
+/* user_stats(id,email,post_count,comment_count) */;

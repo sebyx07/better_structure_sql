@@ -14,8 +14,8 @@ module BetterStructureSql
                   :include_triggers,
                   :include_views,
                   :include_materialized_views,
-                  :include_rules,      # TODO: Not yet implemented
-                  :include_comments,   # TODO: Not yet implemented
+                  :include_rules, # TODO: Not yet implemented
+                  :include_comments,
                   :include_domains,
                   :include_sequences,
                   :include_custom_types,
@@ -74,6 +74,7 @@ module BetterStructureSql
     # @return [void]
     def validate!
       validate_output_path!
+      validate_search_path!
       validate_schema_versions_limit!
       validate_indent_size!
       validate_schemas!
@@ -88,6 +89,12 @@ module BetterStructureSql
       return unless output_path.nil? || output_path.strip.empty?
 
       raise ConfigurationError, 'output_path cannot be blank. Use absolute path or relative like "db/structure.sql"'
+    end
+
+    def validate_search_path!
+      return if search_path.is_a?(String) && !search_path.strip.empty?
+
+      raise ConfigurationError, 'search_path cannot be blank (e.g., \'"$user", public\')'
     end
 
     def validate_schema_versions_limit!

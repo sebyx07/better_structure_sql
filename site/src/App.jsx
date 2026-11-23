@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
+import Seo from './components/Seo/Seo';
 import Layout from './components/Layout/Layout';
 import Home from './pages/Home';
 import Installation from './pages/GettingStarted/Installation';
@@ -34,11 +35,12 @@ function App() {
 function NotFound() {
   return (
     <div className="container text-center py-5">
+      <Seo title="Page Not Found" />
       <h1>404 - Page Not Found</h1>
       <p className="lead">The page you&apos;re looking for doesn&apos;t exist.</p>
-      <a href="#/" className="btn btn-primary">
+      <Link to="/" className="btn btn-primary">
         Go Home
-      </a>
+      </Link>
     </div>
   );
 }

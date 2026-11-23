@@ -1,13 +1,14 @@
+<% content_for :title, "Schema Version ##{@schema_version.id}" %>
 <div class="row">
   <div class="col-12">
     <!-- Header with Back Button -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h2">
-        <i class="bi bi-file-earmark-code text-primary"></i>
+        <i class="bi bi-file-earmark-code text-primary" aria-hidden="true"></i>
         Schema Version #<%= @schema_version.id %>
       </h1>
-      <a href="<%= better_structure_sql.schema_versions_path %>" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i>
+      <a href="<%= schema_versions_path %>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
         Back to List
       </a>
     </div>
@@ -15,129 +16,84 @@
     <!-- Metadata Card -->
     <div class="card metadata-card shadow-sm mb-4">
       <div class="card-body">
-        <div class="row">
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-hash"></i>
-              Version ID
-            </h6>
-            <p class="mb-0 fw-bold">#<%= @schema_version.id %></p>
+        <h2 class="visually-hidden">Details</h2>
+        <dl class="row mb-0">
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-hash" aria-hidden="true"></i> Version ID</dt>
+            <dd class="mb-0 fw-bold">#<%= @schema_version.id %></dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-filetype-sql"></i>
-              Format
-            </h6>
-            <p class="mb-0">
-              <%= format_type_badge(@schema_version.format_type) %>
-            </p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-filetype-sql" aria-hidden="true"></i> Format</dt>
+            <dd class="mb-0"><%= format_type_badge(@schema_version.format_type) %></dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-folder"></i>
-              Output Mode
-            </h6>
-            <p class="mb-0">
-              <%= format_output_mode(@schema_version.output_mode) %>
-            </p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-folder" aria-hidden="true"></i> Output Mode</dt>
+            <dd class="mb-0"><%= format_output_mode(@schema_version.output_mode) %></dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-server"></i>
-              PostgreSQL Version
-            </h6>
-            <p class="mb-0"><%= @schema_version.pg_version %></p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-server" aria-hidden="true"></i> Database Version</dt>
+            <dd class="mb-0"><%= @schema_version.pg_version %></dd>
           </div>
-        </div>
-
-        <div class="row mt-3">
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-calendar-event"></i>
-              Created
-            </h6>
-            <p class="mb-0">
-              <%= @schema_version.created_at.strftime('%Y-%m-%d %H:%M:%S') %>
-              <small class="text-muted d-block">
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-calendar-event" aria-hidden="true"></i> Created</dt>
+            <dd class="mb-0">
+              <%= schema_version_timestamp(@schema_version) %>
+              <small class="text-body-secondary d-block">
                 <%= time_ago_in_words(@schema_version.created_at) %> ago
               </small>
-            </p>
+            </dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-file-earmark-bar-graph"></i>
-              Size
-            </h6>
-            <p class="mb-0">
-              <span class="badge bg-secondary"><%= @schema_version.formatted_size %></span>
-            </p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> Size</dt>
+            <dd class="mb-0"><%= @schema_version.formatted_size %></dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-info-circle"></i>
-              Lines
-            </h6>
-            <p class="mb-0"><%= number_with_delimiter(@schema_version.line_count) %> lines</p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-info-circle" aria-hidden="true"></i> Lines</dt>
+            <dd class="mb-0"><%= number_with_delimiter(@schema_version.line_count) %> lines</dd>
           </div>
-          <div class="col-md-3">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-files"></i>
-              Files
-            </h6>
-            <p class="mb-0">
-              <% if @schema_version.file_count %>
-                <span class="badge bg-light text-dark"><%= @schema_version.file_count %> files</span>
-              <% else %>
-                <span class="text-muted">1 file</span>
-              <% end %>
-            </p>
+          <div class="col-md-3 mb-3">
+            <dt><i class="bi bi-files" aria-hidden="true"></i> Files</dt>
+            <dd class="mb-0"><%= pluralize(@schema_version.file_count || 1, 'file') %></dd>
           </div>
-        </div>
-
-        <div class="row mt-3">
           <div class="col-md-12">
-            <h6 class="text-muted mb-1">
-              <i class="bi bi-fingerprint"></i>
-              Content Hash (MD5)
-            </h6>
-            <p class="mb-0">
-              <code class="text-muted"><%= @schema_version.content_hash %></code>
-            </p>
+            <dt><i class="bi bi-fingerprint" aria-hidden="true"></i> Content Hash (MD5)</dt>
+            <dd class="mb-0"><code class="text-body-secondary"><%= @schema_version.content_hash %></code></dd>
           </div>
-        </div>
+        </dl>
       </div>
     </div>
 
     <!-- Actions -->
     <div class="mb-3">
-      <a href="<%= better_structure_sql.download_schema_version_path(@schema_version) %>"
+      <a href="<%= download_schema_version_path(@schema_version) %>"
          class="btn btn-primary btn-lg"
          data-turbo="false">
         <% if @schema_version.multi_file? %>
-          <i class="bi bi-file-zip"></i>
+          <i class="bi bi-file-zip" aria-hidden="true"></i>
           Download ZIP Archive
         <% else %>
-          <i class="bi bi-download"></i>
+          <i class="bi bi-download" aria-hidden="true"></i>
           Download File
         <% end %>
       </a>
       <% if @schema_version.content.present? %>
-        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="copyToClipboard()">
-          <i class="bi bi-clipboard"></i>
+        <button type="button" class="btn btn-outline-secondary btn-lg" data-copy-target="schema-content">
+          <i class="bi bi-clipboard" aria-hidden="true"></i>
           Copy to Clipboard
         </button>
+        <span class="visually-hidden" role="status" id="copy-status"></span>
       <% end %>
     </div>
 
     <!-- Multi-file Info -->
     <% if @schema_version.multi_file? %>
       <div class="alert alert-info mb-4">
-        <h6 class="alert-heading">
-          <i class="bi bi-info-circle"></i>
+        <h2 class="alert-heading h6">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
           Multi-File Schema
-        </h6>
+        </h2>
         <p class="mb-0">
-          This schema was generated in multi-file format with <%= @schema_version.file_count %> files across organized directories.
+          This schema was generated in multi-file format with <%= pluralize(@schema_version.file_count || 0, 'file') %> across organized directories.
           Download the ZIP archive to explore the directory structure and individual files.
         </p>
       </div>
@@ -146,27 +102,25 @@
     <!-- Schema Content -->
     <div class="card shadow-sm">
       <div class="card-header bg-light">
-        <h5 class="card-title mb-0">
-          <i class="bi bi-code-square"></i>
+        <h2 class="card-title h5 mb-0" id="schema-content-heading">
+          <i class="bi bi-code-square" aria-hidden="true"></i>
           Schema Content
           <% if @schema_version.multi_file? %>
-            <small class="text-muted">(combined from all files)</small>
+            <small class="text-body-secondary">(combined from all files)</small>
           <% end %>
-        </h5>
+        </h2>
       </div>
       <div class="card-body p-0">
         <% if @schema_version.content.present? %>
-          <pre class="code-block m-0" id="schema-content"><%= @schema_version.content %></pre>
+          <pre class="code-block m-0" id="schema-content" tabindex="0" role="region" aria-labelledby="schema-content-heading"><%= @schema_version.content %></pre>
         <% else %>
           <div class="alert alert-warning m-3">
-            <i class="bi bi-exclamation-triangle"></i>
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
             <strong>Content not loaded</strong>
             <p class="mb-0 mt-2">
-              <% if @schema_version.content_size && @schema_version.content_size > 1048576 %>
-                This schema file is too large to display in the browser (limit: 1 MB, actual size: <%= number_to_human_size(@schema_version.content_size) %>).
-              <% else %>
-                The schema content is not available for inline display.
-              <% end %>
+              This schema file is too large to display in the browser
+              (limit: <%= number_to_human_size(BetterStructureSql::SchemaVersionsController::MAX_DISPLAY_SIZE) %>,
+              actual size: <%= number_to_human_size(@schema_version.content_size) %>).
               Please use the "Download" button above to download and view it locally.
             </p>
           </div>
@@ -176,24 +130,23 @@
   </div>
 </div>
 
-<script>
-  function copyToClipboard() {
-    const content = document.getElementById('schema-content').textContent;
-    navigator.clipboard.writeText(content).then(function() {
-      // Show success feedback
-      const btn = event.target.closest('button');
-      const originalHTML = btn.innerHTML;
-      btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
-      btn.classList.remove('btn-outline-secondary');
-      btn.classList.add('btn-success');
+<% if @schema_version.content.present? %>
+  <%= javascript_tag nonce: true do %>
+    document.querySelector('[data-copy-target]').addEventListener('click', function (event) {
+      const button = event.currentTarget;
+      const status = document.getElementById('copy-status');
+      const content = document.getElementById(button.dataset.copyTarget).textContent;
 
-      setTimeout(function() {
-        btn.innerHTML = originalHTML;
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-outline-secondary');
-      }, 2000);
-    }, function(err) {
-      alert('Failed to copy to clipboard: ' + err);
+      navigator.clipboard.writeText(content).then(function () {
+        status.textContent = 'Schema copied to clipboard';
+        button.classList.replace('btn-outline-secondary', 'btn-success');
+        setTimeout(function () {
+          status.textContent = '';
+          button.classList.replace('btn-success', 'btn-outline-secondary');
+        }, 2000);
+      }, function (error) {
+        status.textContent = 'Failed to copy to clipboard: ' + error;
+      });
     });
-  }
-</script>
+  <% end %>
+<% end %>

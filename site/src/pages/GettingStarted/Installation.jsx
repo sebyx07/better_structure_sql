@@ -1,13 +1,14 @@
-import { Helmet } from 'react-helmet-async';
+import Seo from '../../components/Seo/Seo';
 import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function Installation() {
   return (
     <>
-      <Helmet>
-        <title>Installation - BetterStructureSql</title>
-      </Helmet>
+      <Seo
+        title="Installation"
+        description="Install the better_structure_sql gem in a Rails application with PostgreSQL, MySQL or SQLite."
+      />
 
       <div className="container py-5">
         <div className="row">
@@ -20,21 +21,26 @@ function Installation() {
 
             <div className="alert alert-info">
               <i className="bi bi-info-circle me-2" />
-              BetterStructureSql requires <strong>Rails 7.0+</strong> and <strong>Ruby 2.7+</strong>
+              The minimum Ruby and Rails versions are declared in the{' '}
+              <a href="https://github.com/sebyx07/better_structure_sql/blob/main/better_structure_sql.gemspec" className="alert-link" target="_blank" rel="noopener noreferrer">gemspec</a>;
+              the versions tested are in{' '}
+              <a href="https://github.com/sebyx07/better_structure_sql/blob/main/.github/workflows/ci.yml" className="alert-link" target="_blank" rel="noopener noreferrer">ci.yml</a>.
             </div>
 
             <section className="mb-5">
               <h2 className="mb-3">Step 1: Add to Gemfile</h2>
-              <p>Add BetterStructureSql and your database adapter to your Gemfile:</p>
+              <p>
+                Add BetterStructureSql to your Gemfile. The database adapter is detected from the
+                ActiveRecord connection:
+              </p>
 
               <CodeBlock language="ruby" filename="Gemfile">
-                {`# Database schema management
+                {`# Database schema management (depends on the pg gem)
 gem 'better_structure_sql'
 
-# Choose your database adapter:
-gem 'pg', '>= 1.0'         # For PostgreSQL 12+
-# gem 'mysql2', '>= 0.5'   # For MySQL 8.0+
-# gem 'sqlite3', '>= 1.4'  # For SQLite 3.35+`}
+# Only for MySQL / MariaDB or SQLite: the driver your app connects with
+# gem 'mysql2'    # or: gem 'trilogy'
+# gem 'sqlite3'`}
               </CodeBlock>
             </section>
 
@@ -47,7 +53,10 @@ gem 'pg', '>= 1.0'         # For PostgreSQL 12+
 
             <section className="mb-5">
               <h2 className="mb-3">Step 3: Run the Generator</h2>
-              <p>This creates the initializer and migration for schema versioning:</p>
+              <p>
+                This creates the initializer and the migration for schema versioning (pass{' '}
+                <code>--skip-migration</code> to skip the schema versions table):
+              </p>
               <CodeBlock language="bash">
                 rails generate better_structure_sql:install
               </CodeBlock>
@@ -105,7 +114,7 @@ gem 'pg', '>= 1.0'         # For PostgreSQL 12+
                         PostgreSQL
                       </h5>
                       <p className="card-text small">
-                        Full feature support including extensions, functions, triggers, and materialized views.
+                        Primary target: extensions, custom types, functions, triggers, and materialized views.
                       </p>
                       <Link to="/databases/postgresql" className="btn btn-sm btn-primary">
                         PostgreSQL Guide →
@@ -121,7 +130,7 @@ gem 'pg', '>= 1.0'         # For PostgreSQL 12+
                         MySQL
                       </h5>
                       <p className="card-text small">
-                        Stored procedures, triggers, and views support.
+                        Round-trip tested in CI with the mysql2 and trilogy drivers, MariaDB included. Stored procedures, triggers, views, CHECK constraints.
                       </p>
                       <Link to="/databases/mysql" className="btn btn-sm btn-warning">
                         MySQL Guide →
@@ -137,7 +146,7 @@ gem 'pg', '>= 1.0'         # For PostgreSQL 12+
                         SQLite
                       </h5>
                       <p className="card-text small">
-                        Lightweight schemas with triggers and CHECK constraints.
+                        Round-trip tested in CI. Tables, indexes and views are dumped exactly as they were created.
                       </p>
                       <Link to="/databases/sqlite" className="btn btn-sm btn-info">
                         SQLite Guide →

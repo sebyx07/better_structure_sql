@@ -1,16 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import Seo from '../components/Seo/Seo';
+import GEM_VERSION from '../version';
 
 function Home() {
   return (
     <>
-      <Helmet>
-        <title>BetterStructureSql - Use SQL Databases to the Fullest</title>
-        <meta
-          name="description"
-          content="Clean, maintainable database schema dumps for Rails. Support for PostgreSQL, MySQL, SQLite with advanced features like triggers, views, and functions."
-        />
-      </Helmet>
+      <Seo />
 
       {/* Hero Section */}
       <section className="hero text-center">
@@ -40,15 +35,15 @@ function Home() {
           <div className="mt-5 d-flex gap-3 justify-content-center flex-wrap">
             <Link to="/databases/postgresql" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
-              PostgreSQL 12+
+              PostgreSQL
             </Link>
             <Link to="/databases/mysql" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
-              MySQL 8.0+
+              MySQL / MariaDB
             </Link>
             <Link to="/databases/sqlite" className="badge bg-success fs-6 text-decoration-none">
               <i className="bi bi-check-circle me-1" />
-              SQLite 3.35+
+              SQLite
             </Link>
           </div>
         </div>
@@ -81,7 +76,7 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-git text-success fs-1" />
                   </div>
-                  <h5 className="card-title">Clean Git Diffs</h5>
+                  <h3 className="card-title h5">Clean Git Diffs</h3>
                   <p className="card-text">
                     Only actual schema changes show up in version control. No noise from
                     version-specific comments or metadata.
@@ -96,10 +91,10 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-database text-primary fs-1" />
                   </div>
-                  <h5 className="card-title">Multi-Database Support</h5>
+                  <h3 className="card-title h5">Multi-Database Support</h3>
                   <p className="card-text">
-                    Single gem supports PostgreSQL, MySQL, and SQLite with automatic adapter
-                    detection and database-specific optimizations.
+                    PostgreSQL is the primary target. MySQL, MariaDB and SQLite dumps are
+                    round-trip tested in CI, with automatic adapter detection.
                   </p>
                 </div>
               </div>
@@ -111,7 +106,7 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-archive text-warning fs-1" />
                   </div>
-                  <h5 className="card-title">Schema Versioning</h5>
+                  <h3 className="card-title h5">Schema Versioning</h3>
                   <p className="card-text">
                     Store schema versions in your database with automatic retention management.
                     Perfect for production transparency.
@@ -126,9 +121,9 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-folder text-info fs-1" />
                   </div>
-                  <h5 className="card-title">Multi-File Output</h5>
+                  <h3 className="card-title h5">Multi-File Output</h3>
                   <p className="card-text">
-                    Handle massive schemas (50,000+ tables) with organized directories. AI-friendly
+                    Split massive schemas into organized, numbered directories. AI-friendly
                     500-line chunks instead of 10,000+ line files.
                   </p>
                 </div>
@@ -141,10 +136,11 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-code-slash text-danger fs-1" />
                   </div>
-                  <h5 className="card-title">Advanced Features</h5>
+                  <h3 className="card-title h5">Advanced Features</h3>
                   <p className="card-text">
-                    Full support for triggers, views, functions, materialized views, extensions,
-                    and custom types across all databases.
+                    Triggers, views and functions, plus PostgreSQL extensions, custom types,
+                    domains, sequences, materialized views, partitioned tables and table
+                    inheritance.
                   </p>
                 </div>
               </div>
@@ -156,7 +152,7 @@ function Home() {
                   <div className="mb-3">
                     <i className="bi bi-lightning-charge text-success fs-1" />
                   </div>
-                  <h5 className="card-title">No External Tools</h5>
+                  <h3 className="card-title h5">No External Tools</h3>
                   <p className="card-text">
                     Pure Ruby implementation. No pg_dump, mysqldump, or sqlite3 CLI required.
                     Works anywhere Rails runs.
@@ -200,9 +196,7 @@ function Home() {
             <div className="col-lg-6">
               <div className="card bg-secondary">
                 <div className="card-body">
-                  <h6 className="text-monospace small text-muted">
-                    db/schema/ (Multi-File Output)
-                  </h6>
+                  <p className="text-monospace small mb-2">db/schema/ (Multi-File Output)</p>
                   <pre className="text-light mb-0">
                     {`├── 01_extensions/
 │   └── 000001.sql
@@ -242,7 +236,7 @@ rails generate better_structure_sql:install
 # Dump your schema
 rails db:schema:dump_better
 
-# Clean structure.sql ready! 🎉`}
+# Clean structure.sql ready!`}
                   </pre>
                 </div>
               </div>
@@ -256,18 +250,19 @@ rails db:schema:dump_better
         </div>
       </section>
 
-      {/* Beta Notice */}
-      <section className="py-4 bg-warning text-dark">
+      {/* Project Status */}
+      <section className="py-4 bg-dark">
         <div className="container">
           <div className="row">
             <div className="col-lg-8 mx-auto text-center">
-              <h5 className="mb-2">
-                <i className="bi bi-exclamation-triangle me-2" />
-                Beta Version 0.2.2
-              </h5>
+              <h2 className="h5 mb-2">
+                <i className="bi bi-info-circle me-2" />
+                Version {GEM_VERSION}
+              </h2>
               <p className="mb-0">
-                This gem is currently in beta. APIs may change before v1.0. We welcome your
-                feedback and contributions!
+                PostgreSQL is the primary target. MySQL, MariaDB and SQLite dumps are round-trip tested in CI.
+                Feedback and contributions are welcome on{' '}
+                <a href="https://github.com/sebyx07/better_structure_sql/issues">GitHub</a>.
               </p>
             </div>
           </div>

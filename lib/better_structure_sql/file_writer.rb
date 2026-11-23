@@ -1,9 +1,36 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/file/atomic'
+
 module BetterStructureSql
   # Handles writing schema output to either a single file or multiple files
   # with intelligent chunking based on line count limits.
   class FileWriter
+    HEADER_FILENAME = '_header.sql'
+    MANIFEST_FILENAME = '_manifest.json'
+    OBJECT_SEPARATOR = "\n\n"
+    SEPARATOR_LINES = 1
+
+    # Section => directory. Order is CRITICAL for schema loading, it respects the dependency chain:
+    # extensions -> types -> functions -> sequences -> tables -> indexes/fks -> views -> triggers -> migrations
+    SECTION_DIRECTORIES = {
+      extensions: '01_extensions',     # Must be first (enable features)
+      types: '02_types',               # Enums, composites, ranges, domains that need no function
+      functions: '03_functions',       # Plus the types that need a function (dependency-ordered)
+      sequences: '04_sequences',       # Before tables that use them
+      tables: '05_tables',             # Core schema
+      indexes: '06_indexes',           # After tables exist
+      foreign_keys: '07_foreign_keys', # After all tables exist
+      views: '08_views',               # After tables (may use functions)
+      materialized_views: '08_views',  # Bundled with views
+      triggers: '09_triggers',         # After tables and functions
+      comments: '10_comments',         # After all objects are created
+      migrations: '20_migrations'      # Last (schema_migrations INSERT)
+    }.freeze
+
+    # Matches every numbered section directory, including ones no longer written
+    SECTION_DIRECTORY_GLOB = '[0-9]*_*'
+
     attr_reader :config
 
     def initialize(config = BetterStructureSql.configuration)
@@ -28,147 +55,131 @@ module BetterStructureSql
     def write_single_file(path, content)
       full_path = Rails.root.join(path)
       FileUtils.mkdir_p(File.dirname(full_path))
-      File.write(full_path, content)
+      atomic_write(full_path, content)
     end
 
     # Write schema sections to multiple files with chunking
+    #
+    # Files left over from a previous, larger dump are removed so the directory
+    # always mirrors the current schema (the loader executes every SQL file it finds).
+    #
     # @param base_path [String] The base directory path
     # @param sections [Hash] Hash of section_name => array of SQL strings
-    # @param header [String] The header content (SET statements, etc.)
+    # @param header [String, nil] The header content (SET statements, etc.)
+    # @return [Hash<String, String>] Map of relative file path => content
     def write_multi_file(base_path, sections, header)
       full_base_path = Rails.root.join(base_path)
       FileUtils.mkdir_p(full_base_path)
 
-      # Write header file
-      write_chunk(full_base_path, '_header.sql', header)
-
-      # Define section order with directory prefixes
-      # Order CRITICAL for schema loading - respects dependency chain:
-      # extensions -> types/domains -> functions -> sequences -> tables -> indexes/fks -> views -> triggers -> migrations
-      section_order = {
-        extensions: '01_extensions',     # Must be first (enable features)
-        types: '02_types',               # Before domains and tables
-        domains: '02_types',             # Bundled with types (domains are custom types)
-        functions: '03_functions',       # Before triggers that call them
-        sequences: '04_sequences',       # Before tables that use them
-        tables: '05_tables',             # Core schema
-        indexes: '06_indexes',           # After tables exist
-        foreign_keys: '07_foreign_keys', # After all tables exist
-        views: '08_views',               # After tables (may use functions)
-        materialized_views: '08_views',  # Bundled with views
-        triggers: '09_triggers',         # After tables and functions
-        comments: '10_comments',         # After all objects are created
-        migrations: '20_migrations'      # Last (schema_migrations INSERT)
-      }
+      atomic_write(full_base_path.join(HEADER_FILENAME), header.to_s)
 
       file_map = {}
-      directory_file_counters = Hash.new(0) # Track file numbers per directory
-
-      # Group sections by directory to handle shared directories correctly
-      sections_by_directory = {}
-      section_order.each do |section_key, directory_name|
-        next unless sections.key?(section_key)
-
-        section_content = sections[section_key]
-        next if section_content.blank?
-
-        sections_by_directory[directory_name] ||= []
-        sections_by_directory[directory_name].concat(section_content)
+      group_sections_by_directory(sections).each do |directory_name, objects|
+        file_map.merge!(write_directory(full_base_path, directory_name, objects))
       end
 
-      # Process each directory (with merged content from multiple sections)
-      sections_by_directory.each do |directory_name, merged_content|
-        # Create directory
-        section_dir = full_base_path.join(directory_name)
-        FileUtils.mkdir_p(section_dir)
-
-        # Chunk the merged content and write files
-        chunks = chunk_section(merged_content, config.max_lines_per_file)
-        chunks.each do |chunk|
-          # Increment counter for this directory
-          directory_file_counters[directory_name] += 1
-          filename = format_filename(directory_file_counters[directory_name])
-          file_path = section_dir.join(filename)
-          content = chunk.join("\n\n")
-          File.write(file_path, "#{content}\n")
-
-          # Track in file map for manifest
-          relative_path = "#{directory_name}/#{filename}"
-          file_map[relative_path] = content
-        end
-      end
-
+      remove_stale_files(full_base_path, file_map)
       file_map
+    end
+
+    # Write the manifest file, or remove a leftover one when content is nil
+    # @param base_path [String] The base directory path
+    # @param content [String, nil] Manifest JSON
+    def write_manifest(base_path, content)
+      manifest_path = Rails.root.join(base_path, MANIFEST_FILENAME)
+      return FileUtils.rm_f(manifest_path) if content.nil?
+
+      atomic_write(manifest_path, content)
     end
 
     private
 
+    # Merge section contents that share a directory, preserving load order
+    # @param sections [Hash] Hash of section_name => array of SQL strings
+    # @return [Hash<String, Array<String>>] Directory name => SQL strings
+    def group_sections_by_directory(sections)
+      SECTION_DIRECTORIES.each_with_object({}) do |(section_key, directory_name), grouped|
+        section_content = sections[section_key]
+        next if section_content.blank?
+
+        (grouped[directory_name] ||= []).concat(section_content)
+      end
+    end
+
+    # Chunk and write all objects of one directory
+    # @return [Hash<String, String>] Map of relative file path => content
+    def write_directory(full_base_path, directory_name, objects)
+      section_dir = full_base_path.join(directory_name)
+      FileUtils.mkdir_p(section_dir)
+
+      chunks = chunk_section(objects, config.max_lines_per_file)
+      chunks.each_with_index.to_h do |chunk, index|
+        filename = format_filename(index + 1)
+        content = chunk.join(OBJECT_SEPARATOR)
+        atomic_write(section_dir.join(filename), "#{content}\n")
+
+        ["#{directory_name}/#{filename}", content]
+      end
+    end
+
+    # Remove SQL files (and emptied section directories) that the current dump did not write
+    def remove_stale_files(full_base_path, file_map)
+      Dir.glob(full_base_path.join(SECTION_DIRECTORY_GLOB).to_s).each do |section_dir|
+        next unless File.directory?(section_dir)
+
+        Dir.glob(File.join(section_dir, '*.sql')).each do |file_path|
+          relative_path = "#{File.basename(section_dir)}/#{File.basename(file_path)}"
+          File.delete(file_path) unless file_map.key?(relative_path)
+        end
+
+        Dir.rmdir(section_dir) if Dir.empty?(section_dir)
+      end
+    end
+
     # Chunk an array of SQL strings into file-sized groups
-    # Each chunk respects max_lines_per_file with overflow_threshold
+    # Each chunk respects max_lines_per_file with overflow_threshold, counting
+    # the blank line that separates objects in the written file.
     # Single objects larger than max_lines get their own file
     #
     # @param objects [Array<String>] Array of SQL strings
     # @param max_lines [Integer] Maximum lines per file
     # @return [Array<Array<String>>] Array of chunks, each chunk is array of SQL strings
     def chunk_section(objects, max_lines)
-      return [] if objects.empty?
-
-      chunks = []
-      current_chunk = []
-      current_lines = 0
       max_with_overflow = (max_lines * config.overflow_threshold).to_i
+      chunks = []
+      current_lines = 0
 
       objects.each do |object|
-        object_lines = object.lines.count
+        object_lines = line_count(object)
+        lines_if_added = current_lines + SEPARATOR_LINES + object_lines
 
-        # If this single object exceeds max_lines, give it a dedicated file
-        if object_lines > max_lines
-          # Flush current chunk if it has content
-          chunks << current_chunk unless current_chunk.empty?
-
-          # Single object in its own chunk
+        if chunks.empty? || start_new_chunk?(current_lines, lines_if_added, max_lines, max_with_overflow)
           chunks << [object]
-
-          # Reset for next chunk
-          current_chunk = []
-          current_lines = 0
-          next
-        end
-
-        # Decide whether to start a new chunk
-        # If current chunk is already at max_lines, definitely start new chunk
-        # If current chunk is under max_lines but adding this would exceed overflow, start new chunk
-        # Otherwise, add to current chunk (even if it puts us slightly over max_lines, up to overflow threshold)
-        if current_lines >= max_lines
-          # Current chunk is full, start new one
-          chunks << current_chunk unless current_chunk.empty?
-          current_chunk = [object]
-          current_lines = object_lines
-        elsif current_lines.positive? && (current_lines + object_lines) > max_with_overflow
-          # Adding this would exceed overflow threshold, start new chunk
-          chunks << current_chunk
-          current_chunk = [object]
           current_lines = object_lines
         else
-          # Add to current chunk (may go slightly over max_lines, within overflow)
-          current_chunk << object
-          current_lines += object_lines
+          chunks.last << object
+          current_lines = lines_if_added
         end
       end
-
-      # Don't forget the last chunk
-      chunks << current_chunk unless current_chunk.empty?
 
       chunks
     end
 
-    # Write a single chunk file
-    # @param directory [Pathname] The directory path
-    # @param filename [String] The filename
+    # A chunk is closed once it is full, or when the next object would push it past the overflow limit
+    def start_new_chunk?(current_lines, lines_if_added, max_lines, max_with_overflow)
+      current_lines >= max_lines || lines_if_added > max_with_overflow
+    end
+
+    # Number of lines an object occupies in the written file
+    def line_count(object)
+      object.chomp.count("\n") + 1
+    end
+
+    # Write a file so readers never observe a partially written dump
+    # @param path [Pathname, String] The destination path
     # @param content [String] The file content
-    def write_chunk(directory, filename, content)
-      file_path = directory.join(filename)
-      File.write(file_path, content)
+    def atomic_write(path, content)
+      File.atomic_write(path.to_s, File.dirname(path)) { |file| file.write(content) }
     end
 
     # Generate zero-padded filename

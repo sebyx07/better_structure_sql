@@ -1,0 +1,10 @@
+{
+  "repo": "sebyx07/better_structure_sql",
+  "merge": {
+    "reviewGate": "ci-only",
+    "standingAuthorization": true
+  },
+  "policy": {
+    "defaultTier": "GREEN"
+  }
+}

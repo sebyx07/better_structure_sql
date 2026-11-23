@@ -39,22 +39,29 @@ This is a minimal Rails application for testing BetterStructureSql with **SQLite
 ```bash
 cd integration_sqlite
 bundle install
-bundle exec rails db:create db:migrate
-bundle exec rails db:schema:dump
+bundle exec rake db:create db:migrate
 ```
 
 ### Testing
 
 ```bash
-# Dump schema
-bundle exec rails db:schema:dump
+# Round trip: dump development, load the dump into a freshly purged test
+# database, dump again. Fails unless both dumps are byte-identical and
+# sqlite_master holds the same SQL in both databases.
+bundle exec rake bss:round_trip
+ROUND_TRIP_LAYOUT=multi_file bundle exec rake bss:round_trip   # same, with the directory layout
 
-# Store version
-bundle exec rails db:schema:save
-
-# List versions
-bundle exec rails db:schema:versions
+# Dump, store and list versions
+bundle exec rake db:schema:dump_better
+bundle exec rake db:schema:store
+bundle exec rake db:schema:versions
 ```
+
+`db/migrate/20250201000001_create_sqlite_feature_showcase.rb` holds the DDL the
+round trip must preserve (AUTOINCREMENT, WITHOUT ROWID, STRICT, generated
+columns, collations, CHECK constraints, composite inline foreign keys, partial
+and expression indexes). Tables, indexes and views are dumped exactly as
+SQLite stores them in `sqlite_master`. Outputs land in `tmp/round_trip/`.
 
 ## SQLite Type Affinities
 

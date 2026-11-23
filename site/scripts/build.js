@@ -1,34 +1,20 @@
 import * as esbuild from 'esbuild';
 import { htmlPlugin } from '@craftamap/esbuild-plugin-html';
-import { readFileSync } from 'fs';
+import { copyFileSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { sharedOptions, STATIC_FILES } from './esbuild.shared.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const OUT_DIR = 'dist';
 
-esbuild
-  .build({
-    entryPoints: ['src/main.jsx'],
-    bundle: true,
-    minify: isProduction,
-    splitting: true,
-    format: 'esm',
+rmSync(OUT_DIR, { recursive: true, force: true });
+
+try {
+  await esbuild.build({
+    ...sharedOptions,
+    minify: true,
     target: ['es2020'],
-    outdir: 'dist',
+    outdir: OUT_DIR,
     publicPath: '/better_structure_sql',
     metafile: true,
-    jsx: 'automatic',
-    loader: {
-      '.js': 'jsx',
-      '.jsx': 'jsx',
-      '.css': 'css',
-      '.svg': 'file',
-      '.png': 'file',
-      '.jpg': 'file',
-      '.ico': 'file',
-      '.woff': 'file',
-      '.woff2': 'file',
-      '.ttf': 'file',
-      '.eot': 'file',
-    },
     plugins: [
       htmlPlugin({
         files: [
@@ -41,17 +27,16 @@ esbuild
         ],
       }),
     ],
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(
-        process.env.NODE_ENV || 'production'
-      ),
-    },
+    define: { ...sharedOptions.define, 'process.env.NODE_ENV': '"production"' },
     logLevel: 'info',
-  })
-  .then(() => {
-    console.log('✅ Build completed successfully!');
-  })
-  .catch(() => {
-    console.error('❌ Build failed');
-    process.exit(1);
   });
+
+  STATIC_FILES.forEach((file) => copyFileSync(`public/${file}`, `${OUT_DIR}/${file}`));
+  // GitHub Pages must not run the output through Jekyll
+  writeFileSync(`${OUT_DIR}/.nojekyll`, '');
+
+  console.log('Build completed successfully');
+} catch (error) {
+  console.error('Build failed:', error.message);
+  process.exit(1);
+}

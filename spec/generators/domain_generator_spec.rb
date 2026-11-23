@@ -12,11 +12,11 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
           name: 'positive_integer',
           schema: 'public',
           base_type: 'integer',
-          constraint: nil
+          constraints: []
         }
         result = generator.generate(domain)
 
-        expect(result).to eq('CREATE DOMAIN positive_integer AS integer;')
+        expect(result).to eq('CREATE DOMAIN "positive_integer" AS integer;')
       end
     end
 
@@ -26,12 +26,13 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
           name: 'email',
           schema: 'public',
           base_type: 'character varying(255)',
-          constraint: "CHECK ((VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$'::text))"
+          constraints: [
+            { name: 'email_check', definition: "CHECK ((VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}$'::text))" }
+          ]
         }
         result = generator.generate(domain)
 
-        expect(result).to include('CREATE DOMAIN email AS character varying(255)')
-        expect(result).to include('CHECK')
+        expect(result).to include('CREATE DOMAIN "email" AS character varying(255) CONSTRAINT "email_check" CHECK')
         expect(result).to end_with(';')
       end
     end
@@ -42,25 +43,34 @@ RSpec.describe BetterStructureSql::Generators::DomainGenerator do
           name: 'positive_number',
           schema: 'custom',
           base_type: 'numeric',
-          constraint: 'CHECK ((VALUE > (0)::numeric))'
+          constraints: [{ name: 'positive_number_check', definition: 'CHECK ((VALUE > (0)::numeric))' }]
         }
         result = generator.generate(domain)
 
-        expect(result).to start_with('CREATE DOMAIN custom.positive_number')
+        expect(result).to start_with('CREATE DOMAIN "custom"."positive_number"')
       end
     end
 
-    context 'when constraint is empty string' do
-      it 'generates without constraint' do
+    context 'when domain has a default, NOT NULL and several constraints' do
+      it 'keeps every part in order' do
         domain = {
-          name: 'simple_domain',
+          name: 'email',
           schema: 'public',
           base_type: 'text',
-          constraint: ''
+          default: "'nobody@example.com'::text",
+          not_null: true,
+          constraints: [
+            { name: 'email_has_at', definition: "CHECK ((VALUE ~ '@'::text))" },
+            { name: 'email_not_blank', definition: "CHECK ((VALUE <> ''::text))" }
+          ]
         }
         result = generator.generate(domain)
 
-        expect(result).to eq('CREATE DOMAIN simple_domain AS text;')
+        expect(result).to eq(
+          "CREATE DOMAIN \"email\" AS text DEFAULT 'nobody@example.com'::text NOT NULL " \
+          "CONSTRAINT \"email_has_at\" CHECK ((VALUE ~ '@'::text)) " \
+          "CONSTRAINT \"email_not_blank\" CHECK ((VALUE <> ''::text));"
+        )
       end
     end
   end

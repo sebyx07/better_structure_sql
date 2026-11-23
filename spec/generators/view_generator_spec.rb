@@ -15,7 +15,7 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE OR REPLACE VIEW active_users AS\nSELECT * FROM users WHERE active = true;")
+        expect(result).to eq("CREATE OR REPLACE VIEW \"active_users\" AS\nSELECT * FROM users WHERE active = true;")
       end
     end
 
@@ -28,7 +28,16 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE OR REPLACE VIEW analytics.user_stats AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
+        expect(result).to eq("CREATE OR REPLACE VIEW \"analytics\".\"user_stats\" AS\nSELECT user_id, COUNT(*) FROM events GROUP BY user_id;")
+      end
+    end
+
+    context 'when the original CREATE VIEW statement is known (SQLite)' do
+      it 'replays it instead of CREATE OR REPLACE VIEW, which SQLite rejects' do
+        view = { name: 'active users', schema: 'main', definition: 'SELECT id FROM users',
+                 sql: 'CREATE VIEW "active users" AS SELECT id FROM users' }
+
+        expect(generator.generate(view)).to eq('CREATE VIEW "active users" AS SELECT id FROM users;')
       end
     end
 
@@ -41,7 +50,7 @@ RSpec.describe BetterStructureSql::Generators::ViewGenerator do
         }
         result = generator.generate(view)
 
-        expect(result).to eq("CREATE OR REPLACE VIEW simple_view AS\nSELECT 1;")
+        expect(result).to eq("CREATE OR REPLACE VIEW \"simple_view\" AS\nSELECT 1;")
       end
     end
   end

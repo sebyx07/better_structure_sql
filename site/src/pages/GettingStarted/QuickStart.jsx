@@ -1,13 +1,14 @@
-import { Helmet } from 'react-helmet-async';
+import Seo from '../../components/Seo/Seo';
 import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
 
 function QuickStart() {
   return (
     <>
-      <Helmet>
-        <title>Quick Start - BetterStructureSql</title>
-      </Helmet>
+      <Seo
+        title="Quick Start"
+        description="Generate your first clean structure.sql with BetterStructureSql in five minutes."
+      />
 
       <div className="container py-5">
         <div className="row">
@@ -27,8 +28,7 @@ function QuickStart() {
               <h2 className="mb-3">1. Install the Gem</h2>
               <CodeBlock language="bash">
                 {`# Add to Gemfile
-gem 'better_structure_sql'
-gem 'pg'  # or mysql2 or sqlite3
+gem 'better_structure_sql'  # add mysql2 / trilogy or sqlite3 for MySQL or SQLite
 
 bundle install`}
               </CodeBlock>

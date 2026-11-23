@@ -1,10 +1,24 @@
+CREATE FULLTEXT INDEX `ft_accounts_bio` ON `accounts` (`bio`);
+
+CREATE INDEX `idx_accounts_lower_note` ON `accounts` ((lower(`note`)));
+
+CREATE INDEX `idx_accounts_note_prefix` ON `accounts` (`note`(10));
+
+CREATE INDEX `idx_accounts_price_desc` ON `accounts` (`price` DESC, `quantity`);
+
+CREATE UNIQUE INDEX `uq_accounts_region_code` ON `accounts` (`region`, `code`);
+
 CREATE INDEX `index_better_structure_sql_schema_versions_on_content_hash` ON `better_structure_sql_schema_versions` (`content_hash`);
 
-CREATE INDEX `index_better_structure_sql_schema_versions_on_created_at` ON `better_structure_sql_schema_versions` (`created_at`);
+CREATE INDEX `index_better_structure_sql_schema_versions_on_created_at` ON `better_structure_sql_schema_versions` (`created_at` DESC);
 
 CREATE INDEX `index_better_structure_sql_schema_versions_on_output_mode` ON `better_structure_sql_schema_versions` (`output_mode`);
 
 CREATE UNIQUE INDEX `index_categories_on_slug` ON `categories` (`slug`);
+
+CREATE INDEX `fk_entries_account` ON `entries` (`account_id`);
+
+CREATE INDEX `fk_entries_region_code` ON `entries` (`region`, `code`);
 
 CREATE INDEX `index_order_items_on_order_id` ON `order_items` (`order_id`);
 

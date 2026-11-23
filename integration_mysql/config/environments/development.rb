@@ -39,8 +39,10 @@ Rails.application.configure do
   # Highlight code that triggered database queries in logs.
   config.active_record.verbose_query_logs = true
 
-  # Append comments with runtime information tags to SQL queries in logs.
-  config.active_record.query_log_tags_enabled = true
+  # Query log tags stay off: MySQL stores the appended /*application=...*/
+  # comment inside routine and trigger bodies created through ActiveRecord,
+  # which would leak into every schema dump.
+  config.active_record.query_log_tags_enabled = false
 
   # Highlight code that triggered redirect in logs.
   config.action_dispatch.verbose_redirect_logs = true

@@ -79,99 +79,138 @@ RSpec.describe BetterStructureSql::Adapters::PostgresqlAdapter do
     end
 
     describe '#fetch_tables' do
-      it 'queries for tables and their metadata' do
-        # Mock the main tables query
-        tables_result = [{ 'table_name' => 'users', 'table_schema' => 'public' }]
-
-        # Mock the quote method
-        allow(connection).to receive(:quote).with('users').and_return("'users'")
-        allow(connection).to receive(:execute).and_return(tables_result)
-
-        # Mock the batched columns query
+      it 'combines batched columns, constraints and owned sequences' do
+        tables_result = [
+          { 'oid' => 1, 'table_name' => 'users', 'table_schema' => 'public', 'partition' => false,
+            'partition_key' => nil, 'partition_bound' => nil, 'parent_name' => nil }
+        ]
         columns_result = [
-          {
-            'table_name' => 'users',
-            'column_name' => 'id',
-            'data_type' => 'bigint',
-            'column_default' => nil,
-            'is_nullable' => 'NO',
-            'character_maximum_length' => nil,
-            'numeric_precision' => 64,
-            'numeric_scale' => 0,
-            'udt_name' => 'int8',
-            'ordinal_position' => 1
-          }
+          { 'table_oid' => 1, 'column_name' => 'id', 'data_type' => 'integer',
+            'expression' => "nextval('users_id_seq'::regclass)", 'nullable' => false, 'identity' => '',
+            'generated' => '', 'collation' => nil },
+          { 'table_oid' => 1, 'column_name' => 'name', 'data_type' => 'character varying(50)[]',
+            'expression' => nil, 'nullable' => true, 'identity' => '', 'generated' => '', 'collation' => '"C"' },
+          { 'table_oid' => 1, 'column_name' => 'seen_at', 'data_type' => 'timestamp(6) with time zone',
+            'expression' => nil, 'nullable' => true, 'identity' => '', 'generated' => '', 'collation' => nil }
         ]
-
-        # Mock the batched primary key query
-        pk_result = [
-          {
-            'table_name' => 'users',
-            'column_name' => 'id',
-            'column_position' => 1
-          }
+        constraints_result = [
+          { 'table_oid' => 1, 'name' => 'users_pkey', 'definition' => 'PRIMARY KEY (id, "a,b")', 'type' => 'p',
+            'validated' => true, 'columns' => '["id", "a,b"]' },
+          { 'table_oid' => 1, 'name' => 'name_check', 'definition' => 'CHECK (true) NOT VALID', 'type' => 'c',
+            'validated' => false, 'columns' => nil }
         ]
+        sequences_result = [{ 'table_oid' => 1, 'sequence_name' => 'users_id_seq', 'column_name' => 'id' }]
+        allow(connection).to receive(:select_all)
+          .and_return(tables_result, columns_result, constraints_result, sequences_result)
 
-        # Mock the batched constraints query
-        constraints_result = []
+        table = adapter.fetch_tables(connection).first
 
-        allow(connection).to receive(:select_all).and_return(columns_result, pk_result, constraints_result)
+        expect(table).to include(name: 'users', primary_key: ['id', 'a,b'], primary_key_name: 'users_pkey',
+                                 owned_sequences: [{ sequence: 'users_id_seq', column: 'id' }], partitions: [])
+        expect(table[:columns].pluck(:type)).to eq(%w[integer varchar(50)[] timestamptz(6)])
+        expect(table[:columns][1]).to include(collation: '"C"', identity: nil, generated: nil)
+        expect(table[:constraints]).to eq([
+          { name: 'name_check', definition: 'CHECK (true) NOT VALID', type: :check, validated: false, columns: [] }
+        ])
+      end
+
+      it 'keeps only the locally defined columns, persistence and storage parameters of an inheritance child' do
+        tables_result = [
+          { 'oid' => 2, 'table_name' => 'cars', 'table_schema' => 'public', 'partition' => false,
+            'unlogged' => true, 'storage_parameters' => 'fillfactor=70', 'inherits' => '["vehicles", "a,b"]' }
+        ]
+        columns_result = [
+          { 'table_oid' => 2, 'column_name' => 'id', 'data_type' => 'integer', 'nullable' => false, 'identity' => '',
+            'generated' => '', 'local' => false },
+          { 'table_oid' => 2, 'column_name' => 'doors', 'data_type' => 'integer', 'nullable' => true, 'identity' => '',
+            'generated' => '', 'local' => true }
+        ]
+        allow(connection).to receive(:select_all).and_return(tables_result, columns_result, [], [])
+
+        table = adapter.fetch_tables(connection).first
+
+        expect(table).to include(unlogged: true, storage_parameters: 'fillfactor=70', inherits: ['vehicles', 'a,b'])
+        expect(table[:columns]).to eq([
+          { name: 'doors', type: 'integer', default: nil, nullable: true, collation: nil,
+            generated: nil, identity: nil }
+        ])
+      end
+
+      it 'maps identity and generated columns' do
+        tables_result = [{ 'oid' => 1, 'table_name' => 't', 'table_schema' => 'public', 'partition' => false }]
+        columns_result = [
+          { 'table_oid' => 1, 'column_name' => 'id', 'data_type' => 'bigint', 'expression' => nil,
+            'nullable' => false, 'identity' => 'd', 'generated' => '', 'seqstart' => 5, 'seqincrement' => 1,
+            'seqmin' => 1, 'seqmax' => 100, 'seqcache' => 1, 'seqcycle' => false },
+          { 'table_oid' => 1, 'column_name' => 'total', 'data_type' => 'integer', 'expression' => '(a + b)',
+            'nullable' => true, 'identity' => '', 'generated' => 's' }
+        ]
+        allow(connection).to receive(:select_all).and_return(tables_result, columns_result, [], [])
+
+        id, total = adapter.fetch_tables(connection).first[:columns]
+
+        expect(id[:identity]).to eq(generation: 'BY DEFAULT', start_value: 5, increment: 1, min_value: 1,
+                                    max_value: 100, cache_size: 1, cycle: false)
+        expect(total).to include(default: nil, generated: { expression: '(a + b)', kind: 'STORED' })
+      end
+
+      it 'nests partitions under their parent table' do
+        tables_result = [
+          { 'oid' => 1, 'table_name' => 'events', 'table_schema' => 'public', 'partition' => false,
+            'partition_key' => 'RANGE (day)', 'partition_bound' => nil, 'parent_name' => nil },
+          { 'oid' => 2, 'table_name' => 'a_events_2024', 'table_schema' => 'public', 'partition' => true,
+            'partition_key' => nil, 'partition_bound' => 'DEFAULT', 'parent_name' => 'events' }
+        ]
+        allow(connection).to receive(:select_all).and_return(tables_result, [], [], [])
 
         tables = adapter.fetch_tables(connection)
-        expect(tables).to be_an(Array)
-        expect(tables.first[:name]).to eq('users')
-        expect(tables.first[:columns]).to be_an(Array)
-        expect(tables.first[:columns].first[:name]).to eq('id')
-        expect(tables.first[:primary_key]).to eq(['id'])
-        expect(tables.first[:constraints]).to be_an(Array)
+
+        expect(tables.pluck(:name)).to eq(['events'])
+        expect(tables.first[:partitions].map { |t| t.slice(:name, :partition_of, :partition_bound) })
+          .to eq([{ name: 'a_events_2024', partition_of: 'events', partition_bound: 'DEFAULT' }])
       end
     end
 
     describe '#fetch_views' do
-      it 'returns array of view hashes' do
-        result = [
-          {
-            'schemaname' => 'public',
-            'viewname' => 'active_users',
-            'definition' => 'SELECT * FROM users WHERE active = true'
-          }
+      it 'orders views after the views they select from' do
+        views_result = [
+          { 'schema_name' => 'public', 'name' => 'a_view', 'definition' => 'SELECT * FROM b_view', 'options' => nil },
+          { 'schema_name' => 'public', 'name' => 'b_view', 'definition' => 'SELECT 1', 'options' => 'security_barrier=true' }
         ]
-
-        allow(connection).to receive(:execute).and_return(result)
+        dependencies_result = [{ 'name' => 'a_view', 'depends_on' => 'b_view' }]
+        allow(connection).to receive(:select_all).and_return(views_result, dependencies_result)
 
         views = adapter.fetch_views(connection)
-        expect(views).to eq([
-          {
-            schema: 'public',
-            name: 'active_users',
-            definition: 'SELECT * FROM users WHERE active = true'
-          }
-        ])
+
+        expect(views.pluck(:name)).to eq(%w[b_view a_view])
+        expect(views.first).to eq(schema: 'public', name: 'b_view', definition: 'SELECT 1', options: 'security_barrier=true')
       end
     end
 
     describe '#fetch_materialized_views' do
-      it 'returns array of materialized view hashes with indexes' do
+      it 'attaches indexes and comments' do
+        indexes_result = [{ 'matview_name' => 'user_stats', 'indexdef' => 'CREATE INDEX i ON public.user_stats USING btree (n)' }]
+        comments_result = [{ 'name' => 'user_stats', 'comment' => 'Stats' }]
+        matviews_result = [{ 'schema_name' => 'public', 'name' => 'user_stats', 'definition' => 'SELECT 1 AS n' }]
+        allow(connection).to receive(:select_all).and_return(indexes_result, comments_result, matviews_result, [])
+
+        matview = adapter.fetch_materialized_views(connection).first
+
+        expect(matview).to include(name: 'user_stats', comment: 'Stats',
+                                   indexes: ['CREATE INDEX i ON public.user_stats USING btree (n)'])
+      end
+    end
+
+    describe '#fetch_indexes' do
+      it 'creates indexes of partitioned tables on every partition' do
         result = [
-          {
-            'schemaname' => 'public',
-            'matviewname' => 'user_stats',
-            'definition' => 'SELECT COUNT(*) FROM users'
-          }
+          { 'schemaname' => 'public', 'tablename' => 'events', 'indexname' => 'idx', 'partitioned' => true,
+            'indexdef' => 'CREATE INDEX idx ON ONLY public.events USING gin (payload)' }
         ]
+        allow(connection).to receive(:select_all).and_return(result)
 
-        # Mock the main matviews query
-
-        # Mock the quote method
-
-        # Mock the indexes query for the materialized view
-        indexes_result = double
-        allow(indexes_result).to receive(:pluck).with('indexdef').and_return([])
-        allow(connection).to receive_messages(execute: result, quote: "'user_stats'", select_all: indexes_result)
-
-        matviews = adapter.fetch_materialized_views(connection)
-        expect(matviews.first[:name]).to eq('user_stats')
-        expect(matviews.first[:indexes]).to eq([])
+        expect(adapter.fetch_indexes(connection).first[:definition])
+          .to eq('CREATE INDEX idx ON public.events USING gin (payload)')
       end
     end
 
@@ -181,6 +220,7 @@ RSpec.describe BetterStructureSql::Adapters::PostgresqlAdapter do
           {
             'sequencename' => 'users_id_seq',
             'schemaname' => 'public',
+            'data_type' => 'integer',
             'start_value' => '1',
             'increment_by' => '1',
             'min_value' => '1',
@@ -190,11 +230,12 @@ RSpec.describe BetterStructureSql::Adapters::PostgresqlAdapter do
           }
         ]
 
-        allow(connection).to receive(:execute).and_return(result)
+        allow(connection).to receive(:select_all).and_return(result)
 
         sequences = adapter.fetch_sequences(connection)
         expect(sequences.first[:name]).to eq('users_id_seq')
         expect(sequences.first[:schema]).to eq('public')
+        expect(sequences.first[:data_type]).to eq('integer')
       end
     end
   end

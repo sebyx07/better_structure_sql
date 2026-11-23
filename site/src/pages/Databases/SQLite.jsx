@@ -1,9 +1,14 @@
 import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
+import Seo from '../../components/Seo/Seo';
 
 function SQLite() {
   return (
     <div className="container my-4">
+      <Seo
+        title="SQLite Guide"
+        description="Using BetterStructureSql with SQLite: tables, indexes and views dumped verbatim, inline foreign keys, CHECK constraints, triggers and PRAGMA settings."
+      />
       <div className="row">
         <div className="col-lg-10 offset-lg-1">
           <div className="sqlite-guide">
@@ -14,8 +19,18 @@ function SQLite() {
 
             <div className="alert alert-info">
               <i className="bi bi-info-circle me-2" />
-              SQLite 3.35+ is perfect for development, testing, and lightweight production apps.
-              BetterStructureSql cleanly dumps triggers, CHECK constraints, and PRAGMA settings!
+              SQLite is perfect for development, testing, and lightweight production apps.
+              BetterStructureSql writes tables, indexes and views exactly as SQLite stores them
+              (the original statements from <code>sqlite_master</code>), plus triggers.
+            </div>
+
+            <div className="alert alert-warning">
+              <i className="bi bi-cone-striped me-2" />
+              <strong>Round-trip tested in CI:</strong> a dump is loaded into an empty database and dumped
+              again, and both the dumps and <code>sqlite_master</code> must match (the{' '}
+              <code>integration-sqlite</code> job in{' '}
+              <a href="https://github.com/sebyx07/better_structure_sql/blob/main/.github/workflows/ci.yml" className="alert-link" target="_blank" rel="noopener noreferrer">ci.yml</a>).
+              PostgreSQL remains the primary target of BetterStructureSql. Add the <code>sqlite3</code> gem to your Gemfile.
             </div>
 
             <div className="alert alert-warning">
@@ -28,7 +43,7 @@ function SQLite() {
               </a>
               {' '}•{' '}
               <a href="https://www.sqlite.org/download.html" className="alert-link" target="_blank" rel="noopener noreferrer">
-                Install SQLite 3.35+
+                Install SQLite
               </a>
             </div>
 
@@ -40,11 +55,12 @@ function SQLite() {
                   <ul>
                     <li>Triggers (BEFORE/AFTER)</li>
                     <li>Views</li>
-                    <li>Indexes (btree)</li>
-                    <li>Foreign Keys (inline)</li>
-                    <li>CHECK Constraints</li>
-                    <li>PRAGMA Settings</li>
-                    <li>Type Affinities</li>
+                    <li>Tables, verbatim: <code>AUTOINCREMENT</code>, <code>WITHOUT ROWID</code>, <code>STRICT</code>, collations, generated columns</li>
+                    <li>Primary keys, composite included</li>
+                    <li>Indexes, verbatim: UNIQUE, partial and expression indexes</li>
+                    <li>Foreign Keys (inline), composite included</li>
+                    <li>CHECK Constraints, named or not, and table-level UNIQUE</li>
+                    <li>PRAGMAs stored in the database file: <code>application_id</code>, <code>auto_vacuum</code>, <code>user_version</code>, when non-zero</li>
                   </ul>
                 </div>
                 <div className="col-md-6">
@@ -55,6 +71,8 @@ function SQLite() {
                     <li>Materialized Views</li>
                     <li>Custom Types (uses CHECK for enums)</li>
                     <li>Sequences (uses AUTOINCREMENT)</li>
+                    <li>Comments</li>
+                    <li>Connection PRAGMAs (<code>journal_mode</code>, <code>synchronous</code>, ...): set them in <code>database.yml</code>, they are not part of the schema</li>
                   </ul>
                 </div>
               </div>
@@ -307,20 +325,29 @@ end`}
               </CodeBlock>
 
               <h5 className="mt-4">BetterStructureSql Output</h5>
+              <p>
+                Tables, indexes and views are written as the statements SQLite stores in{' '}
+                <code>sqlite_master</code>, unchanged. A table created by a Rails migration keeps Rails&apos;
+                quoting and layout; a table created with hand-written SQL keeps its own, like this one from the{' '}
+                <code>integration_sqlite</code> app:
+              </p>
               <CodeBlock language="sql" filename="db/structure.sql">
-                {`CREATE TABLE comments (
+                {`CREATE TABLE ledger_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  post_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
-  body TEXT NOT NULL,
-  created_at datetime(6) NOT NULL,
-  updated_at datetime(6) NOT NULL,
-  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  region_code TEXT NOT NULL,
+  region_country TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 0 CHECK (amount > -1000000),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  total INTEGER GENERATED ALWAYS AS (amount * quantity) STORED,
+  label TEXT AS (upper(region_code) || '-' || region_country) VIRTUAL,
+  note TEXT DEFAULT 'it''s (here)',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_ledger_quantity CHECK (quantity BETWEEN 1 AND (10 * 100)),
+  CONSTRAINT fk_ledger_region FOREIGN KEY (region_code, region_country)
+    REFERENCES regions (code, country) ON DELETE CASCADE
 );
 
-CREATE INDEX index_comments_on_post_id ON comments(post_id);
-CREATE INDEX index_comments_on_user_id ON comments(user_id);`}
+CREATE INDEX "index_comments_on_post_id" ON "comments" ("post_id");`}
               </CodeBlock>
 
               <div className="alert alert-info mt-3">

@@ -10,6 +10,7 @@ module BetterStructureSql
       # Generates COMMENT ON statement
       #
       # @param comment_data [Hash] Comment metadata with :object_type, :object_name, :comment
+      #   (and :table_name for a column, whose :object_name is the column name)
       # @return [String] SQL statement
       def generate(comment_data)
         object_type = comment_data[:object_type]
@@ -23,13 +24,15 @@ module BetterStructureSql
         when :table
           generate_table_comment(object_name, escaped_comment)
         when :column
-          generate_column_comment(object_name, escaped_comment)
+          generate_column_comment(comment_data.fetch(:table_name), object_name, escaped_comment)
         when :index
           generate_index_comment(object_name, escaped_comment)
         when :view
           generate_view_comment(object_name, escaped_comment)
         when :function
-          generate_function_comment(object_name, escaped_comment)
+          generate_routine_comment('FUNCTION', object_name, escaped_comment)
+        when :procedure
+          generate_routine_comment('PROCEDURE', object_name, escaped_comment)
         else
           raise ArgumentError, "Unknown object type: #{object_type}"
         end
@@ -54,12 +57,11 @@ module BetterStructureSql
 
       # Generate comment for column
       #
-      # @param column_identifier [String] Format: "table_name.column_name"
+      # @param table_name [String] Table name
+      # @param column_name [String] Column name
       # @param comment [String] Comment text (already escaped)
       # @return [String] SQL statement
-      def generate_column_comment(column_identifier, comment)
-        table_name, column_name = column_identifier.split('.')
-
+      def generate_column_comment(table_name, column_name, comment)
         if mysql_adapter?(detect_adapter_name)
           # MySQL requires full column definition in ALTER TABLE
           # This is a limitation - we'd need to fetch column type, which is complex
@@ -100,17 +102,19 @@ module BetterStructureSql
         end
       end
 
-      # Generate comment for function
+      # Generate comment for a function or procedure
       #
-      # @param function_name [String] Function name
+      # @param kind [String] 'FUNCTION' or 'PROCEDURE'
+      # @param signature [String] Quoted routine name with argument types,
+      #   e.g. "add(a integer, b integer)", so overloaded routines are unambiguous
       # @param comment [String] Comment text (already escaped)
       # @return [String] SQL statement
-      def generate_function_comment(function_name, comment)
-        # Only PostgreSQL supports function comments
+      def generate_routine_comment(kind, signature, comment)
+        # Only PostgreSQL supports routine comments
         if mysql_adapter?(detect_adapter_name)
-          '-- MySQL does not support function comments'
+          "-- MySQL does not support #{kind.downcase} comments"
         else
-          "COMMENT ON FUNCTION #{quote_identifier(function_name)} IS '#{comment}';"
+          "COMMENT ON #{kind} #{signature} IS '#{comment}';"
         end
       end
     end

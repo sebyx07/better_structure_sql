@@ -1,63 +1,326 @@
 name: CI
 
+# The gate for every pull request and every push to main. Branch protection
+# requires only the aggregate "CI OK" job, so jobs can be added or renamed here
+# without touching the ruleset. release.yml calls this workflow (workflow_call)
+# to verify a version before it is published.
+#
+# Local equivalent: `bin/check` (repo guards + RuboCop + RSpec on PostgreSQL), which is
+# exactly what the PostgreSQL leg of `locked` runs. Bare `bundle exec rspec`
+# runs the suite on the in-memory SQLite default from config/database.yml, like
+# the SQLite leg.
+#
+# Two kinds of bundle:
+# - locked: the committed Gemfile.lock on .ruby-version, exactly what a
+#   contributor gets from `bundle install`.
+# - matrix: gemfiles/matrix.gemfile (unlocked; RAILS_VERSION / DB_ADAPTER, see
+#   Gemfile), resolved fresh each run so new upstream releases are tested.
+# Ruby head, Rails edge and postgres:latest run monthly in canary.yml.
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CI: '1'
+  RAILS_ENV: test
 
 jobs:
-  test:
+  workflows:
+    name: Lint / workflows (actionlint + zizmor)
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+      - name: zizmor (workflow security)
+        run: pipx run zizmor==1.33.1 --format=github .github/workflows
+      # CI/bin/check parity, the agent-read surface, the CLAUDE.md size cap.
+      # bin/check runs it too; here it needs no Ruby and no database.
+      - name: Repository guards
+        run: bin/repo-guards
 
+  locked:
+    name: Test / locked bundle · ${{ matrix.database }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: PostgreSQL 18 · bin/check (RuboCop + RSpec)
+            url: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
+          - database: SQLite (config/database.yml)
+            url: ''
     services:
       postgres:
-        image: postgres:14
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: better_structure_sql_test
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      RAILS_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
-      RAILS_VERSION: '8.1.1'
-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+      # PostgreSQL: bin/check, the local gate, so green there is green here.
+      # SQLite: bare rspec. An empty DATABASE_URL is not "unset" to Rails, and
+      # bin/check always targets PostgreSQL, so the URL is exported only when given.
+      - name: bin/check or RSpec
+        env:
+          URL: ${{ matrix.url }}
+        run: |
+          if [ -n "$URL" ]; then
+            DATABASE_URL="$URL" bin/check
+          else
+            bundle exec rspec
+          fi
 
-    - name: Set up Ruby 3.4.7
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.4.7'
-        bundler-cache: true
-
-    - name: Install dependencies
-      run: bundle install
-
-    - name: Run tests
-      run: bundle exec rspec
-
-    - name: Run Rubocop
-      run: bundle exec rubocop
-
-  build:
+  matrix:
+    name: Test / Ruby ${{ matrix.ruby }} · Rails ${{ matrix.rails }} · PostgreSQL ${{ matrix.postgres }}
     runs-on: ubuntu-24.04
-
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each supported Ruby and Rails at least once, each PostgreSQL major once;
+        # not the full cross product. Floors: gemspec required_ruby_version and rails.
+        include:
+          - { ruby: '3.3', rails: '7.1', postgres: '14' }
+          - { ruby: '3.3', rails: '7.2', postgres: '15' }
+          - { ruby: '3.4', rails: '8.0', postgres: '16' }
+          - { ruby: '4.0', rails: '8.1', postgres: '17' }
+          - { ruby: '4.0', rails: '8.1', postgres: '18' }
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: better_structure_sql_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/matrix.gemfile
+      RAILS_VERSION: ${{ matrix.rails }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/better_structure_sql_test
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Resolved versions
+        run: bundle list | grep -E ' (rails|pg|sqlite3|rubyzip|rspec-rails) '
+      - run: bundle exec rspec
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.4.7'
-        bundler-cache: true
+  # The integration apps run the gem end to end against a real server: migrate
+  # (which dumps through BetterStructureSql), load that dump into an empty
+  # database, and dump again. Their lockfiles are not frozen here: they pin the
+  # path-sourced gem's version, which every release bumps.
+  integration-postgresql:
+    name: Integration / PostgreSQL ${{ matrix.postgres }} app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ['14', '15', '16', '17', '18']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: integration
+    env:
+      RAILS_ENV: development
+      BUNDLE_GEMFILE: ${{ github.workspace }}/integration/Gemfile
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      REPLACE_DEFAULT_DUMP: 'true'
+      REPLACE_DEFAULT_LOAD: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+      - run: bundle install --jobs 4
+      - name: Migrate from scratch (dumps through the gem)
+        run: |
+          rm -rf db/schema db/structure.sql
+          bin/rails db:create db:migrate
+          test -s db/schema/_manifest.json
+      - name: Load the dump into an empty database and dump it again
+        run: bin/rails db:drop db:create db:schema:load db:schema:dump
 
-    - name: Build gem
-      run: gem build better_structure_sql.gemspec
+  integration-mysql:
+    name: Integration / ${{ matrix.database }} app (${{ matrix.db_adapter }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ['mysql:8.0', 'mysql:8.4']
+        db_adapter: [mysql2, trilogy]
+        health_cmd: ['mysqladmin ping -h 127.0.0.1 -proot']
+        include:
+          - database: 'mariadb:11'
+            db_adapter: mysql2
+            health_cmd: 'healthcheck.sh --connect --innodb_initialized'
+          - database: 'mariadb:11'
+            db_adapter: trilogy
+            health_cmd: 'healthcheck.sh --connect --innodb_initialized'
+    services:
+      mysql:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MARIADB_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "${{ matrix.health_cmd }}" --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: integration_mysql
+    env:
+      RAILS_ENV: development
+      BUNDLE_GEMFILE: ${{ github.workspace }}/integration_mysql/Gemfile
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      DB_ADAPTER: ${{ matrix.db_adapter }}
+      REPLACE_DEFAULT_DUMP: 'true'
+      REPLACE_DEFAULT_LOAD: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: MySQL client headers (mysql2 native extension)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libmysqlclient-dev
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+      - run: bundle install --jobs 4
+      - name: Migrate from scratch (dumps through the gem)
+        run: |
+          rm -rf db/schema db/structure.sql
+          bin/rails db:create db:migrate
+          test -s db/schema/_manifest.json
+      - name: Load the dump into an empty database and dump it again
+        run: bin/rails db:drop db:create db:schema:load db:schema:dump
+      # Dump, load into a fresh test database, dump again: fails unless the dumps
+      # are byte-identical and SHOW CREATE output matches in both databases
+      - name: Round trip (single file)
+        run: bin/rails bss:round_trip
+      - name: Round trip (multi-file)
+        run: bin/rails bss:round_trip
+        env:
+          ROUND_TRIP_LAYOUT: multi_file
+
+  integration-sqlite:
+    name: Integration / SQLite app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: integration_sqlite
+    env:
+      RAILS_ENV: development
+      BUNDLE_GEMFILE: ${{ github.workspace }}/integration_sqlite/Gemfile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+      - run: bundle install --jobs 4
+      - name: Migrate from scratch and dump through the gem
+        run: |
+          rm -rf db/structure db/structure.sql db/*.sqlite3
+          bundle exec rake db:create db:migrate db:schema:dump_better
+          test -s db/structure/_manifest.json
+      # Dump, load into a fresh test database, dump again: fails unless the dumps
+      # are byte-identical and sqlite_master matches in both databases
+      - name: Round trip (single file)
+        run: bundle exec rake bss:round_trip
+      - name: Round trip (multi-file)
+        run: bundle exec rake bss:round_trip
+        env:
+          ROUND_TRIP_LAYOUT: multi_file
+
+  package:
+    name: Package / build + install + require
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No Bundler on purpose: the gem must build and install with plain RubyGems.
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: .ruby-version
+          bundler: none
+      - name: Build the gem
+        run: gem build better_structure_sql.gemspec --strict
+      - name: Install it into an empty GEM_HOME and require it
+        run: |
+          export GEM_HOME="$RUNNER_TEMP/gems" GEM_PATH="$RUNNER_TEMP/gems"
+          gem install --no-document ./better_structure_sql-*.gem
+          ruby -e 'require "better_structure_sql"; puts "loaded #{BetterStructureSql::VERSION}"'
+
+  ci-ok:
+    name: CI OK
+    if: always()
+    # Every job above must succeed; skipped or cancelled counts as failed.
+    needs:
+      - workflows
+      - locked
+      - matrix
+      - integration-postgresql
+      - integration-mysql
+      - integration-sqlite
+      - package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All required jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != success ]; then
+              echo "::error::A required job finished with '$r'. Open the failed job above: its log names the check and the command to reproduce it locally."
+              exit 1
+            fi
+          done

@@ -52,6 +52,9 @@ FROM users u
 LEFT JOIN posts p ON p.user_id = u.id
 LEFT JOIN comments c ON c.user_id = u.id
 GROUP BY u.id, u.email
+/* user_stats(id,email,post_count,comment_count) */
+/* user_stats(id,email,post_count,comment_count) */
+/* user_stats(id,email,post_count,comment_count) */
 /* user_stats(id,email,post_count,comment_count) */;
 CREATE TRIGGER update_posts_updated_at
 AFTER UPDATE ON posts
@@ -72,7 +75,32 @@ END;
 CREATE TABLE IF NOT EXISTS "better_structure_sql_schema_versions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "content" text NOT NULL, "sqlite_version" varchar, "format_type" varchar DEFAULT 'sql', "zip_archive" blob, "output_mode" varchar DEFAULT 'single_file', "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "content_hash" varchar(32) NOT NULL);
 CREATE INDEX "index_better_structure_sql_schema_versions_on_created_at" ON "better_structure_sql_schema_versions" ("created_at");
 CREATE INDEX "index_better_structure_sql_schema_versions_on_content_hash" ON "better_structure_sql_schema_versions" ("content_hash");
+CREATE TABLE regions (
+  code TEXT NOT NULL,
+  country TEXT NOT NULL,
+  name TEXT COLLATE NOCASE,
+  PRIMARY KEY (code, country)
+) WITHOUT ROWID
+;
+CREATE TABLE ledger_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  region_code TEXT NOT NULL,
+  region_country TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 0 CHECK (amount > -1000000),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  total INTEGER GENERATED ALWAYS AS (amount * quantity) STORED,
+  label TEXT AS (upper(region_code) || '-' || region_country) VIRTUAL,
+  note TEXT DEFAULT 'it''s (here)',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_ledger_quantity CHECK (quantity BETWEEN 1 AND (10 * 100)),
+  CONSTRAINT fk_ledger_region FOREIGN KEY (region_code, region_country)
+    REFERENCES regions (code, country) ON DELETE CASCADE
+);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value ANY, version INTEGER NOT NULL) STRICT;
+CREATE INDEX idx_ledger_positive ON ledger_entries (region_code) WHERE amount > 0;
+CREATE UNIQUE INDEX idx_ledger_lower_note ON ledger_entries (lower(note), quantity DESC);
 INSERT INTO "schema_migrations" (version) VALUES
+('20250201000001'),
 ('20250120000001'),
 ('20250101000006'),
 ('20250101000005'),

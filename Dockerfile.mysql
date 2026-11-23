@@ -1,9 +1,10 @@
-FROM ruby:3.2-alpine
+FROM ruby:4.0.10-alpine
 
 # Install dependencies
 RUN apk add --no-cache \
     build-base \
     mysql-dev \
+    openssl-dev \
     mysql-client \
     nodejs \
     tzdata \

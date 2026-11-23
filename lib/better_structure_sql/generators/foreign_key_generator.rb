@@ -8,14 +8,19 @@ module BetterStructureSql
     class ForeignKeyGenerator < Base
       # Generates ALTER TABLE ADD CONSTRAINT for foreign key
       #
+      # PostgreSQL supplies the full constraint :definition (columns, MATCH,
+      # actions, DEFERRABLE, NOT VALID); other adapters supply its components.
+      #
       # @param foreign_key [Hash] Foreign key metadata
       # @return [String] SQL statement
       def generate(foreign_key)
+        return generate_from_definition(foreign_key) if foreign_key[:definition]
+
         parts = [
-          "ALTER TABLE #{foreign_key[:table]}",
-          "ADD CONSTRAINT #{foreign_key[:name]}",
-          "FOREIGN KEY (#{foreign_key[:column]})",
-          "REFERENCES #{foreign_key[:foreign_table]} (#{foreign_key[:foreign_column]})"
+          "ALTER TABLE #{quote_identifier(foreign_key[:table])}",
+          "ADD CONSTRAINT #{quote_identifier(foreign_key[:name])}",
+          "FOREIGN KEY (#{quote_identifier_list(foreign_key[:columns])})",
+          "REFERENCES #{quote_identifier(foreign_key[:foreign_table])} (#{quote_identifier_list(foreign_key[:foreign_columns])})"
         ]
 
         on_delete = format_action(foreign_key[:on_delete])
@@ -28,6 +33,11 @@ module BetterStructureSql
       end
 
       private
+
+      def generate_from_definition(foreign_key)
+        "ALTER TABLE #{quote_identifier(foreign_key[:table])} " \
+          "ADD CONSTRAINT #{quote_identifier(foreign_key[:name])} #{foreign_key[:definition]};"
+      end
 
       def format_action(action)
         case action&.upcase

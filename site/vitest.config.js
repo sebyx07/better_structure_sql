@@ -1,9 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { readGemVersion } from './scripts/gemVersion.js';
 
 export default defineConfig({
-  esbuild: {
-    jsxInject: `import React from 'react'`,
-  },
+  define: { __GEM_VERSION__: JSON.stringify(readGemVersion()) },
   test: {
     globals: true,
     environment: 'happy-dom',

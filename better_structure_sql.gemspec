@@ -17,11 +17,11 @@ Gem::Specification.new do |spec|
   DESC
   spec.homepage = 'https://sebyx07.github.io/better_structure_sql/'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 2.7.0'
+  spec.required_ruby_version = '>= 3.3'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/sebyx07/better_structure_sql'
-  spec.metadata['documentation_uri'] = 'https://sebyx07.github.io/better_structure_sql/'
+  spec.metadata['documentation_uri'] = 'https://rubydoc.info/gems/better_structure_sql'
   spec.metadata['changelog_uri'] = 'https://github.com/sebyx07/better_structure_sql/blob/main/CHANGELOG.md'
   spec.metadata['bug_tracker_uri'] = 'https://github.com/sebyx07/better_structure_sql/issues'
   spec.metadata['rubygems_mfa_required'] = 'true'
@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
     Dir[
       'lib/**/*',
       'app/**/*',
-      'config/**/*',
+      'config/routes.rb', # config/database.yml is the spec suite's, not the gem's
       'LICENSE',
       'README.md',
       'CHANGELOG.md'
@@ -41,17 +41,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'pg', '>= 1.0'
-  spec.add_dependency 'rails', '>= 7.0'
+  spec.add_dependency 'rails', '>= 7.1'
   spec.add_dependency 'rubyzip', '>= 2.0.0'
-
-  spec.add_development_dependency 'database_cleaner-active_record', '~> 2.1'
-  spec.add_development_dependency 'factory_bot_rails', '~> 6.2'
-  spec.add_development_dependency 'rails-controller-testing', '~> 1.0'
-  spec.add_development_dependency 'rspec', '~> 3.12'
-  spec.add_development_dependency 'rspec-rails', '~> 6.0'
-  spec.add_development_dependency 'rubocop', '~> 1.50'
-  spec.add_development_dependency 'rubocop-performance', '~> 1.20'
-  spec.add_development_dependency 'rubocop-rails', '~> 2.19'
-  spec.add_development_dependency 'rubocop-rspec', '~> 3.0'
-  spec.add_development_dependency 'sqlite3', '>= 2.1'
 end

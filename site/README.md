@@ -4,18 +4,20 @@ React-based documentation site with Bootstrap Darkly theme, deployed to GitHub P
 
 ## Features
 
-- **React 18** with HashRouter for GitHub Pages compatibility
+- **React 19** with React Router 7 HashRouter for GitHub Pages compatibility
 - **Bootstrap Darkly** theme from Bootswatch
 - **esbuild** for fast builds and small bundles
-- **ESLint** with Airbnb config for code quality
+- **ESLint 9** (flat config) with React, hooks and jsx-a11y rules
 - **Vitest** and React Testing Library for testing
 - **GitHub Actions** for automatic deployment
 
 ## Local Development
 
+Requires Node.js 22 or newer (`.nvmrc` pins the version CI uses).
+
 ```bash
 # Install dependencies
-npm install
+npm ci
 
 # Start dev server (http://localhost:3000)
 npm run dev
@@ -40,13 +42,15 @@ site/
 ├── public/              # Static assets
 ├── src/
 │   ├── components/      # React components
-│   │   └── Layout/      # Header, Footer, Layout
+│   │   ├── CodeBlock/   # Syntax-highlighted code with copy button
+│   │   ├── Layout/      # Header, Footer, Layout
+│   │   └── Seo/         # Page title and meta description
 │   ├── pages/           # Route pages
 │   ├── styles/          # CSS files
 │   ├── App.jsx          # Main app component
 │   └── main.jsx         # Entry point
 ├── tests/               # Test files
-├── scripts/             # Build scripts
+├── scripts/             # esbuild build and dev scripts
 └── package.json
 ```
 
@@ -59,11 +63,9 @@ site/
 
 ## Deployment
 
-The site automatically deploys to GitHub Pages when changes are pushed to the `main` branch (in the `site/` directory). The GitHub Actions workflow:
+`.github/workflows/deploy-docs.yml` lints, tests and builds the site on every pull request that touches `site/`. On pushes to `main` it also deploys `dist/` with the official GitHub Pages actions (`upload-pages-artifact` + `deploy-pages`). The repository's Pages source must be set to **GitHub Actions** (Settings → Pages); the `gh-pages` branch is no longer used.
 
-1. Installs dependencies
-2. Builds the site
-3. Deploys to `gh-pages` branch
+The gem version shown on the site is read from `lib/better_structure_sql/version.rb` at build time, so a release redeploys the site with the new version.
 
 ## Adding Content
 
@@ -74,7 +76,7 @@ The site automatically deploys to GitHub Pages when changes are pushed to the `m
 
 ## Code Quality
 
-- ESLint enforces Airbnb style guide
+- ESLint with React, hooks and accessibility rules
 - Prettier for consistent formatting
 - Accessibility (WCAG 2.1 AA) compliance
 - Vitest for unit and integration testing
@@ -89,6 +91,6 @@ Using **Bootswatch Darkly** theme with Bootstrap 5:
 
 ## Performance
 
-- Bundle size: ~300KB gzipped
+- Bundle size: ~205KB gzipped (JS + CSS)
 - First Contentful Paint: < 1.5s
 - Lighthouse score target: 90+

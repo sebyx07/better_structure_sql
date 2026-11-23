@@ -20,7 +20,9 @@ RSpec.describe BetterStructureSql::Generators::ExtensionGenerator do
         extension = { name: 'uuid-ossp', version: '1.1', schema: 'extensions' }
         result = generator.generate(extension)
 
-        expect(result).to eq('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;')
+        expect(result).to eq(
+          "CREATE SCHEMA IF NOT EXISTS \"extensions\";\nCREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" WITH SCHEMA \"extensions\";"
+        )
       end
     end
 
@@ -29,7 +31,7 @@ RSpec.describe BetterStructureSql::Generators::ExtensionGenerator do
         extension = { name: 'plpgsql', version: '1.0', schema: 'pg_catalog' }
         result = generator.generate(extension)
 
-        expect(result).to eq('CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;')
+        expect(result).to end_with('CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA "pg_catalog";')
       end
     end
   end
