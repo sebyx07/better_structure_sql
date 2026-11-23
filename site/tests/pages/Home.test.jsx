@@ -1,22 +1,28 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
 import { describe, it, expect } from 'vitest';
 import Home from '../../src/pages/Home';
-
-const routerFutureFlags = {
-  v7_startTransition: true,
-  v7_relativeSplatPath: true,
-};
+import GEM_VERSION from '../../src/version';
 
 describe('Home Page', () => {
+  it('lists partitioned tables and table inheritance as supported', () => {
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/partitioned tables and table\s+inheritance\./i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/not supported yet/i)).not.toBeInTheDocument();
+  });
+
   it('renders hero section with tagline', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
     expect(screen.getByText(/Use SQL Databases to the Fullest/i)).toBeInTheDocument();
@@ -24,11 +30,9 @@ describe('Home Page', () => {
 
   it('renders feature cards', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
     expect(screen.getByText(/Clean Git Diffs/i)).toBeInTheDocument();
@@ -39,50 +43,47 @@ describe('Home Page', () => {
 
   it('renders database badges', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
-    expect(screen.getByText(/PostgreSQL 12\+/i)).toBeInTheDocument();
-    expect(screen.getByText(/MySQL 8\.0\+/i)).toBeInTheDocument();
-    expect(screen.getByText(/SQLite 3\.35\+/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^PostgreSQL$/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^MySQL \/ MariaDB$/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^SQLite$/ })).toBeInTheDocument();
+    expect(screen.queryByText(/experimental/i)).not.toBeInTheDocument();
   });
 
   it('renders AI benefits section', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
     expect(screen.getByText(/AI-Friendly Schema Organization/i)).toBeInTheDocument();
     expect(screen.getAllByText(/500-line chunks/i).length).toBeGreaterThan(0);
   });
 
-  it('renders beta notice', () => {
+  it('renders project status with the gem version', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
-    expect(screen.getByText(/Beta Version 0\.2\.1/i)).toBeInTheDocument();
+    expect(screen.getByText(`Version ${GEM_VERSION}`)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/round-trip tested in CI/i).length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/beta/i)).not.toBeInTheDocument();
   });
 
   it('renders call-to-action buttons', () => {
     render(
-      <HelmetProvider>
-        <MemoryRouter future={routerFutureFlags}>
-          <Home />
-        </MemoryRouter>
-      </HelmetProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
     );
 
     expect(screen.getByRole('link', { name: /Get Started/i })).toBeInTheDocument();

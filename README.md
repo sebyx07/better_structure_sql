@@ -1,766 +1,298 @@
-<div align="center">
+# BetterStructureSql
 
-# 🗄️ BetterStructureSql
+[![CI](https://github.com/sebyx07/better_structure_sql/actions/workflows/ci.yml/badge.svg)](https://github.com/sebyx07/better_structure_sql/actions/workflows/ci.yml)
+[![Gem Version](https://img.shields.io/gem/v/better_structure_sql)](https://rubygems.org/gems/better_structure_sql)
+[![Gem Downloads](https://img.shields.io/gem/dt/better_structure_sql)](https://rubygems.org/gems/better_structure_sql)
+[![License](https://img.shields.io/github/license/sebyx07/better_structure_sql)](LICENSE)
+[![Ruby](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Frubygems.org%2Fapi%2Fv1%2Fversions%2Fbetter_structure_sql.json&query=%24%5B0%5D.ruby_version&label=ruby&color=CC342D)](better_structure_sql.gemspec)
+[![Maintained by developerz.ai](https://img.shields.io/badge/maintained%20by-developerz.ai-6f42c1)](https://developerz.ai)
+[![Docs](https://img.shields.io/badge/docs-sebyx07.github.io-0a7ea4)](https://sebyx07.github.io/better_structure_sql/)
 
-### Clean, maintainable database schema dumps for Rails
-**PostgreSQL • MySQL • SQLite**
+Clean, deterministic `structure.sql` for Rails, written in pure Ruby. No `pg_dump`, `mysqldump` or `sqlite3` binary: the gem reads the catalog over the ActiveRecord connection and writes the same SQL on every machine. PostgreSQL is the primary target; MySQL (`mysql2` and `trilogy` drivers, MariaDB servers) and SQLite are supported and round-trip tested in CI.
 
-[![Gem Version](https://badge.fury.io/rb/better_structure_sql.svg)](https://badge.fury.io/rb/better_structure_sql)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-red.svg)](https://www.ruby-lang.org/)
-[![Rails](https://img.shields.io/badge/rails-%3E%3D%207.0-red.svg)](https://rubyonrails.org/)
+```diff
+- --
+- -- PostgreSQL database dump
+- --
+- -- Dumped from database version 16.3
+- -- Dumped by pg_dump version 16.4
+-
+- SET statement_timeout = 0;
+- SET lock_timeout = 0;
+- SET idle_in_transaction_session_timeout = 0;
+- SELECT pg_catalog.set_config('search_path', '', false);
+- SET check_function_bodies = false;
+- SET xmloption = content;
+- SET client_min_messages = warning;
+- SET row_security = off;
+-
+- --
+- -- Name: categories; Type: TABLE; Schema: public; Owner: -
+- --
+-
+- CREATE TABLE public.categories (
+-     id bigint NOT NULL,
+-     name character varying NOT NULL,
+-     ...
++ SET client_encoding = 'UTF8';
++ SET standard_conforming_strings = on;
++
++ -- Extensions
++ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
++
++ SET search_path TO "$user", public;
++
++ -- Tables
++ CREATE TABLE IF NOT EXISTS "categories" (
++   "id" bigint NOT NULL DEFAULT nextval('categories_id_seq'::regclass),
++   "name" varchar NOT NULL,
++   "parent_id" integer,
++   PRIMARY KEY ("id")
++ );
++
++ -- Indexes
++ CREATE UNIQUE INDEX index_categories_on_slug ON public.categories USING btree (slug);
++
++ -- Foreign Keys
++ ALTER TABLE "categories" ADD CONSTRAINT "fk_rails_82f48f7407" FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE;
+```
 
-**[📚 Documentation](https://sebyx07.github.io/better_structure_sql/)** • **[🐙 GitHub](https://github.com/sebyx07/better_structure_sql)** • **[💎 RubyGems](https://rubygems.org/gems/better_structure_sql)**
+## Why
 
----
+| Problem with the stock dump | What this gem does |
+|---|---|
+| Tool and server versions leak into the file, so every upgrade is a diff | No version comments, a fixed header, sorted objects |
+| Needs the database client binary on every developer machine and in CI | Pure Ruby over the ActiveRecord connection |
+| One file with tens of thousands of lines | Optional [multi-file output](#multi-file-output): numbered directories, ~500-line files |
+| No record of what the schema looked like at a deploy | Optional [schema versions](#schema-versions-and-web-ui) stored in the database, browsable in a mounted engine |
 
-</div>
-
-> **⚠️ Beta Notice**: Version 0.2.2 is feature-complete and production-ready for **PostgreSQL**. Multi-database support (MySQL, SQLite) is implemented but considered experimental. APIs are stable but may see minor refinements before v1.0. We welcome feedback and contributions!
-
-## ✨ Why BetterStructureSql?
-
-Rails' database dump tools (`pg_dump`, `mysqldump`, etc.) create noisy `structure.sql` files with version-specific comments, inconsistent formatting, and metadata that pollutes git diffs.
-
-**BetterStructureSql** uses pure Ruby introspection to generate clean schema files:
-
-<table>
-<tr>
-<td width="50%">
-
-### 🎯 Core Benefits
-
-- ✅ **Clean diffs** - Only actual schema changes
-- ✅ **No external tools** - Pure Ruby introspection
-- ✅ **Multi-database** - PostgreSQL, MySQL, SQLite
-- ✅ **Deterministic** - Same input = identical output
-
-</td>
-<td width="50%">
-
-### 🚀 Advanced Features
-
-- ✅ **Complete coverage** - Tables, views, triggers, functions
-- ✅ **Schema versioning** - Store & retrieve versions
-- ✅ **Multi-file output** - Handle massive schemas
-- ✅ **Rails integration** - Drop-in replacement
-
-</td>
-</tr>
-</table>
-
----
-
-## 🗃️ Database Support
-
-| Feature | PostgreSQL 12+ | MySQL 8.0+ | SQLite 3.35+ |
-|---------|----------------|------------|--------------|
-| **Tables & Columns** | ✅ Full | ✅ Full | ✅ Full |
-| **Indexes** | ✅ btree, gin, gist, hash, brin | ✅ btree, hash, fulltext | ✅ btree |
-| **Foreign Keys** | ✅ All actions | ✅ All actions | ✅ Inline with CREATE TABLE |
-| **Unique Constraints** | ✅ | ✅ | ✅ |
-| **Check Constraints** | ✅ | ✅ (8.0.16+) | ✅ |
-| **Extensions** | ✅ pgcrypto, uuid-ossp, pg_trgm, etc. | ❌ | ❌ (PRAGMA settings instead) |
-| **Custom Types (ENUM)** | ✅ CREATE TYPE | ❌ (inline ENUM/SET) | ❌ (CHECK constraints) |
-| **Sequences** | ✅ CREATE SEQUENCE | ❌ (AUTO_INCREMENT) | ❌ (AUTOINCREMENT) |
-| **Views** | ✅ Regular views | ✅ Regular views | ✅ Regular views |
-| **Materialized Views** | ✅ | ❌ | ❌ |
-| **Functions** | ✅ plpgsql, sql | ✅ Stored procedures | ❌ |
-| **Triggers** | ✅ BEFORE/AFTER/INSTEAD OF | ✅ BEFORE/AFTER | ✅ BEFORE/AFTER |
-| **Partitioned Tables** | 🚧 Planned | ❌ | ❌ |
-| **Domains** | ✅ | ❌ | ❌ |
-
-### Getting Started by Database
-
-- **PostgreSQL**: [Installation →](https://www.postgresql.org/download/) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-postgresql-database)
-- **MySQL**: [Installation →](https://dev.mysql.com/downloads/mysql/) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-mysql-or-mariadb-database)
-- **SQLite**: [Installation →](https://www.sqlite.org/download.html) | [Rails Guide →](https://guides.rubyonrails.org/configuring.html#configuring-a-sqlite3-database)
-
-📖 See [Feature Compatibility Matrix](docs/features/multi-database-adapter-support/README.md#feature-compatibility-matrix) for detailed comparison.
-
-## Features
-
-### Core Features
-- **Pure Ruby implementation** - No external tool dependencies (pg_dump, mysqldump, sqlite3 CLI)
-- **Multi-database adapter pattern** - Auto-detects database type from ActiveRecord connection
-- **Clean structure.sql** - Only essential schema information
-- **Complete database support**:
-  - Tables with all column types and defaults
-  - Primary keys, foreign keys, and constraints
-  - Indexes (including partial, unique, and expression indexes)
-  - Views (and materialized views for PostgreSQL)
-  - Functions/stored procedures and triggers (database-dependent)
-  - Extensions (PostgreSQL)
-  - Sequences (PostgreSQL)
-  - Custom types and enums (PostgreSQL, MySQL SET/ENUM)
-
-### Multi-File Schema Output (Optional)
-- **Massive schema support** - Designed to handle tens of thousands of database objects
-- **Directory-based output** - Split schema across organized, numbered directories
-- **Smart chunking** - 500 LOC per file (configurable) with intelligent overflow handling
-- **Better git diffs** - See only changed files, not entire schema
-- **ZIP downloads** - Download complete directory structure as archive
-- **Easy navigation** - Find tables quickly in `05_tables/`, triggers in `09_triggers/`, etc.
-
-### Schema Versioning (Optional)
-- Store schema versions in database with metadata
-- **Hash-based deduplication** - Automatically skip storing when schema unchanged
-- Track database type and version, format type (SQL/Ruby), creation timestamp
-- ZIP archive storage for multi-file schemas
-- Configurable retention policy (keep last N versions)
-- Browse and download versions via web UI (mountable Rails engine)
-- Works with both `structure.sql` and `schema.rb`
-- Works across all database types (PostgreSQL, MySQL, SQLite)
-- Restore from any stored version
-
-### Web UI Engine
-- **Mountable Rails Engine** - Browse schema versions in any Rails app
-- **Bootstrap 5 interface** - No asset compilation required (CDN-based)
-- **View schema versions** - List, view formatted schema, download raw text
-- **Configurable authentication** - Integrate with Devise, Pundit, or custom auth
-- **Developer onboarding** - Easy access to latest schema for new team members
-
-### Rails Integration
-- Drop-in replacement: `rake db:schema:dump` → uses BetterStructureSql (when enabled)
-- Configuration via `config/initializers/better_structure_sql.rb`
-- **Rake Tasks**:
-  - `db:schema:dump_better` - Explicitly dump schema using BetterStructureSql
-  - `db:schema:load_better` - Load schema (supports both file and directory mode)
-  - `db:schema:store` - Store current schema as a version in database
-  - `db:schema:versions` - List all stored schema versions
-  - `db:schema:cleanup` - Remove old versions based on retention limit
-  - `db:schema:restore[VERSION_ID]` - Restore database from specific version
-
-### Docker Development Environment
-- **Single command setup** - `docker compose up` for full environment
-- **PostgreSQL included** - No local database installation needed
-- **Live code reloading** - Changes reflect immediately
-- **Integration app** - Test and demo environment included
-
-## 🚀 Quick Start
+## Quick start
 
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
-gem 'pg'  # For PostgreSQL (or 'mysql2' for MySQL, or 'sqlite3' for SQLite)
 ```
-
-**Database adapter is auto-detected** from your `ActiveRecord::Base.connection.adapter_name`. No manual configuration needed!
 
 ```bash
 bundle install
-rails generate better_structure_sql:install
-rails db:schema:dump_better
-```
-
-**🎉 Your `db/structure.sql` is now clean and maintainable!**
-
-## 📦 Schema Versioning with Deduplication
-
-BetterStructureSql automatically tracks schema evolution by storing versions in your database. Hash-based deduplication ensures only meaningful schema changes are recorded.
-
-### How It Works
-
-When you run `rails db:schema:store`, the gem:
-
-1. **Reads** your current schema files (single or multi-file)
-2. **Calculates** MD5 hash of the complete schema content
-3. **Compares** with the most recent stored version's hash
-4. **Skips storage** if hash matches (no changes detected) ✨
-5. **Creates new version** if hash differs (schema changed)
-
-### Quick Example
-
-```bash
-# After migrations, dump and store schema
+rails generate better_structure_sql:install   # initializer + schema versions migration
 rails db:migrate
-rails db:schema:dump_better
-rails db:schema:store
-
-# First run (no previous version)
-# =>
-# Stored schema version #1
-#   Format: sql
-#   Mode: single_file
-#   PostgreSQL: 15.4
-#   Size: 45.2 KB
-#   Hash: a3f5c9d2e8b1f4a6c7e9d3f1b5a8c2e4
-#   Total versions: 1
-
-# Second run (no schema changes)
-# =>
-# No schema changes detected
-#   Current schema matches version #1
-#   Hash: a3f5c9d2e8b1f4a6c7e9d3f1b5a8c2e4
-#   No new version stored
-#   Total versions: 1
-
-# After adding a table
-rails db:migrate  # Adds new table
-rails db:schema:dump_better
-rails db:schema:store
-
-# =>
-# Stored schema version #2
-#   Format: sql
-#   Mode: single_file
-#   PostgreSQL: 15.4
-#   Size: 48.7 KB
-#   Hash: b7e2d1c4f9a6c3e5d8b2f1a4c9e7d3b6
-#   Total versions: 2
+rails db:schema:dump_better                    # writes db/structure.sql
 ```
 
-### Production Workflow
+The database adapter is detected from `ActiveRecord::Base.connection.adapter_name`. The gem depends on `pg`; add `mysql2` (or `trilogy`) or `sqlite3` to your own Gemfile to use those adapters.
 
-Perfect for deployment automation:
+`rails generate better_structure_sql:install --skip-migration` skips the schema versions table. To make `rails db:schema:dump` and `rails db:schema:load` use this gem, set `replace_default_dump` and `replace_default_load` in the initializer (see [Configuration](#configuration)). On MySQL and MariaDB a dump loads only through this gem (`replace_default_load` or `db:schema:load_better`): Rails' own load pipes the file through the `mysql` client, which needs `DELIMITER` directives the dump does not contain.
+
+## Feature matrix
+
+What the code dumps today. A dash means the adapter returns nothing for that object type. Every column is round-trip tested in CI (dump, load into an empty database, dump again, compare); the servers and drivers are the `integration-*` jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+| Object | PostgreSQL | MySQL, MariaDB | SQLite |
+|---|---|---|---|
+| Tables, columns, defaults, primary keys | yes, plus `UNLOGGED`, storage parameters (`WITH (fillfactor=70)`) and inheritance (`INHERITS`, parents first) | yes: server column types verbatim (`int unsigned`, `datetime(6)`, `tinyint(1)`), `AUTO_INCREMENT`, `ON UPDATE`, `ENGINE` / `COLLATE` table options | the original `CREATE TABLE` statement, verbatim (`AUTOINCREMENT`, `WITHOUT ROWID`, `STRICT`, collations, composite primary keys) |
+| Identity and generated columns | yes | generated columns | generated columns |
+| Check and unique constraints | yes, plus exclusion constraints and `NOT VALID` | checks (where the server has them), `NOT ENFORCED` kept; unique as indexes | as written in the table: named and unnamed checks, table-level `UNIQUE` |
+| Partitioned tables | `PARTITION BY` and `PARTITION OF ... FOR VALUES` | - | - |
+| Indexes | full definition (method, partial, expression, unique) | full definition (unique, `FULLTEXT`, `SPATIAL`, prefix lengths, `DESC`, functional key parts, `INVISIBLE`) | original `CREATE INDEX` statement, partial and expression included |
+| Foreign keys | `ALTER TABLE ... ADD CONSTRAINT`: composite, `MATCH FULL`, `DEFERRABLE`, `NOT VALID` | `ALTER TABLE ... ADD CONSTRAINT`, composite included | inline in `CREATE TABLE`, composite included |
+| Views | yes, ordered by dependency | yes, from `SHOW CREATE VIEW` (no database name), ordered by dependency | original `CREATE VIEW` statement |
+| Materialized views | yes, with their indexes | - | - |
+| Functions | functions and procedures | stored procedures and functions | - |
+| Triggers | yes | yes, firing order kept | yes |
+| Extensions | yes | - | in their place, the PRAGMAs `application_id`, `auto_vacuum`, `user_version` when non-zero |
+| Enum, composite and range types | `CREATE TYPE` | inline `enum(...)` / `set(...)` column types | - |
+| Domains | `CREATE DOMAIN` with default, `NOT NULL` and checks | - | - |
+| Sequences | `CREATE SEQUENCE`, `OWNED BY` for serial columns | - | - |
+| Comments | tables, columns, indexes, views, functions, procedures | tables (column comments are written as SQL comments) | - |
+| `schema_migrations` rows | yes | yes | yes |
+
+Not supported:
+
+- PostgreSQL aggregates, rules, row-level security policies.
+- PostgreSQL schemas other than `public`: every object is read from `public` only. `config.schemas` is validated but not used.
+- Comments on types, sequences, constraints and triggers.
+- Dependency ordering across sections: the section order is fixed (extensions, types, functions, sequences, tables, indexes, foreign keys, views, triggers, comments, migrations). Within it, PostgreSQL types, domains, functions, views and materialized views and MySQL views are dependency-ordered.
+
+More detail per adapter: [docs/features/multi-database.md](docs/features/multi-database.md).
+
+## Configuration
+
+`config/initializers/better_structure_sql.rb`. Every option, with the default from [`lib/better_structure_sql/configuration.rb`](lib/better_structure_sql/configuration.rb):
 
 ```ruby
-# config/deploy.rb or GitHub Actions
-namespace :deploy do
-  task :update_schema do
-    # Run migrations (may be zero)
-    # Rails automatically dumps schema after migrations
-    execute :rake, 'db:migrate'
-
-    # Store schema version only if changed (automatic deduplication)
-    execute :rake, 'db:schema:store'
-  end
-end
-```
-
-**Benefits in Production:**
-- ✅ Deploys without migrations don't create duplicate versions
-- ✅ Developers see clean schema evolution timeline
-- ✅ Storage efficient (no duplicate content)
-- ✅ Clear audit trail of actual schema changes
-
-### Viewing Stored Versions
-
-```bash
-# List all versions with hashes
-rails db:schema:versions
-
-Schema Versions (3 total)
-
-ID   | Format | Mode        | Files | PostgreSQL | Hash     | Created             | Size
------|--------|-------------|-------|------------|----------|---------------------|-------
-3    | sql    | multi_file  | 47    | 15.4       | a3f5c9d2 | 2025-01-20 14:30:15 | 125 KB
-2    | sql    | single_file | -     | 15.4       | b7e2d1c4 | 2025-01-19 10:15:42 | 98 KB
-1    | sql    | single_file | -     | 15.3       | c9f8a3b2 | 2025-01-18 08:45:30 | 85 KB
-```
-
-### Configuration
-
-```ruby
-# config/initializers/better_structure_sql.rb
 BetterStructureSql.configure do |config|
-  # Enable schema versioning
-  config.enable_schema_versions = true
+  config.output_path = 'db/structure.sql'  # a path without a file extension means multi-file mode
 
-  # Retain 10 most recent unique versions (0 = unlimited)
-  config.schema_versions_limit = 10
-end
-```
+  config.replace_default_dump = false      # true: rails db:schema:dump uses this gem
+  config.replace_default_load = false      # true: rails db:schema:load uses this gem
 
-### Web UI Access
-
-Developers can view stored schema versions via the web UI without database access:
-
-```ruby
-# config/routes.rb
-authenticate :user, ->(user) { user.admin? } do
-  mount BetterStructureSql::Engine, at: '/schema_versions'
-end
-```
-
-Navigate to `/schema_versions` to browse versions, view formatted schema, and download raw SQL files.
-
-📖 See [Schema Versioning Documentation](docs/schema_versions.md) for complete details.
-
-## Docker Development Environment 🐳
-
-Get started with a fully configured development environment in seconds:
-
-```bash
-# Start PostgreSQL + Rails integration app
-docker compose up
-
-# Visit http://localhost:3000
-```
-
-See [DOCKER.md](DOCKER.md) for complete Docker documentation.
-
-## Documentation 📚
-
-### 🌐 Documentation Website
-**[Visit the full documentation site →](https://sebyx07.github.io/better_structure_sql/)**
-
-Interactive documentation with tutorials, database-specific guides, and real-world examples showing how to use SQL databases to their fullest with BetterStructureSql. Features include:
-- Step-by-step tutorials for PostgreSQL, MySQL, and SQLite
-- Real-world examples using advanced database features (triggers, views, functions)
-- Production deployment guides with automatic schema versioning
-- API reference and configuration examples
-- AI-friendly multi-file schema benefits
-
-### General Documentation
-- [Installation](docs/installation.md) - Setup and configuration
-- [Configuration](docs/configuration.md) - All configuration options
-- [Usage](docs/usage.md) - Rake tasks and examples
-- [Schema Versions](docs/schema_versions.md) - Version storage feature
-- [Troubleshooting](docs/usage.md#troubleshooting) - Common issues and solutions
-- [Multi-File Schema Output](docs/features/multi-file-schema-output/README.md) - Handle massive schemas
-- [Web UI Engine](docs/features/dev-environment-docker-web-ui/README.md) - Browse versions via web interface
-- [Docker Development](DOCKER.md) - Complete Docker environment guide
-- [Testing](docs/testing.md) - RSpec testing guide
-- [MVP Phases](docs/mvp/) - Implementation roadmap
-
-### Multi-Database Support
-- [Multi-Database Architecture](docs/features/multi-database-adapter-support/README.md) - Overview and feature matrix
-- [Database Adapters Architecture](docs/features/multi-database-adapter-support/architecture.md) - Technical deep dive
-- [Implementation Phases](docs/features/multi-database-adapter-support/plan/) - Phased rollout plan
-
-## 📊 Example Output
-
-<table>
-<tr>
-<td width="50%">
-
-### ❌ Before (pg_dump)
-
-```sql
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 14.5
--- Dumped by pg_dump version 14.5
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
--- ... 50+ more lines ...
-```
-
-**😕 Issues:**
-- Version-specific comments
-- Noisy SET commands
-- Non-deterministic output
-- Hard to review diffs
-
-</td>
-<td width="50%">
-
-### ✅ After (BetterStructureSql)
-
-```sql
-SET client_encoding = 'UTF8';
-
--- Extensions
-CREATE EXTENSION IF NOT EXISTS plpgsql
-  WITH SCHEMA pg_catalog;
-CREATE EXTENSION IF NOT EXISTS pgcrypto
-  WITH SCHEMA public;
-
--- Tables
-CREATE TABLE users (
-  id bigserial PRIMARY KEY,
-  email varchar NOT NULL,
-  created_at timestamp(6) NOT NULL,
-  updated_at timestamp(6) NOT NULL
-);
-
-CREATE INDEX index_users_on_email
-  ON users (email);
-```
-
-**🎯 Benefits:**
-- Clean, minimal output
-- Deterministic
-- Easy to review
-- Version control friendly
-
-</td>
-</tr>
-</table>
-
-## ⚙️ Configuration
-
-### 📄 Single-File Output (Default)
-
-```ruby
-# config/initializers/better_structure_sql.rb
-BetterStructureSql.configure do |config|
-  # Single file output (default)
-  config.output_path = 'db/structure.sql'
-
-  # Replace default rake db:schema:dump (opt-in, default: false)
-  # When false, use explicit tasks: rails db:schema:dump_better
-  config.replace_default_dump = false
-  config.replace_default_load = false
-
-  # Schema version storage (optional)
-  config.enable_schema_versions = true
-  config.schema_versions_limit = 10  # Keep last 10 versions (0 = unlimited)
-
-  # Customize output (feature toggles)
   config.include_extensions = true
-  config.include_functions = true
-  config.include_triggers = true
-  config.include_views = true
-  config.include_materialized_views = true  # PostgreSQL only
-  config.include_domains = true             # PostgreSQL only
-  config.include_sequences = true           # PostgreSQL only
-  config.include_custom_types = true        # PostgreSQL ENUM, MySQL ENUM/SET
-  # config.include_rules = false            # Not yet implemented
-  # config.include_comments = false         # Not yet implemented
-
-  # Search path and schema filtering
-  config.search_path = '"$user", public'
-  config.schemas = ['public']               # Which schemas to dump
-end
-```
-
-### 📁 Multi-File Output (Recommended for Large Projects)
-
-> **💡 Recommended:** Use `db/schema` directory mode for projects with 100+ tables for better git diffs, easier navigation, and AI-friendly organization.
-
-```ruby
-# config/initializers/better_structure_sql.rb
-BetterStructureSql.configure do |config|
-  # Multi-file output - splits schema across directories
-  config.output_path = 'db/schema'
-
-  # Chunking configuration
-  config.max_lines_per_file = 500        # Soft limit per file (default: 500)
-  config.overflow_threshold = 1.1        # 10% overflow allowed (default: 1.1)
-  config.generate_manifest = true        # Create _manifest.json (default: true)
-
-  # Schema version storage with ZIP archives
-  config.enable_schema_versions = true
-  config.schema_versions_limit = 10
-
-  # Feature toggles (same as single-file mode)
-  config.include_extensions = true
-  config.include_functions = true
-  config.include_triggers = true
-  config.include_views = true
-  config.include_materialized_views = true
+  config.include_custom_types = true
   config.include_domains = true
   config.include_sequences = true
-  config.include_custom_types = true
+  config.include_functions = true
+  config.include_views = true
+  config.include_materialized_views = true
+  config.include_triggers = true
+  config.include_comments = true
 
-  # Formatting options
-  config.indent_size = 2                    # SQL indentation (default: 2)
-  config.add_section_spacing = true         # Add blank lines between sections
-  config.sort_tables = true                 # Sort tables alphabetically
+  config.search_path = '"$user", public'   # PostgreSQL: written as SET search_path TO ...
+  config.sort_tables = true                # alphabetical table order
+  config.indent_size = 2
+  config.add_section_spacing = true
+
+  config.max_lines_per_file = 500          # multi-file: soft limit per file
+  config.overflow_threshold = 1.1          # multi-file: a file may grow to limit * threshold
+  config.generate_manifest = true          # multi-file: write _manifest.json
+
+  config.enable_schema_versions = false    # needed by db:schema:store / versions / cleanup
+  config.schema_versions_limit = 10        # versions kept; 0 keeps all
+
+  config.adapter = :auto                   # :auto, :postgresql, :mysql, :sqlite
 end
 ```
 
-### 📂 Directory Structure (Multi-File Mode)
+The initializer written by `better_structure_sql:install` differs from these defaults in three places: it sets `enable_schema_versions = true`, `sort_tables = false` and `search_path = 'public'`.
 
-When using `config.output_path = 'db/schema'`, your schema is organized by type with numbered directories indicating load order:
+`replace_default_dump` also switches Rails to `schema_format = :sql`. Both `replace_default_*` options are ignored when `output_path` ends in `.rb`.
+
+Full reference, validation rules and options that exist but have no effect yet: [docs/configuration.md](docs/configuration.md).
+
+## Multi-file output
+
+Point `output_path` at a directory (any path without a file extension) and the dump is split by object type. The numeric prefix is the load order.
+
+```ruby
+config.output_path = 'db/schema'
+```
 
 ```
 db/schema/
-├── _header.sql              # SET statements and search path
-├── _manifest.json           # Metadata and load order
-├── 01_extensions/
-│   └── 000001.sql
-├── 02_types/
-│   └── 000001.sql
-├── 03_functions/
-│   └── 000001.sql
-├── 04_sequences/
-│   └── 000001.sql
-├── 05_tables/
-│   ├── 000001.sql          # ~500 lines per file
-│   ├── 000002.sql
-│   └── 000003.sql
-├── 06_indexes/
-│   └── 000001.sql
-├── 07_foreign_keys/
-│   └── 000001.sql
-├── 08_views/
-│   └── 000001.sql
-├── 09_triggers/
-│   └── 000001.sql
-├── 10_comments/
-│   └── 000001.sql
-└── 20_migrations/
-    └── 000001.sql
+├── _header.sql
+├── _manifest.json
+├── 01_extensions/000001.sql
+├── 02_types/000001.sql          # enums, composite types, domains
+├── 03_functions/000001.sql
+├── 04_sequences/000001.sql
+├── 05_tables/000001.sql
+├── 05_tables/000002.sql
+├── 06_indexes/000001.sql
+├── 07_foreign_keys/000001.sql
+├── 08_views/000001.sql          # views and materialized views
+├── 09_triggers/000001.sql
+├── 10_comments/000001.sql
+└── 20_migrations/000001.sql
 ```
 
-**Benefits for Large Schemas**:
-- ✅ Memory efficient - incremental file writing
-- ✅ Git friendly - only changed files in diffs
-- ✅ Easy navigation - find specific tables in `05_tables/`, triggers in `09_triggers/`, etc.
-- ✅ ZIP downloads - complete directory as single archive
-- ✅ Scalable - handles 50,000+ database objects
-- ✅ AI-friendly - 500-line chunks work better with LLM context windows
+A directory appears only when it has content. Files are filled up to `max_lines_per_file`; one object is never split across files. `rails db:schema:load_better` loads either a file or a directory.
 
-**Manifest File (_manifest.json)**:
+Details: [docs/features/multi-file-output.md](docs/features/multi-file-output.md).
 
-The manifest tracks metadata and provides load order information:
+## Schema versions and web UI
 
-```json
-{
-  "version": "1.0",
-  "total_files": 11,
-  "total_lines": 2345,
-  "max_lines_per_file": 500,
-  "directories": {
-    "01_extensions": { "files": 1, "lines": 3 },
-    "02_types": { "files": 1, "lines": 13 },
-    "03_functions": { "files": 1, "lines": 332 },
-    "04_sequences": { "files": 1, "lines": 289 },
-    "05_tables": { "files": 2, "lines": 979 },
-    "06_indexes": { "files": 1, "lines": 397 },
-    "07_foreign_keys": { "files": 1, "lines": 67 },
-    "08_views": { "files": 1, "lines": 217 },
-    "09_triggers": { "files": 1, "lines": 35 },
-    "10_comments": { "files": 1, "lines": 9 },
-    "20_migrations": { "files": 1, "lines": 13 }
-  }
-}
+Store each distinct schema in the database, so a developer can read the production schema without database access.
+
+```ruby
+config.enable_schema_versions = true
+config.schema_versions_limit = 10
 ```
-
-This example shows a real schema with 2,345 lines split across 11 files. The `05_tables` directory has 2 files because the tables exceed the 500-line limit.
-
-## 📝 Usage & Rake Tasks
-
-### Core Schema Tasks
 
 ```bash
-# Dump schema using BetterStructureSql (explicit)
 rails db:schema:dump_better
-
-# Load schema from file or directory
-rails db:schema:load_better
+rails db:schema:store       # stores a version, or skips when the content hash matches the latest one
+rails db:schema:versions    # lists stored versions
+rails db:schema:cleanup     # applies schema_versions_limit
+CONFIRM=1 rails db:schema:restore[5]  # replaces the database schema with a stored version
 ```
 
-### Schema Versioning Tasks
+`db:schema:store` reads the file or directory at `output_path`; it does not dump and does not modify it. In multi-file mode it also stores a ZIP of the directory.
 
-**Store Current Schema**
-```bash
-# Store the current schema as a version in the database
-rails db:schema:store
-```
+`db:schema:restore` **purges the database** (every table and all data, the stored versions included), then loads the version. It needs `CONFIRM=1` and refuses protected environments such as production, like `db:schema:load`.
 
-This command:
-- Reads your current `db/structure.sql` or `db/schema` directory
-- Stores it in the `better_structure_sql_schema_versions` table
-- Includes metadata: format type, output mode, database version, file count
-- For multi-file schemas, creates a ZIP archive of all files
-- Automatically manages retention (keeps last N versions based on config)
-
-**List Stored Versions**
-```bash
-# View all stored schema versions
-rails db:schema:versions
-```
-
-Output example:
-```
-Total versions: 3
-
-ID     Format  Mode          Files   PostgreSQL      Created              Size
------------------------------------------------------------------------------------------------
-3      sql     multi_file    12      15.3            2025-01-15 10:30:22  56.42 KB
-2      sql     single_file   1       15.3            2025-01-14 15:20:10  45.21 KB
-1      sql     single_file   1       15.2            2025-01-13 09:45:33  44.03 KB
-```
-
-The multi-file mode example shows 12 files across 10 directories (extensions, types, functions, sequences, tables, indexes, foreign_keys, views, triggers, migrations) stored as a ZIP archive.
-
-**Restore from Version**
-```bash
-# Restore database from a specific version
-rails db:schema:restore[5]
-
-# Or using environment variable
-VERSION_ID=5 rails db:schema:restore
-```
-
-**Cleanup Old Versions**
-```bash
-# Remove old versions based on retention limit
-rails db:schema:cleanup
-```
-
-### Web UI Engine
-
-Mount the web interface to browse schema versions:
+Mount the engine to browse, view and download versions:
 
 ```ruby
 # config/routes.rb
-Rails.application.routes.draw do
-  # With authentication (recommended for production)
-  authenticate :user, ->(user) { user.admin? } do
-    mount BetterStructureSql::Engine, at: '/schema_versions'
-  end
-
-  # Or without authentication (development only)
-  mount BetterStructureSql::Engine, at: '/schema_versions' if Rails.env.development?
+authenticate :user, ->(user) { user.admin? } do
+  mount BetterStructureSql::Engine, at: '/schema_versions'
 end
+
+# config/initializers/better_structure_sql.rb
+BetterStructureSql::Engine.authentication_handled_by_routes!
 ```
 
-Access at `http://localhost:3000/schema_versions` to:
-- View list of up to 100 most recent schema versions (pagination-ready)
-- Browse formatted schema content with syntax highlighting (for files <200KB)
-- Download raw SQL/Ruby schema files as text
-- Download ZIP archives for multi-file schemas
-- View manifest metadata for multi-file schemas
-- Stream large files efficiently (>2MB) without memory issues
-- Compare database versions and formats
-
-**Authentication Examples**:
+The UI shows your whole schema, so it fails closed: outside development and test every request gets `403 Forbidden` until you declare how access is controlled. Either state that the routes do it (above) or register a check:
 
 ```ruby
-# Devise with admin check
-authenticate :user, ->(user) { user.admin? } do
-  mount BetterStructureSql::Engine, at: '/admin/schema'
-end
-
-# Custom constraint class
-class AdminConstraint
-  def matches?(request)
-    user = request.env['warden']&.user
-    user&.admin?
-  end
-end
-
-constraints AdminConstraint.new do
-  mount BetterStructureSql::Engine, at: '/schema_versions'
-end
-
-# Environment-based
-if Rails.env.production?
-  # Add your production auth here
-else
-  mount BetterStructureSql::Engine, at: '/schema_versions'
+BetterStructureSql::Engine.authenticate_with do |controller|
+  controller.request.env['warden']&.user&.admin?
 end
 ```
 
-### Automatic Schema Storage Workflow
+Details: [docs/schema_versions.md](docs/schema_versions.md), [docs/features/web-ui.md](docs/features/web-ui.md).
 
-**Option 1: After Each Migration (Recommended)**
+## Rake tasks
+
+| Task | Does |
+|---|---|
+| `db:schema:dump_better` | Dump to `output_path` |
+| `db:schema:load_better` | Load the file or directory at `output_path` (on MySQL, the way to load a dump unless `replace_default_load` is set) |
+| `db:schema:store` | Store the dumped schema as a version (skips unchanged content) |
+| `db:schema:versions` | List stored versions |
+| `db:schema:cleanup` | Delete versions beyond `schema_versions_limit` |
+| `db:schema:restore[ID]` | Replace the database schema with a stored version: purges the database first, needs `CONFIRM=1` (`VERSION_ID=5` also works) |
+| `db:schema:dump`, `db:schema:load` | Use this gem when `replace_default_dump` / `replace_default_load` are set |
+
+## Documentation
+
+| Topic | Where |
+|---|---|
+| Docs site with tutorials | <https://sebyx07.github.io/better_structure_sql/> |
+| Install | [docs/installation.md](docs/installation.md) |
+| Configuration reference | [docs/configuration.md](docs/configuration.md) |
+| Tasks and Ruby API | [docs/usage.md](docs/usage.md) |
+| Schema versions | [docs/schema_versions.md](docs/schema_versions.md) |
+| Multi-file output | [docs/features/multi-file-output.md](docs/features/multi-file-output.md) |
+| Adapters | [docs/features/multi-database.md](docs/features/multi-database.md) |
+| Web UI | [docs/features/web-ui.md](docs/features/web-ui.md) |
+| Moving from `schema.rb` | [docs/migration-guides/from-schema-rb-to-structure-sql.md](docs/migration-guides/from-schema-rb-to-structure-sql.md) |
+| Internals | [docs/architecture.md](docs/architecture.md) |
+| One-file reference for coding agents | [llms.txt](llms.txt) |
+| Changes | [CHANGELOG.md](CHANGELOG.md) |
+
+## AI-maintained
+
+**This project is maintained by [developerz.ai](https://developerz.ai).** Its maintainer agent triages issues, reviews every pull request, merges a pull request once its author marks it ready and CI is green, checks project health daily, and runs a monthly improvement pass. The policy it follows is committed in [`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml). Breaking changes and major releases stay with the owner.
+
+- **Using the gem in your app?** Point your agent at [`llms.txt`](llms.txt). Paste this into your app's `CLAUDE.md` / `AGENTS.md`:
+  ```markdown
+  ## Schema dumps
+  `db/structure.sql` (or `db/schema/`) is generated by the better_structure_sql gem; never edit it by hand.
+  Before changing its configuration read https://github.com/sebyx07/better_structure_sql/blob/main/llms.txt
+  ```
+- **Working on this repo?** [`CLAUDE.md`](CLAUDE.md) holds the commands, the code map and the rules; [CONTRIBUTING.md](CONTRIBUTING.md) covers pull requests.
+
+## Development
+
 ```bash
-# Run migration and store schema version
-rails db:migrate && rails db:schema:store
+bin/setup   # install dependencies and prepare the test database
+bin/check   # the gate CI runs: tests and linters
+bin/dev     # start the integration app
 ```
 
-**Option 2: Git Hooks**
-```bash
-# .git/hooks/post-merge
-#!/bin/bash
-if git diff HEAD@{1} --name-only | grep -q "db/migrate"; then
-  echo "Migrations detected, storing schema version..."
-  rails db:schema:store
-fi
-```
+Tests need a reachable PostgreSQL. See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/testing.md](docs/testing.md).
 
-**Option 3: CI/CD Pipeline**
-```yaml
-# .github/workflows/deploy.yml
-- name: Run migrations and store schema
-  run: |
-    rails db:migrate
-    rails db:schema:store
-```
+Releases are cut by merging a version bump: see [RELEASE.md](RELEASE.md).
 
-## 📋 Requirements
+## Security
 
-| Component | Version | Notes |
-|-----------|---------|-------|
-| **Ruby** | 2.7+ | Tested up to Ruby 3.4.7 |
-| **Rails** | 7.0+ | Works with Rails 8.1.1+ |
-| **rubyzip** | ≥ 2.0.0 | Required for ZIP archive support |
-| **Database Adapter** | | |
-| `pg` | ≥ 1.0 | **Required dependency**. Works with PostgreSQL 12+ |
-| `mysql2` | ≥ 0.5 | Optional. For MySQL 8.0+ (experimental) |
-| `sqlite3` | ≥ 1.4 | Optional. For SQLite 3.35+ (experimental) |
+Report vulnerabilities privately: [SECURITY.md](SECURITY.md).
 
-**Note**: The gem currently requires the `pg` gem as a dependency. Multi-database support (MySQL, SQLite) is implemented but requires manual gem installation. Future versions may make database adapters optional.
+## License
 
-## Migration Guides
+MIT. See [LICENSE](LICENSE).
 
-### Migrating from schema.rb to structure.sql
+## Star history
 
-If you're currently using Rails' `schema.rb` (Ruby format) and want to switch to `structure.sql` (SQL format) with BetterStructureSql, we have a comprehensive guide:
-
-**[📖 Migration Guide: From schema.rb to structure.sql](docs/migration-guides/from-schema-rb-to-structure-sql.md)**
-
-This guide covers:
-- Why migrate from schema.rb to structure.sql
-- Step-by-step migration process
-- Configuration for both formats
-- Switching between formats dynamically
-- Comparing SQL vs Ruby schema versions
-- Rollback procedures
-- Best practices and troubleshooting
-
-BetterStructureSql supports **both** `schema.rb` and `structure.sql` formats, allowing you to:
-- Store versions of either format
-- Switch between formats using `SCHEMA_FORMAT` environment variable
-- Compare different formats in the web UI
-- Migrate gradually from Ruby to SQL format
-
----
-
-## 📊 Project Stats
-
-**Codebase Metrics** (as of v0.1.0):
-- **47 Ruby files** in `lib/` (~5,296 total lines)
-- **25 test files** in `spec/` (~3,022 lines)
-- **8 adapter files** (PostgreSQL, MySQL, SQLite, Registry, Configs)
-- **13 SQL generators** (Tables, Indexes, Functions, Triggers, Views, etc.)
-- **9 introspection modules** (Extensions, Types, Tables, Indexes, Foreign Keys, etc.)
-- **3 integration apps** (PostgreSQL, MySQL, SQLite) with Docker support
-- **React documentation site** deployed to GitHub Pages
-
-**Test Coverage**: Comprehensive RSpec test suite with unit and integration tests across all major components.
-
-**Real-World Example**: The integration app generates a multi-file schema with:
-- 11 SQL files across 10 directories
-- 2,345 total lines of SQL
-- Complete PostgreSQL feature coverage (extensions, types, functions, triggers, materialized views)
-
-**Production Status**:
-- ✅ **PostgreSQL**: Fully implemented and tested (primary focus)
-- ✅ **Multi-file output**: Complete with ZIP storage and streaming
-- ✅ **Schema versioning**: Full CRUD with web UI
-- ✅ **Rails integration**: Drop-in replacement for default tasks
-- 🧪 **MySQL**: Adapter implemented, integration app available (experimental)
-- 🧪 **SQLite**: Adapter implemented, basic testing (experimental)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Bug reports and pull requests are welcome on [GitHub](https://github.com/sebyx07/better_structure_sql).
-
-### How to Contribute
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Run the tests (`bundle exec rspec`)
-4. Commit your changes (`git commit -m 'Add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
-
-## 📄 License
-
-This gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
----
-
-**Made with ❤️ by [sebyx07](https://github.com/sebyx07) and [contributors](https://github.com/sebyx07/better_structure_sql/graphs/contributors)**
-
-⭐ **Star this repo if you find it useful!** ⭐
+[![Star History Chart](https://api.star-history.com/svg?repos=sebyx07/better_structure_sql&type=Date)](https://star-history.com/#sebyx07/better_structure_sql&Date)

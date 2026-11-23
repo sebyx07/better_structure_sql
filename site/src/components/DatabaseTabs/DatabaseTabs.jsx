@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 
-function DatabaseTabs({ children, defaultDatabase }) {
+function DatabaseTabs({ children, defaultDatabase = 'postgresql' }) {
   const [activeTab, setActiveTab] = useState(defaultDatabase);
 
   // Convert children to array and filter valid tabs
@@ -36,12 +36,8 @@ function DatabaseTabs({ children, defaultDatabase }) {
           );
         })}
       </ul>
-      <div className="tab-content border border-top-0 rounded-bottom p-3 bg-light">
-        <div
-          className="tab-pane fade show active"
-          role="tabpanel"
-          id={`${activeTab}-tab`}
-        >
+      <div className="tab-content border border-top-0 rounded-bottom p-3">
+        <div className="tab-pane fade show active" role="tabpanel" id={`${activeTab}-tab`}>
           {activeContent}
         </div>
       </div>
@@ -54,12 +50,12 @@ DatabaseTabs.propTypes = {
   defaultDatabase: PropTypes.string,
 };
 
-DatabaseTabs.defaultProps = {
-  defaultDatabase: 'postgresql',
-};
-
-function Tab({ children, database, label, icon }) {
-  return <div data-database={database} data-label={label} data-icon={icon}>{children}</div>;
+function Tab({ children, database, label, icon = null }) {
+  return (
+    <div data-database={database} data-label={label} data-icon={icon}>
+      {children}
+    </div>
+  );
 }
 
 Tab.propTypes = {
@@ -67,10 +63,6 @@ Tab.propTypes = {
   database: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,
   icon: PropTypes.string,
-};
-
-Tab.defaultProps = {
-  icon: null,
 };
 
 DatabaseTabs.Tab = Tab;

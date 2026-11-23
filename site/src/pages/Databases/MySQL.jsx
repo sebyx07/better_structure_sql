@@ -1,9 +1,14 @@
 import { Link } from 'react-router-dom';
 import CodeBlock from '../../components/CodeBlock/CodeBlock';
+import Seo from '../../components/Seo/Seo';
 
 function MySQL() {
   return (
     <div className="container my-4">
+      <Seo
+        title="MySQL Guide"
+        description="Using BetterStructureSql with MySQL and MariaDB: stored procedures, triggers, views, CHECK constraints, full index definitions and how to load a dump."
+      />
       <div className="row">
         <div className="col-lg-10 offset-lg-1">
           <div className="mysql-guide">
@@ -14,8 +19,18 @@ function MySQL() {
 
             <div className="alert alert-info">
               <i className="bi bi-info-circle me-2" />
-              MySQL 8.0+ support includes stored procedures, triggers, views, indexes, and CHECK constraints.
-              BetterStructureSql cleanly dumps all these features!
+              The MySQL adapter dumps tables, indexes, foreign keys, CHECK constraints, views, stored procedures,
+              functions and triggers, on MySQL and MariaDB, with the <code>mysql2</code> or <code>trilogy</code> driver.
+            </div>
+
+            <div className="alert alert-warning">
+              <i className="bi bi-cone-striped me-2" />
+              <strong>Round-trip tested in CI:</strong> a dump is loaded into an empty database and dumped
+              again, and both the dumps and the server&apos;s <code>SHOW CREATE</code> output must match. The servers
+              and drivers tested are the <code>integration-mysql</code> job in{' '}
+              <a href="https://github.com/sebyx07/better_structure_sql/blob/main/.github/workflows/ci.yml" className="alert-link" target="_blank" rel="noopener noreferrer">ci.yml</a>.
+              PostgreSQL remains the primary target of BetterStructureSql. Add the driver your app
+              connects with (<code>mysql2</code> or <code>trilogy</code>) to your Gemfile.
             </div>
 
             <div className="alert alert-warning">
@@ -28,7 +43,7 @@ function MySQL() {
               </a>
               {' '}•{' '}
               <a href="https://dev.mysql.com/downloads/mysql/" className="alert-link" target="_blank" rel="noopener noreferrer">
-                Install MySQL 8.0+
+                Install MySQL
               </a>
             </div>
 
@@ -38,13 +53,17 @@ function MySQL() {
                 <div className="col-md-6">
                   <h4>✅ Supported</h4>
                   <ul>
-                    <li>Stored Procedures</li>
+                    <li>Stored Procedures and Functions</li>
                     <li>Triggers (BEFORE/AFTER)</li>
                     <li>Views</li>
-                    <li>Indexes (btree, hash, fulltext)</li>
-                    <li>Foreign Keys</li>
-                    <li>ENUM and SET types</li>
-                    <li>CHECK Constraints (8.0.16+)</li>
+                    <li>Column types and defaults as the server reports them (<code>int unsigned</code>, <code>datetime(6)</code>, <code>tinyint(1)</code>)</li>
+                    <li><code>AUTO_INCREMENT</code>, <code>ON UPDATE</code>, generated columns</li>
+                    <li><code>ENGINE</code> and <code>COLLATE</code> table options</li>
+                    <li>Indexes: UNIQUE, FULLTEXT, SPATIAL, prefix lengths, DESC, functional key parts, INVISIBLE</li>
+                    <li>Foreign Keys, composite included</li>
+                    <li>ENUM and SET column types (inline)</li>
+                    <li>Table comments</li>
+                    <li>CHECK Constraints (where the server has them)</li>
                   </ul>
                 </div>
                 <div className="col-md-6">
@@ -54,9 +73,32 @@ function MySQL() {
                     <li>Materialized Views</li>
                     <li>Custom Types (uses inline ENUM/SET)</li>
                     <li>Sequences (uses AUTO_INCREMENT)</li>
+                    <li>Column comments (written as SQL comments only)</li>
                   </ul>
                 </div>
               </div>
+            </section>
+
+            <section className="mb-5">
+              <h2 className="border-bottom pb-2 mb-3">
+                <i className="bi bi-box-arrow-in-down me-2" />
+                Loading a Dump
+              </h2>
+              <p>
+                Load MySQL dumps through the gem. Rails&apos; own <code>structure.sql</code> load pipes the file
+                through the <code>mysql</code> client, which needs <code>DELIMITER</code> directives around
+                procedure and trigger bodies. The dump has none: the gem&apos;s loader splits the statements itself
+                and sends them over the ActiveRecord connection.
+              </p>
+              <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
+                {`BetterStructureSql.configure do |config|
+  config.replace_default_dump = true   # rails db:schema:dump and the dump after db:migrate
+  config.replace_default_load = true   # rails db:schema:load, db:setup, db:test:prepare
+end`}
+              </CodeBlock>
+              <p className="mt-3">
+                Without <code>replace_default_load</code>, run <code>rails db:schema:load_better</code>.
+              </p>
             </section>
 
             {/* Stored Procedures */}
@@ -265,6 +307,12 @@ end`}
               <p className="lead">
                 Fast text searching across large datasets using MySQL&apos;s FULLTEXT indexes.
               </p>
+
+              <div className="alert alert-info">
+                <i className="bi bi-info-circle me-2" />
+                The index below is dumped as <code>CREATE FULLTEXT INDEX</code>. SPATIAL indexes, prefix
+                lengths, descending and functional key parts and invisible indexes are kept as well.
+              </div>
 
               <CodeBlock language="ruby" filename="db/migrate/20240101000004_add_fulltext_search.rb">
                 {`class AddFulltextSearch < ActiveRecord::Migration[7.0]

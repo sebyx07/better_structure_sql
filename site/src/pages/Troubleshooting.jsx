@@ -1,8 +1,14 @@
+import { Link } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock/CodeBlock';
+import Seo from '../components/Seo/Seo';
 
 function Troubleshooting() {
   return (
     <div className="container py-5">
+      <Seo
+        title="Troubleshooting"
+        description="Common BetterStructureSql issues and solutions, including creating baseline schema versions in production."
+      />
       <h1 className="display-4 mb-4">Troubleshooting</h1>
       <p className="lead mb-5">
         Common issues and solutions for BetterStructureSql
@@ -36,7 +42,7 @@ function Troubleshooting() {
             <h5 className="mt-3">From Command Line:</h5>
             <CodeBlock
               language="bash"
-              code={`# Generate and store current schema in one step
+              code={`# Dump the current schema, then store it as a version
 RAILS_ENV=production rails db:schema:dump_better
 RAILS_ENV=production rails db:schema:store`}
             />
@@ -45,7 +51,7 @@ RAILS_ENV=production rails db:schema:store`}
             <CodeBlock
               language="ruby"
               code={`# Production Rails console
-BetterStructureSql::Dumper.dump(output_path: 'db/structure.sql')
+BetterStructureSql::Dumper.new.dump(store_version: false)
 BetterStructureSql::SchemaVersions.store_current`}
             />
 
@@ -72,10 +78,11 @@ BetterStructureSql::SchemaVersions.store_current`}
               language="ruby"
               code={`# Production Rails console
 content = File.read(Rails.root.join('db', 'structure.sql'))
-db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version') # PostgreSQL
 
 BetterStructureSql::SchemaVersions.store(
   content: content,
+  content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
   format_type: 'sql',
   pg_version: db_version
 )`}
@@ -86,10 +93,11 @@ BetterStructureSql::SchemaVersions.store(
               language="ruby"
               code={`# Production Rails console
 content = File.read(Rails.root.join('db', 'schema.rb'))
-db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version') # PostgreSQL
 
 BetterStructureSql::SchemaVersions.store(
   content: content,
+  content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
   format_type: 'rb',
   pg_version: db_version
 )`}
@@ -131,10 +139,11 @@ File.write('tmp/schema_export.sql', dev_version.content)`}
               language="ruby"
               code={`# Production Rails console
 content = File.read('/tmp/schema_export.sql')
-db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version') # PostgreSQL
 
 BetterStructureSql::SchemaVersions.store(
   content: content,
+  content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
   format_type: 'sql',
   pg_version: db_version
 )`}
@@ -170,13 +179,14 @@ git show main:db/structure.sql > /tmp/schema_v3.sql`}
             <CodeBlock
               language="ruby"
               code={`# Production Rails console
-db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
+db_version = ActiveRecord::Base.connection.select_value('SHOW server_version') # PostgreSQL
 
 # Store historical versions (oldest first)
 ['/tmp/schema_v1.sql', '/tmp/schema_v2.sql', '/tmp/schema_v3.sql'].each do |file|
   content = File.read(file)
   BetterStructureSql::SchemaVersions.store(
     content: content,
+    content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
     format_type: 'sql',
     pg_version: db_version
   )
@@ -201,30 +211,19 @@ end`}
               For multi-file schema output stored in git (when using directory-based mode):
             </p>
 
-            <h5 className="mt-3">Step 1: Extract Directory from Git</h5>
+            <p>
+              <code>db:schema:store</code> reads the directory at <code>output_path</code>, so
+              restore the directory there and store it:
+            </p>
+
             <CodeBlock
               language="bash"
-              code={`# Extract multi-file schema directory from git commit
-git archive --format=tar main:db/schema | tar -x -C /tmp/schema_export`}
-            />
+              code={`# Extract the multi-file schema directory from a git commit into output_path
+mkdir -p db/schema
+git archive --format=tar main:db/schema | tar -x -C db/schema
 
-            <h5 className="mt-4">Step 2: Create ZIP and Import</h5>
-            <CodeBlock
-              language="ruby"
-              code={`# Production Rails console
-require 'zip'
-
-db_version = ActiveRecord::Base.connection.select_value('SHOW server_version')
-schema_dir = '/tmp/schema_export'
-
-# Create ZIP from directory
-zip_buffer = BetterStructureSql::ZipGenerator.create_from_directory(schema_dir)
-
-BetterStructureSql::SchemaVersions.store(
-  zip_archive: zip_buffer.string,
-  output_mode: 'multi_file',
-  pg_version: db_version
-)`}
+# Store it as a version (ZIP archive)
+RAILS_ENV=production rails db:schema:store`}
             />
 
             <div className="alert alert-success mt-3">
@@ -277,7 +276,7 @@ namespace :db do
       puts "Creating baseline schema version..."
 
       # Dump current schema
-      BetterStructureSql::Dumper.dump(output_path: 'db/structure.sql')
+      BetterStructureSql::Dumper.new.dump(store_version: false)
 
       # Store as version
       BetterStructureSql::SchemaVersions.store_current
@@ -380,6 +379,7 @@ end
 # Use correct version when storing
 BetterStructureSql::SchemaVersions.store(
   content: content,
+  content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
   format_type: 'sql',
   pg_version: db_version
 )`}
@@ -436,7 +436,7 @@ rails db:schema:dump_better`}
 rails db:migrate
 
 # Check configuration
-rails runner "puts BetterStructureSql.config.enable_schema_versions"`}
+rails runner "puts BetterStructureSql.configuration.enable_schema_versions"`}
                 />
               </div>
             </div>
@@ -529,11 +529,11 @@ GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO your_user;`}
         <hr />
         <ul className="mb-0">
           <li>
-            <a href="#/configuration" className="alert-link">Configuration Guide</a> -
+            <Link to="/configuration" className="alert-link">Configuration Guide</Link> -
             Full configuration options
           </li>
           <li>
-            <a href="#/quick-start" className="alert-link">Quick Start</a> -
+            <Link to="/quick-start" className="alert-link">Quick Start</Link> -
             Getting started guide
           </li>
           <li>

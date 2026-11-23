@@ -1,12 +1,14 @@
-import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
+import Seo from '../components/Seo/Seo';
 import CodeBlock from '../components/CodeBlock/CodeBlock';
 
 function Features() {
   return (
     <>
-      <Helmet>
-        <title>Features - BetterStructureSql</title>
-      </Helmet>
+      <Seo
+        title="Features"
+        description="BetterStructureSql rake tasks, schema versioning web UI, automatic schema storage and multi-file schema output."
+      />
 
       <div className="container py-5">
         <div className="row">
@@ -83,10 +85,11 @@ function Features() {
                       </CodeBlock>
                       <p className="mb-2">This command:</p>
                       <ul className="small">
-                        <li>Reads current schema (file or directory)</li>
+                        <li>Reads the dumped schema at <code>output_path</code> (it does not dump)</li>
+                        <li>Skips storage when the content hash matches the latest version</li>
                         <li>Stores in <code>better_structure_sql_schema_versions</code> table</li>
                         <li>Includes metadata: format, mode, DB version, file count</li>
-                        <li>Creates ZIP archive for multi-file schemas</li>
+                        <li>Creates a ZIP archive for multi-file schemas; the directory on disk is left untouched</li>
                         <li>Manages retention (keeps last N versions)</li>
                       </ul>
                     </div>
@@ -108,10 +111,12 @@ function Features() {
                       </CodeBlock>
                       <p className="mb-1">Example output:</p>
                       <CodeBlock language="text">
-{`ID     Format  Mode          Files   Database        Created
----------------------------------------------------------------------
-5      sql     multi_file    47      PostgreSQL 15.3 2025-01-15 10:30
-4      sql     single_file   1       MySQL 8.0       2025-01-14 15:20`}
+{`Schema Versions (2 total)
+
+ID   | Format | Mode        | Files | PostgreSQL | Hash     | Created             | Size
+-----------------------------------------------------------------------------------------
+5    | sql    | multi_file  | 47    | 15.3       | 9f2c41ab | 2025-01-15 10:30:12 | 182.40 KB
+4    | sql    | single_file | -     | 15.3       | 03be77d1 | 2025-01-14 15:20:44 | 175.12 KB`}
                       </CodeBlock>
                     </div>
                   </div>
@@ -126,16 +131,20 @@ function Features() {
                       </h5>
                     </div>
                     <div className="card-body">
-                      <p>Restore database from a specific stored version.</p>
+                      <p>
+                        Replace the database schema with a stored version. The database is purged
+                        first: every table and all data are dropped, the stored versions included.
+                      </p>
                       <CodeBlock language="bash">
 {`# Restore from version 5
-rails db:schema:restore[5]
+CONFIRM=1 rails db:schema:restore[5]
 
 # Or using environment variable
-VERSION_ID=5 rails db:schema:restore`}
+CONFIRM=1 VERSION_ID=5 rails db:schema:restore`}
                       </CodeBlock>
                       <small className="text-muted">
-                        Automatically handles single-file and multi-file (ZIP) schemas.
+                        Needs <code>CONFIRM=1</code> and refuses protected environments such as
+                        production. Handles single-file and multi-file (ZIP) schemas.
                       </small>
                     </div>
                   </div>
@@ -156,6 +165,7 @@ VERSION_ID=5 rails db:schema:restore`}
                       </CodeBlock>
                       <small className="text-muted">
                         Respects <code>schema_versions_limit</code> config. Set to 0 for unlimited retention.
+                        Retention is also applied automatically each time a version is stored.
                       </small>
                     </div>
                   </div>
@@ -196,84 +206,80 @@ end`}
               </div>
 
               <h3 className="mt-4 mb-3">Authentication (Production)</h3>
-              <p>Secure the engine with authentication constraints:</p>
+              <div className="alert alert-warning">
+                <i className="bi bi-shield-lock me-2" />
+                The UI shows your whole schema, so it <strong>fails closed</strong>: outside
+                development and test every request gets <code>403 Forbidden</code> until you declare
+                how access is controlled, using one of the options below.
+              </div>
 
-              <div className="accordion mb-4" id="authExamples">
-                <div className="accordion-item">
-                  <h2 className="accordion-header">
-                    <button className="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#deviseAuth">
-                      <i className="bi bi-shield-lock me-2" />
-                      Devise Authentication
-                    </button>
-                  </h2>
-                  <div id="deviseAuth" className="accordion-collapse collapse show" data-bs-parent="#authExamples">
-                    <div className="accordion-body">
-                      <CodeBlock language="ruby">
+              <div className="card mb-3">
+                <div className="card-header">
+                  <strong>Option 1: Check access in the engine</strong>
+                </div>
+                <div className="card-body">
+                  <CodeBlock language="ruby" filename="config/initializers/better_structure_sql.rb">
+{`BetterStructureSql::Engine.authenticate_with do |controller|
+  controller.request.env['warden']&.user&.admin?
+end`}
+                  </CodeBlock>
+                  <p className="mb-0">
+                    The block receives the controller. A falsy result answers <code>403 Forbidden</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="card mb-3">
+                <div className="card-header">
+                  <strong>Option 2: Restrict the routes (Devise shown)</strong>
+                </div>
+                <div className="card-body">
+                  <CodeBlock language="ruby">
 {`# config/routes.rb
 authenticate :user, ->(user) { user.admin? } do
-  mount BetterStructureSql::Engine, at: '/admin/schema'
-end`}
-                      </CodeBlock>
-                      <p className="mb-0 text-muted">
-                        Requires authenticated admin user to access the engine.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="accordion-item">
-                  <h2 className="accordion-header">
-                    <button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#customConstraint">
-                      <i className="bi bi-code-square me-2" />
-                      Custom Constraint Class
-                    </button>
-                  </h2>
-                  <div id="customConstraint" className="accordion-collapse collapse" data-bs-parent="#authExamples">
-                    <div className="accordion-body">
-                      <CodeBlock language="ruby">
-{`# lib/constraints/admin_constraint.rb
-class AdminConstraint
-  def matches?(request)
-    user = request.env['warden']&.user
-    user&.admin?
-  end
+  mount BetterStructureSql::Engine, at: '/schema_versions'
 end
 
-# config/routes.rb
-require 'constraints/admin_constraint'
-
-constraints AdminConstraint.new do
-  mount BetterStructureSql::Engine, at: '/schema_versions'
-end`}
-                      </CodeBlock>
-                    </div>
-                  </div>
+# config/initializers/better_structure_sql.rb
+# Tell the engine the routes already restrict access
+BetterStructureSql::Engine.authentication_handled_by_routes!`}
+                  </CodeBlock>
+                  <p className="mb-0">
+                    Any route constraint works the same way, for example a class with a{' '}
+                    <code>matches?(request)</code> method passed to <code>constraints</code>.
+                  </p>
                 </div>
+              </div>
 
-                <div className="accordion-item">
-                  <h2 className="accordion-header">
-                    <button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#envBased">
-                      <i className="bi bi-globe me-2" />
-                      Environment-Based Access
-                    </button>
-                  </h2>
-                  <div id="envBased" className="accordion-collapse collapse" data-bs-parent="#authExamples">
-                    <div className="accordion-body">
-                      <CodeBlock language="ruby">
-{`# config/routes.rb
-if Rails.env.development?
-  # No auth in development
-  mount BetterStructureSql::Engine, at: '/schema_versions'
-elsif Rails.env.production?
-  # Require admin in production
-  authenticate :user, ->(user) { user.admin? } do
-    mount BetterStructureSql::Engine, at: '/schema_versions'
-  end
-end`}
-                      </CodeBlock>
-                    </div>
-                  </div>
-                </div>
+              <h3 className="mt-4 mb-3">Engine Routes</h3>
+              <p>Relative to the mount point:</p>
+              <div className="table-responsive">
+                <table className="table table-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">Route</th>
+                      <th scope="col">Purpose</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>GET /</code>, <code>GET /schema_versions</code></td>
+                      <td>Paginated list of stored versions</td>
+                    </tr>
+                    <tr>
+                      <td><code>GET /schema_versions/:id</code></td>
+                      <td>Version details and inline schema</td>
+                    </tr>
+                    <tr>
+                      <td><code>GET /schema_versions/:id/raw</code></td>
+                      <td>Schema as plain text</td>
+                    </tr>
+                    <tr>
+                      <td><code>GET /schema_versions/:id/download</code></td>
+                      <td>File download (ZIP archive for multi-file versions)</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               <h3 className="mt-4 mb-3">Engine Features</h3>
@@ -284,7 +290,7 @@ end`}
                       <i className="bi bi-list-columns display-4 text-primary" />
                       <h5 className="mt-3">Browse Versions</h5>
                       <p className="text-muted">
-                        View all stored schema versions with metadata (date, size, database version, format)
+                        Paginated list of stored schema versions with metadata (date, size, database version, format)
                       </p>
                     </div>
                   </div>
@@ -296,7 +302,7 @@ end`}
                       <i className="bi bi-code-slash display-4 text-success" />
                       <h5 className="mt-3">View Schema</h5>
                       <p className="text-muted">
-                        Browse formatted schema with syntax highlighting and line numbers
+                        Read the stored schema inline (very large schemas are offered as downloads) and copy it to the clipboard
                       </p>
                     </div>
                   </div>
@@ -342,7 +348,7 @@ end`}
                     <div className="card-body">
                       <p><strong>Run after each migration:</strong></p>
                       <CodeBlock language="bash">
-                        rails db:migrate && rails db:schema:store
+                        rails db:migrate && rails db:schema:dump_better && rails db:schema:store
                       </CodeBlock>
                       <p className="mb-0 text-muted">
                         Simple and explicit. Recommended for development.
@@ -366,7 +372,7 @@ end`}
 #!/bin/bash
 if git diff HEAD@{1} --name-only | grep -q "db/migrate"; then
   echo "Migrations detected, storing schema..."
-  rails db:schema:store
+  rails db:migrate && rails db:schema:dump_better && rails db:schema:store
 fi
 
 chmod +x .git/hooks/post-merge`}
@@ -384,7 +390,7 @@ chmod +x .git/hooks/post-merge`}
                       </h5>
                     </div>
                     <div className="card-body">
-                      <p><strong>Auto-store in deployment pipeline:</strong></p>
+                      <p><strong>Auto-store in deployment pipeline (dump first; store reads the dumped schema):</strong></p>
                       <CodeBlock language="yaml">
 {`# .github/workflows/deploy.yml
 name: Deploy
@@ -397,7 +403,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
       - name: Install dependencies
@@ -405,6 +411,7 @@ jobs:
       - name: Run migrations and store schema
         run: |
           rails db:migrate RAILS_ENV=production
+          rails db:schema:dump_better RAILS_ENV=production
           rails db:schema:store RAILS_ENV=production`}
                       </CodeBlock>
                       <p className="mb-0 text-muted">
@@ -455,7 +462,7 @@ end`}
                     <li>Git friendly - only changed files in diffs</li>
                     <li>Easy navigation - organized by object type</li>
                     <li>AI-friendly - 500-line chunks fit in LLM context windows</li>
-                    <li>Scalable - handles 50,000+ database objects</li>
+                    <li>Scalable - built for schemas with thousands of objects</li>
                     <li>ZIP downloads - complete schema as single archive</li>
                   </ul>
                 </div>
@@ -494,7 +501,7 @@ end`}
               <hr />
               <p className="mb-0">
                 Ready to use these features?{' '}
-                <a href="#/getting-started/installation" className="alert-link">Install BetterStructureSql</a>
+                <Link to="/install" className="alert-link">Install BetterStructureSql</Link>
                 {' '}and configure it for your project.
               </p>
             </div>

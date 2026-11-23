@@ -1,463 +1,160 @@
-# Schema Versions
+# Schema versions
 
-Store and retrieve database schema versions with metadata tracking.
-
-## Overview
-
-Schema Versions feature stores snapshots of your database schema with:
-- Full schema content (SQL or Ruby format)
-- MD5 content hash for deduplication
-- PostgreSQL version
-- Format type (sql/rb)
-- Output mode (single_file/multi_file)
-- Creation timestamp
-- Automatic cleanup based on retention limit
-- ZIP archive storage for multi-file schemas
+Snapshots of the dumped schema, stored in the application database. One row per distinct schema: storing an unchanged schema is a no-op.
 
 ## Setup
-
-### Enable in Configuration
 
 ```ruby
 # config/initializers/better_structure_sql.rb
 BetterStructureSql.configure do |config|
   config.enable_schema_versions = true
-  config.schema_versions_limit = 10  # Keep last 10, 0 = unlimited
+  config.schema_versions_limit = 10   # 0 keeps every version
 end
 ```
 
-### Install Migration
-
 ```bash
-rails generate better_structure_sql:install
+rails generate better_structure_sql:migration   # skipped if better_structure_sql:install already created it
 rails db:migrate
 ```
 
-Creates table: `better_structure_sql_schema_versions`
+## Table
 
-## Database Schema
+`better_structure_sql_schema_versions`, created by [`migration.rb.erb`](../lib/generators/better_structure_sql/templates/migration.rb.erb):
 
-```sql
-CREATE TABLE better_structure_sql_schema_versions (
-  id bigserial PRIMARY KEY,
-  content text NOT NULL,
-  content_hash varchar(32) NOT NULL,
-  pg_version varchar NOT NULL,
-  format_type varchar NOT NULL,
-  output_mode varchar NOT NULL DEFAULT 'single_file',
-  zip_archive bytea,
-  file_count integer,
-  created_at timestamp(6) NOT NULL
-);
+| Column | Type | Holds |
+|---|---|---|
+| `content` | text, not null | The schema text. Multi-file: every file concatenated in load order |
+| `content_hash` | string(32), not null | MD5 hex digest of `content` |
+| `zip_archive` | binary, null | Multi-file only: ZIP of the directory |
+| `pg_version` | string, not null | Database server version. The name is historical: it holds the MySQL or SQLite version on those databases |
+| `format_type` | string, not null | `sql` or `rb` |
+| `output_mode` | string, not null | `single_file` or `multi_file` |
+| `content_size` | bigint, not null | Bytes |
+| `line_count` | integer, not null | Lines |
+| `file_count` | integer, null | Multi-file only: number of `.sql` files |
+| `created_at` | timestamp, not null | |
 
-CREATE INDEX index_schema_versions_on_created_at
-  ON better_structure_sql_schema_versions (created_at DESC);
+Indexes on `created_at`, `content_hash` and `output_mode`; check constraints on `format_type` and `output_mode`.
 
-CREATE INDEX index_schema_versions_on_content_hash
-  ON better_structure_sql_schema_versions (content_hash);
-```
-
-## Usage
-
-### Store Schema Version
+## Storing
 
 ```bash
-# Store after migration
-rails db:migrate
+rails db:schema:dump_better
 rails db:schema:store
 ```
 
-### List Versions
+`db:schema:store` reads what is on disk at `config.output_path`; it does not dump.
+
+1. Read the file, or concatenate the directory (`_header.sql`, then each numbered directory's `.sql` files, sorted). `_manifest.json` is not part of the hash.
+2. Compute the MD5 of that content.
+3. If it equals the latest version's `content_hash`: print "No schema changes detected" and stop. Nothing is written, nothing is cleaned up.
+4. Otherwise insert a row. Multi-file mode also stores a ZIP of the directory.
+5. Delete the oldest versions beyond `schema_versions_limit`.
+
+The file or directory on disk is never modified.
+
+Deduplication compares against the latest version only: reverting to an older schema stores a new row.
+
+`Dumper#dump` with `store_version: true` (the default when `enable_schema_versions` is on and no argument is given) dumps and stores in one call. It raises if storing fails, for example when the versions table has not been migrated. The `db:schema:dump_better` task passes `store_version: false`.
+
+## Listing and cleanup
 
 ```bash
-rails db:schema:versions
+rails db:schema:versions   # id, format, mode, files, database version, first 8 hash characters, created, size
+rails db:schema:cleanup    # delete versions beyond schema_versions_limit
 ```
 
-Output:
-```
-Schema Versions (5 total):
-  #5 - 2024-01-20 14:30:22 UTC - PostgreSQL 14.5 (sql) - 15.2 KB
-  #4 - 2024-01-19 10:15:45 UTC - PostgreSQL 14.5 (sql) - 14.8 KB
-  #3 - 2024-01-18 09:22:33 UTC - PostgreSQL 14.5 (sql) - 14.5 KB
-```
+Cleanup runs automatically after every store that creates a row.
 
-### Programmatic Access
-
-```ruby
-# Get latest version
-latest = BetterStructureSql::SchemaVersions.latest
-puts latest.content
-puts latest.pg_version  # "14.5"
-puts latest.format_type # "sql"
-puts latest.created_at  # 2024-01-20 14:30:22 UTC
-
-# Get all versions
-versions = BetterStructureSql::SchemaVersions.all_versions
-
-# Find specific version
-version = BetterStructureSql::SchemaVersions.find(3)
-
-# Count versions
-count = BetterStructureSql::SchemaVersions.count
-```
-
-## Automatic Deduplication
-
-Schema versions are automatically deduplicated using MD5 content hashing:
+## Restoring
 
 ```bash
-# First store - schema saved
-rails db:schema:store
-# => Stored schema version #1 (hash: a3b2c1d4...)
-
-# Second store - no changes, skipped
-rails db:schema:store
-# => Skipped storage - schema unchanged (matches version #1)
-
-# After migration - schema changed, stored
-rails db:migrate
-rails db:schema:store
-# => Stored schema version #2 (hash: e5f6g7h8...)
+CONFIRM=1 rails db:schema:restore[5]
+CONFIRM=1 VERSION_ID=5 rails db:schema:restore
 ```
 
-Benefits:
-- **Storage efficiency**: Only actual schema changes create versions
-- **Clear audit trail**: Version history shows meaningful evolution
-- **Production friendly**: Safe to run `db:schema:store` on every deploy
+Restore **replaces** the schema of the current database with the stored version:
 
-### Hash Calculation
+1. Read the version, and write it to a temporary directory (extracting the ZIP for multi-file versions).
+2. Purge the database: every table and all data are dropped, the `better_structure_sql_schema_versions` table and its stored versions included.
+3. Load the version with `SchemaLoader`.
+4. Record the environment and the schema checksum (`schema_sha1`) in `ar_internal_metadata`, as Rails' own schema load does.
 
-Content hashes are calculated from:
-- **Single-file mode**: MD5 of structure.sql or schema.rb
-- **Multi-file mode**: MD5 of combined content from all .sql files in order
+Safeguards:
 
-Manifest JSON is excluded (metadata only, not schema content).
+- Without `CONFIRM=1` the task aborts with a message naming the database and changes nothing.
+- Rails' protected-environment check runs first (`db:check_protected_environments`): a production database is refused unless `DISABLE_DATABASE_ENVIRONMENT_CHECK=1` is set.
+
+There is no rollback: a version that fails to load leaves the database purged. Back up data you need, and download the versions you want to keep (web UI or `SchemaVersion#content`) before restoring. The schema file or directory on disk is not touched; dump afterwards if it should match.
+
+It works for `sql` and `rb` versions on every supported database.
+
+## Ruby API
+
+`BetterStructureSql::SchemaVersions` ([source](../lib/better_structure_sql/schema_versions.rb)):
+
+| Method | Returns |
+|---|---|
+| `store_current(connection = ActiveRecord::Base.connection, config: BetterStructureSql.configuration)` | `StoreResult`. Raises `SchemaVersionError` when nothing is on disk at `output_path`. Never modifies the file or directory |
+| `store(content:, content_hash:, format_type:, pg_version:, output_mode: 'single_file', zip_archive: nil, file_count: nil)` | `SchemaVersion`. No deduplication, no cleanup |
+| `latest` | Newest `SchemaVersion` or `nil` |
+| `all_versions` | Array, newest first |
+| `find(id)` | `SchemaVersion` or `nil` |
+| `count` | Integer |
+| `by_format(format_type)` | Array for `'sql'` or `'rb'` |
+| `calculate_hash(content)` | MD5 hex digest |
+| `latest_hash` | Hash of the newest version or `nil` |
+| `hash_exists?(hash)` | Boolean |
+| `find_by_hash(hash)` | Newest `SchemaVersion` with that hash, or `nil` |
+| `cleanup!` | Number of versions deleted |
+| `restore(version, db_config: ActiveRecord::Base.connection_db_config)` | Nothing. Purges the database, loads the version, records the environment and `schema_sha1`. No confirmation and no protected-environment check: those belong to the rake task |
+
+Query methods return `nil`, `[]` or `0` when the table does not exist; `store` and `store_current` raise.
+
+`BetterStructureSql::StoreResult`: `stored?`, `skipped?`, `version`, `version_id`, `hash`, `total_count`.
+
+`BetterStructureSql::SchemaVersion` is an ActiveRecord model:
+
+| Member | Returns |
+|---|---|
+| `SchemaVersion.latest` | Newest record |
+| Scopes `latest_first`, `oldest_first`, `recent(n)`, `by_format(type)`, `by_output_mode(mode)` | Relations |
+| `#size`, `#formatted_size` | Bytes; `"45.2 KB"` |
+| `#multi_file?`, `#zip_archive?` | Boolean |
+| `#hash_matches?(hash)` | Boolean |
+| `#extract_zip_to_directory(dir)` | `dir`, or `nil` without an archive |
+
+Store a custom snapshot:
 
 ```ruby
-# Check if current schema matches stored version
-latest_hash = BetterStructureSql::SchemaVersions.latest_hash
-current_hash = BetterStructureSql::SchemaVersions.calculate_hash_from_file('db/structure.sql')
-
-if latest_hash == current_hash
-  puts "Schema unchanged"
-else
-  puts "Schema has changed"
-end
-```
-
-## Automatic Cleanup
-
-When `schema_versions_limit` is set, old versions are automatically deleted.
-
-```ruby
-# Keep last 10 versions
-config.schema_versions_limit = 10
-
-# Keep all versions
-config.schema_versions_limit = 0
-
-# Manual cleanup
-BetterStructureSql::SchemaVersions.cleanup!
-```
-
-Cleanup happens automatically after `db:schema:store` (only when storage occurs, not when skipped).
-
-## Model Reference
-
-```ruby
-class BetterStructureSql::SchemaVersion < ActiveRecord::Base
-  # Attributes
-  # - id: integer
-  # - content: text (schema SQL/Ruby content)
-  # - content_hash: string (32-character MD5 hexdigest)
-  # - pg_version: string (PostgreSQL version)
-  # - format_type: string ('sql' or 'rb')
-  # - output_mode: string ('single_file' or 'multi_file')
-  # - zip_archive: binary (ZIP archive for multi-file schemas)
-  # - file_count: integer (number of SQL files in multi-file mode)
-  # - created_at: datetime
-
-  # Class Methods
-  def self.store_current
-    # Store current schema as new version
-    # Automatically skips if content_hash matches latest version
-  end
-
-  def self.latest
-    # Get most recent version
-  end
-
-  def self.latest_hash
-    # Get content_hash of most recent version
-  end
-
-  def self.all_versions
-    # Get all versions ordered by created_at DESC
-  end
-
-  def self.find_by_hash(hash)
-    # Find version by content_hash
-  end
-
-  def self.hash_exists?(hash)
-    # Check if content_hash exists
-  end
-
-  def self.cleanup!
-    # Remove old versions per retention limit
-  end
-
-  # Instance Methods
-  def hash_matches?(other_hash)
-    # Check if content_hash matches given hash
-  end
-
-  def size
-    # Content size in bytes
-  end
-
-  def formatted_size
-    # Human-readable size (e.g., "15.2 KB")
-  end
-end
-```
-
-## API Endpoint Example
-
-Expose schema versions to developers via authenticated endpoint.
-
-### Controller Example
-
-```ruby
-# app/controllers/api/v1/schema_versions_controller.rb
-module Api
-  module V1
-    class SchemaVersionsController < ApplicationController
-      before_action :authenticate_developer!
-
-      # GET /api/v1/schema_versions
-      def index
-        versions = BetterStructureSql::SchemaVersions.all_versions
-        render json: {
-          versions: versions.map do |v|
-            {
-              id: v.id,
-              pg_version: v.pg_version,
-              format_type: v.format_type,
-              created_at: v.created_at,
-              size: v.formatted_size
-            }
-          end
-        }
-      end
-
-      # GET /api/v1/schema_versions/latest
-      def latest
-        version = BetterStructureSql::SchemaVersions.latest
-        render json: {
-          id: version.id,
-          content: version.content,
-          pg_version: version.pg_version,
-          format_type: version.format_type,
-          created_at: version.created_at
-        }
-      end
-
-      # GET /api/v1/schema_versions/:id
-      def show
-        version = BetterStructureSql::SchemaVersions.find(params[:id])
-        render json: {
-          id: version.id,
-          content: version.content,
-          pg_version: version.pg_version,
-          format_type: version.format_type,
-          created_at: version.created_at
-        }
-      end
-
-      private
-
-      def authenticate_developer!
-        # Implement authentication
-        # Example: token, OAuth, session, etc.
-        authenticate_or_request_with_http_token do |token, options|
-          ActiveSupport::SecurityUtils.secure_compare(
-            token,
-            ENV['SCHEMA_API_TOKEN']
-          )
-        end
-      end
-    end
-  end
-end
-```
-
-### Routes
-
-```ruby
-# config/routes.rb
-namespace :api do
-  namespace :v1 do
-    resources :schema_versions, only: [:index, :show] do
-      collection do
-        get :latest
-      end
-    end
-  end
-end
-```
-
-### Client Usage
-
-```bash
-# Get latest schema
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://api.yourapp.com/api/v1/schema_versions/latest
-
-# List all versions
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://api.yourapp.com/api/v1/schema_versions
-
-# Get specific version
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://api.yourapp.com/api/v1/schema_versions/5
-```
-
-### Download Schema Script
-
-```bash
-#!/bin/bash
-# scripts/download_schema.sh
-
-TOKEN="your_api_token"
-API_URL="https://api.yourapp.com/api/v1/schema_versions/latest"
-
-curl -H "Authorization: Bearer $TOKEN" "$API_URL" | \
-  jq -r '.content' > db/structure.sql
-
-echo "Schema downloaded to db/structure.sql"
-```
-
-## Use Cases
-
-### Developer Onboarding
-
-New developers download latest schema instead of running migrations:
-
-```bash
-# Download latest schema
-./scripts/download_schema.sh
-
-# Load schema
-rails db:schema:load
-
-# Start working
-rails db:seed
-```
-
-### Schema Comparison
-
-```ruby
-# Compare two versions
-v1 = BetterStructureSql::SchemaVersions.find(10)
-v2 = BetterStructureSql::SchemaVersions.find(15)
-
-File.write('/tmp/v1.sql', v1.content)
-File.write('/tmp/v2.sql', v2.content)
-
-system('diff -u /tmp/v1.sql /tmp/v2.sql')
-```
-
-### Rollback Schema
-
-```ruby
-# Restore previous version
-old_version = BetterStructureSql::SchemaVersions.find(5)
-
-File.write('db/structure.sql', old_version.content)
-system('rails db:schema:load')
-```
-
-### CI/CD Schema Validation
-
-```ruby
-# spec/schema_spec.rb
-RSpec.describe 'Database Schema' do
-  it 'matches latest stored version' do
-    BetterStructureSql::Dumper.dump_to_string
-
-    latest = BetterStructureSql::SchemaVersions.latest
-    current = File.read('db/structure.sql')
-
-    expect(current).to eq(latest.content)
-  end
-end
-```
-
-## Works with schema.rb
-
-Schema versions work with both `structure.sql` and `schema.rb`:
-
-```ruby
-# Store schema.rb version
-content = File.read('db/schema.rb')
-
-# Get database version (adapter-aware)
-db_version = case ActiveRecord::Base.connection.adapter_name
-             when 'PostgreSQL'
-               ActiveRecord::Base.connection.select_value('SHOW server_version')
-             when 'Mysql2', 'Trilogy'
-               ActiveRecord::Base.connection.select_value('SELECT VERSION()')
-             when 'SQLite'
-               ActiveRecord::Base.connection.select_value('SELECT sqlite_version()')
-             else
-               'unknown'
-             end
-
+content = File.read('db/structure.sql')
 BetterStructureSql::SchemaVersions.store(
   content: content,
-  format_type: 'rb',
-  pg_version: db_version  # Note: column name is pg_version but stores any DB version
+  content_hash: BetterStructureSql::SchemaVersions.calculate_hash(content),
+  format_type: 'sql',
+  pg_version: BetterStructureSql::PgVersion.detect
 )
 ```
 
-## Performance Considerations
-
-### Large Schemas
-
-For very large schemas (>1MB):
-- Consider compression
-- Use pagination in API
-- Implement caching
-
-### Storage
-
-Typical schema sizes:
-- Small app (10 tables): ~5-10 KB per version
-- Medium app (100 tables): ~50-100 KB per version
-- Large app (500 tables): ~200-500 KB per version
-
-With 10 version limit:
-- Small: ~100 KB total
-- Medium: ~1 MB total
-- Large: ~5 MB total
-
-### Cleanup Strategy
+Diff two versions:
 
 ```ruby
-# Aggressive cleanup (keep last 5)
-config.schema_versions_limit = 5
-
-# Conservative (keep last 50)
-config.schema_versions_limit = 50
-
-# Archive old versions before cleanup
-BetterStructureSql::SchemaVersions.where('created_at < ?', 1.year.ago).each do |v|
-  File.write("archive/schema_#{v.id}.sql", v.content)
-end
+a, b = BetterStructureSql::SchemaVersions.find(3), BetterStructureSql::SchemaVersions.find(5)
+File.write('tmp/a.sql', a.content)
+File.write('tmp/b.sql', b.content)
+system('diff', '-u', 'tmp/a.sql', 'tmp/b.sql')
 ```
 
-## Next Steps
+## schema.rb
 
-- [Configuration](configuration.md)
-- [Usage Examples](usage.md)
+With `config.output_path = 'db/schema.rb'` the gem does not dump (Rails writes `schema.rb`), but `db:schema:store` stores that file with `format_type = 'rb'`. See [migration-guides/from-schema-rb-to-structure-sql.md](migration-guides/from-schema-rb-to-structure-sql.md).
+
+## Browsing
+
+Mount the engine to list, view and download versions in a browser: [features/web-ui.md](features/web-ui.md).
+
+## Sizing
+
+- Each version stores the full schema text, and multi-file versions also store a ZIP. Keep `schema_versions_limit` low for large schemas.
+- `ZipGenerator.extract_to_directory` raises `ZipError` for an entry that resolves outside the target directory or when the limits are exceeded; it overwrites existing files.
+- ZIP limits (file count, uncompressed size) are constants in [`zip_generator.rb`](../lib/better_structure_sql/zip_generator.rb).

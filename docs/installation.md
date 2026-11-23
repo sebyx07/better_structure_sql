@@ -1,200 +1,76 @@
 # Installation
 
-## Basic Installation
+## Requirements
 
-Add BetterStructureSql to your Rails application's Gemfile:
+| Need | Source of truth |
+|---|---|
+| Ruby and Rails versions | [`better_structure_sql.gemspec`](../better_structure_sql.gemspec) |
+| Versions tested | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) |
+| A database gem | `pg` is a dependency of this gem; add `mysql2` or `trilogy`, or `sqlite3`, yourself for those adapters |
+
+No database client binary (`pg_dump`, `mysqldump`, `sqlite3`) is needed.
+
+## Install
 
 ```ruby
 # Gemfile
 gem 'better_structure_sql'
-
-# Database adapter (choose one based on your database)
-gem 'pg'       # For PostgreSQL (primary support)
-gem 'mysql2'   # For MySQL 8.0+ (experimental)
-gem 'sqlite3'  # For SQLite 3.35+ (experimental)
 ```
-
-**Note**: The gem currently requires the `pg` gem as a dependency. Multi-database adapters (MySQL, SQLite) are implemented but require manual gem installation.
-
-Install the gem:
 
 ```bash
 bundle install
-```
-
-## Setup
-
-Run the installation generator to create configuration and migration files:
-
-```bash
-rails generate better_structure_sql:install
-```
-
-This creates:
-- `config/initializers/better_structure_sql.rb` - Configuration file
-- Migration for `better_structure_sql_schema_versions` table (if schema versions enabled)
-
-## Minimal Setup (No Schema Versions)
-
-If you only want clean `structure.sql` generation without version storage:
-
-```ruby
-# config/initializers/better_structure_sql.rb
-BetterStructureSql.configure do |config|
-  config.replace_default_dump = true
-  config.enable_schema_versions = false
-end
-```
-
-Then run:
-
-```bash
-rails db:schema:dump_better
-```
-
-## Full Setup (With Schema Versions)
-
-For complete functionality including schema version storage:
-
-```ruby
-# config/initializers/better_structure_sql.rb
-BetterStructureSql.configure do |config|
-  # Replace Rails default
-  config.replace_default_dump = true
-
-  # Enable schema versioning
-  config.enable_schema_versions = true
-  config.schema_versions_limit = 10  # Keep last 10 versions
-end
-```
-
-Run the installation task to create the schema versions table:
-
-```bash
 rails generate better_structure_sql:install
 rails db:migrate
 ```
 
-## Replace Default `rake db:schema:dump`
+The generator creates:
 
-To make BetterStructureSql the default for `rake db:schema:dump`:
+| File | Purpose |
+|---|---|
+| `config/initializers/better_structure_sql.rb` | Configuration ([reference](configuration.md)) |
+| `db/migrate/*_create_better_structure_sql_schema_versions.rb` | Table for [schema versions](schema_versions.md) |
+
+Skip the table with `rails generate better_structure_sql:install --skip-migration`, and set `config.enable_schema_versions = false` in the generated initializer. Add the table later with `rails generate better_structure_sql:migration`.
+
+## First dump
+
+```bash
+rails db:schema:dump_better
+```
+
+This writes `config.output_path` (`db/structure.sql` unless changed) and prints the size. Commit the result.
+
+## Replace the Rails tasks
 
 ```ruby
 # config/initializers/better_structure_sql.rb
 BetterStructureSql.configure do |config|
-  config.replace_default_dump = true
+  config.replace_default_dump = true   # rails db:schema:dump, and the dump after db:migrate
+  config.replace_default_load = true   # rails db:schema:load, db:setup, db:test:prepare
 end
 ```
 
-Now when you run:
+`replace_default_dump` sets `config.active_record.schema_format = :sql` for you. Without these options, use `db:schema:dump_better` and `db:schema:load_better` explicitly.
 
-```bash
-rails db:schema:dump
-```
+## Databases
 
-It will use BetterStructureSql instead of pg_dump.
+The adapter is chosen from `ActiveRecord::Base.connection.adapter_name`:
 
-## Manual Usage
+| Connection adapter | Adapter used | Extra gem |
+|---|---|---|
+| `postgresql`, `postgis` | PostgreSQL | none |
+| `mysql2`, `trilogy` | MySQL, MariaDB | the driver you use: `mysql2` or `trilogy` |
+| `sqlite3` | SQLite | `sqlite3` |
 
-If you prefer explicit control, leave `replace_default_dump = false` and use:
-
-```bash
-rails db:schema:dump_better
-```
-
-## Verify Installation
-
-After installation, generate a schema dump:
-
-```bash
-rails db:schema:dump_better
-```
-
-Check `db/structure.sql` - it should be clean without database-specific dump tool noise!
-
-## Database Configuration
-
-BetterStructureSql **auto-detects** your database adapter from ActiveRecord. Ensure your `config/database.yml` is configured correctly:
-
-### PostgreSQL (Primary Support)
-
-```yaml
-development:
-  adapter: postgresql
-  encoding: unicode
-  database: your_app_development
-  pool: 5
-  host: localhost
-```
-
-### MySQL (Experimental)
-
-```yaml
-development:
-  adapter: mysql2
-  encoding: utf8mb4
-  collation: utf8mb4_unicode_ci
-  database: your_app_development
-  pool: 5
-  host: localhost
-```
-
-### SQLite (Experimental)
-
-```yaml
-development:
-  adapter: sqlite3
-  database: db/development.sqlite3
-  pool: 5
-```
-
-## Requirements
-
-- **Rails**: 7.0 or higher
-- **Ruby**: 2.7 or higher
-- **Database**:
-  - PostgreSQL 12+ (production-ready)
-  - MySQL 8.0+ (experimental)
-  - SQLite 3.35+ (experimental)
-- **Gems**: `rubyzip >= 2.0.0` (for multi-file ZIP support)
+Any other adapter raises `BetterStructureSql::Error`. PostgreSQL is the primary target; MySQL and SQLite are round-trip tested in CI. On MySQL, load dumps through the gem (`replace_default_load = true` or `db:schema:load_better`): Rails' own load cannot read them, see [Loading a MySQL dump](features/multi-database.md#loading-a-mysql-dump). What each adapter dumps: [features/multi-database.md](features/multi-database.md).
 
 ## Troubleshooting
 
-### "Table doesn't exist" Error
-
-If schema versions are enabled, make sure you ran migrations:
-
-```bash
-rails db:migrate
-```
-
-### Schema Not Generating
-
-Check that you have:
-1. A valid database connection
-2. Migrations run (`rails db:migrate`)
-3. Tables in your database
-
-### Permission Issues
-
-Ensure your database user has permissions to query metadata tables:
-
-**PostgreSQL**:
-- `information_schema` tables
-- `pg_catalog` tables (for extensions, functions, triggers)
-- Your application schemas
-
-**MySQL**:
-- `information_schema` tables
-- `mysql.proc` table (for stored procedures)
-- `SHOW` privileges
-
-**SQLite**:
-- Read access to `sqlite_master` table
-- PRAGMA query permissions
-
-## Next Steps
-
-- [Configuration Options](configuration.md)
-- [Usage Guide](usage.md)
-- [Schema Versions](schema_versions.md)
+| Symptom | Cause and fix |
+|---|---|
+| `Schema versions table does not exist` | Run `rails generate better_structure_sql:migration` then `rails db:migrate`. |
+| `Schema versioning is not enabled.` | Set `config.enable_schema_versions = true`. |
+| `rails db:schema:dump` still calls `pg_dump` | Set `config.replace_default_dump = true`; check `output_path` does not end in `.rb`. |
+| `MySQL support requires the mysql2 gem` (or `the trilogy gem`) / `SQLite support requires the sqlite3 gem` | Add the named gem to your Gemfile. |
+| `Unsupported database adapter` | Only PostgreSQL, MySQL and SQLite connections are supported. |
+| Web UI answers `403 Forbidden` in production | Declare access control: [features/web-ui.md](features/web-ui.md). |
