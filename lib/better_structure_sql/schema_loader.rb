@@ -51,12 +51,17 @@ module BetterStructureSql
       path ||= config.output_path
       load(path)
 
-      pool = ActiveRecord::Base.connection_pool
       schema_sha1 = self.class.schema_sha1(Rails.root.join(path).to_s)
-      pool.internal_metadata.create_table_and_set_flags(pool.db_config.env_name, schema_sha1)
+      internal_metadata.create_table_and_set_flags(ActiveRecord::Base.connection_db_config.env_name, schema_sha1)
     end
 
     private
+
+    # Rails 7.2 moved internal_metadata from the connection to the pool
+    def internal_metadata
+      pool = ActiveRecord::Base.connection_pool
+      pool.respond_to?(:internal_metadata) ? pool.internal_metadata : ActiveRecord::Base.connection.internal_metadata
+    end
 
     def load_directory(dir_path)
       connection = ActiveRecord::Base.connection

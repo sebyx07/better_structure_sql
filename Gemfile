@@ -16,6 +16,9 @@ when 'edge' then gem 'rails', github: 'rails/rails', branch: 'main'
 else gem 'rails', "~> #{rails_version}.0"
 end
 gem 'mysql2', '>= 0.5' if ENV['DB_ADAPTER'] == 'mysql2'
+# ActiveSupport < 8.1 passes quirks_mode to JSON.generate, which json 3 rejects
+# (ArgumentError from every #to_json), and does not cap json itself.
+gem 'json', '< 3' if rails_version && Gem::Version.new(rails_version) < Gem::Version.new('8.1')
 
 gem 'rake', '>= 13.0'
 

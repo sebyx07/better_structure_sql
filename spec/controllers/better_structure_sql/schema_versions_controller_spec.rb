@@ -25,6 +25,12 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
     ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 
+  # The chunks a streamed body yields. response.body joins them into one
+  # String on Rails < 8.0, so read the response stream instead.
+  def streamed_chunks
+    response.stream.enum_for(:each).to_a
+  end
+
   def stub_environment(name)
     allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new(name))
   end
@@ -382,17 +388,13 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
 
       it 'streams correct content' do
         get :raw, params: { id: version.id }
-        # Response body should be an enumerator for streaming
-        expect(response.body).to be_a(Enumerator)
-        # Collect chunks and verify total size
-        chunks = response.body.to_a
-        total_size = chunks.sum(&:bytesize)
-        expect(total_size).to eq(3_000_000)
+        expect(controller.response_body).to be_a(Enumerator)
+        expect(streamed_chunks.sum(&:bytesize)).to eq(3_000_000)
       end
 
       it 'reads the content from the database in bounded slices' do
         get :raw, params: { id: version.id }
-        chunks = response.body.to_a
+        chunks = streamed_chunks
         expect(chunks.size).to be > 1
         expect(chunks.map(&:length).max).to eq(described_class::STREAM_CHUNK_CHARS)
       end
@@ -403,7 +405,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
         content = "#{"-- h\u00E9llo \u4E16\u754C\n" * 150_000}#{' ' * 600_000}END"
         version = create(:schema_version, content:)
         get :raw, params: { id: version.id }
-        expect(response.body.to_a.join).to eq(content)
+        expect(streamed_chunks.join).to eq(content)
       end
     end
 
@@ -451,7 +453,7 @@ RSpec.describe BetterStructureSql::SchemaVersionsController, type: :controller d
         version = create_schema_version(content_size: 3_000_000)
         get :download, params: { id: version.id }
         expect(response.headers['Content-Disposition']).to include('attachment; filename="structure.sql"')
-        expect(response.body.to_a.sum(&:bytesize)).to eq(3_000_000)
+        expect(streamed_chunks.sum(&:bytesize)).to eq(3_000_000)
       end
     end
 

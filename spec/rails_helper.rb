@@ -18,6 +18,10 @@ module Dummy
     # The gem's root (config/database.yml, app/views, spec/factories). First:
     # config.paths is built from the root on first access.
     config.root = File.expand_path('..', __dir__)
+    # That root's config/routes.rb is the engine's (loaded below, once the engine
+    # exists), not this app's. Rails < 8.0 draws an app's routes during
+    # initialize!, before BetterStructureSql::Engine is defined.
+    config.paths['config/routes.rb'] = []
     config.load_defaults Rails::VERSION::STRING.to_f
     config.eager_load = false
     config.secret_key_base = 'test'
