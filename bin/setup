@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Fresh clone -> ready to run bin/check and bin/dev. Idempotent: run it any time
+# (after a pull, after a Gemfile change, when bin/check exits 75).
+#
+#   bin/setup
+#
+# 1. Ruby from .ruby-version (mise, else rbenv)
+# 2. gems: the gem's bundle and the integration app's bundle
+# 3. Postgres: reuses DATABASE_URL if you exported one; otherwise the private
+#    docker container `bss-pg` (postgres:17-alpine on 127.0.0.1:55432), started
+#    only when it is not already reachable
+# 4. creates the test database
+#
+# Exit 75 = a prerequisite is missing (ruby manager, docker); the message says what to install.
+set -euo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+cd "$ROOT" || exit 1
+
+start_private_postgres() {
+  command -v docker >/dev/null 2>&1 ||
+    env_missing "docker is not installed and no Postgres answers on 127.0.0.1:${BSS_PG_PORT}" \
+      "install Docker, or export DATABASE_URL=postgresql://user:pass@host:port/dbname for an existing Postgres"
+  docker info >/dev/null 2>&1 ||
+    env_missing "the docker daemon is not running (or this user cannot reach it)" \
+      "start Docker, or export DATABASE_URL=postgresql://user:pass@host:port/dbname for an existing Postgres"
+
+  if docker container inspect "$BSS_PG_CONTAINER" >/dev/null 2>&1; then
+    docker start "$BSS_PG_CONTAINER" >/dev/null
+    ok "started existing container $BSS_PG_CONTAINER"
+  else
+    docker run --detach --name "$BSS_PG_CONTAINER" \
+      --publish "127.0.0.1:${BSS_PG_PORT}:5432" \
+      --env POSTGRES_PASSWORD=postgres \
+      --env POSTGRES_DB=better_structure_sql_test \
+      "$BSS_PG_IMAGE" >/dev/null
+    ok "created container $BSS_PG_CONTAINER ($BSS_PG_IMAGE on 127.0.0.1:${BSS_PG_PORT})"
+  fi
+  mkdir -p "$DX_STATE_DIR"
+  printf '%s\n' "$BSS_PG_CONTAINER" >"$PG_STARTED_MARKER"
+
+  local waited=0
+  until docker exec "$BSS_PG_CONTAINER" pg_isready --host 127.0.0.1 --username postgres >/dev/null 2>&1; do
+    waited=$((waited + 1))
+    if [ "$waited" -ge 60 ]; then
+      echo "Postgres in $BSS_PG_CONTAINER did not become ready in 60s. Logs: docker logs $BSS_PG_CONTAINER" >&2
+      exit 1
+    fi
+    sleep 1
+  done
+}
+
+step "Ruby ($(tr -d '[:space:]' <.ruby-version), from .ruby-version)"
+use_ruby install
+ok "$(ruby -v)"
+
+step "Gems"
+bundle check >/dev/null 2>&1 || bundle install
+ok "gem bundle installed"
+(cd integration && { bundle check >/dev/null 2>&1 || bundle install; })
+ok "integration app bundle installed"
+
+step "Postgres"
+if [ -n "${DATABASE_URL:-}" ]; then
+  database_url="$DATABASE_URL"
+  probe=0
+  pg_probe "$database_url" || probe=$?
+  [ "$probe" -ne 1 ] ||
+    env_missing "DATABASE_URL ($(redact_url "$database_url")) is not reachable" \
+      "start that Postgres, or unset DATABASE_URL to use the private $BSS_PG_CONTAINER container"
+  ok "using DATABASE_URL $(redact_url "$database_url")"
+else
+  database_url="$DEFAULT_DATABASE_URL"
+  probe=0
+  pg_probe "$database_url" || probe=$?
+  if [ "$probe" -eq 1 ]; then
+    start_private_postgres
+    probe=0
+    pg_probe "$database_url" || probe=$?
+    if [ "$probe" -eq 1 ]; then
+      echo "Postgres is up in $BSS_PG_CONTAINER but $(redact_url "$database_url") refuses connections." >&2
+      echo "Is another process bound to 127.0.0.1:${BSS_PG_PORT}? Logs: docker logs $BSS_PG_CONTAINER" >&2
+      exit 1
+    fi
+  else
+    ok "reusing the Postgres already answering on 127.0.0.1:${BSS_PG_PORT}"
+  fi
+fi
+
+if [ "$probe" -eq 2 ]; then
+  pg_create_database "$database_url"
+  ok "created database ${database_url##*/}"
+else
+  ok "database ${database_url##*/} exists"
+fi
+
+cat <<TXT
+
+Ready. Next steps:
+  bin/check fast    rubocop on changed files + unit specs (seconds; run while iterating)
+  bin/check         the pre-PR gate, same as CI: rubocop + full rspec
+  bin/dev           integration app web UI at http://127.0.0.1:3000/better_structure_sql/schema_versions
+  bin/stop          stop what bin/dev and bin/setup started
+TXT

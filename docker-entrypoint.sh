@@ -1,33 +1,32 @@
 #!/bin/sh
+# Entrypoint of the dev image: waits for Postgres, prepares the integration app's
+# database, then runs the container command. Mirrors what bin/dev does on the host.
 set -e
 
-# Remove a potentially pre-existing server.pid for Rails
+DB_HOST="${DB_HOST:-postgres}"
+DB_PORT="${DB_PORT:-5432}"
+
+# A server.pid left behind by a killed container (or by bin/dev on the host) blocks boot
 rm -f /app/integration/tmp/pids/server.pid
 
-# Wait for postgres to be ready
-echo "Waiting for PostgreSQL to be ready..."
-until nc -z "$DATABASE_HOST" 5432 2>/dev/null; do
-  echo "PostgreSQL is unavailable - sleeping"
+echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
+until pg_isready --host "$DB_HOST" --port "$DB_PORT" --quiet; do
   sleep 1
 done
+echo "PostgreSQL is up"
 
-echo "PostgreSQL is up - continuing"
-
-# Navigate to integration app
 cd /app/integration
 
-# Install dependencies if needed
-bundle check || bundle install
+# The checkout is mounted over /app, so the Gemfile may be newer than the image
+bundle check >/dev/null 2>&1 || bundle install
 
-# Run database migrations
-echo "Running database migrations..."
-bundle exec rails db:create db:migrate 2>/dev/null || bundle exec rails db:migrate
-
-# Seed the database if needed
-if [ "$RAILS_ENV" = "development" ]; then
-  echo "Seeding database..."
-  bundle exec rails db:seed
+if bundle exec rails runner 'exit(ActiveRecord::Base.connection.table_exists?("schema_migrations") ? 0 : 1)' 2>/dev/null; then
+  # Existing database: migrate only when something is pending, because db:migrate
+  # re-dumps the schema into the mounted checkout
+  bundle exec rails db:abort_if_pending_migrations >/dev/null 2>&1 || bundle exec rails db:migrate
+else
+  echo "Loading schema and seeding sample data..."
+  bundle exec rails db:create db:schema:load_better db:seed
 fi
 
-# Execute the container's main process
 exec "$@"

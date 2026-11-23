@@ -1,0 +1,170 @@
+# yaml-language-server: $schema=https://developerz.ai/schemas/maintainer.v1.json
+# developerz.ai maintainer policy for sebyx07/better_structure_sql
+#
+# AI-MANAGED. The agent handles issues, pull requests and updates end to end, for everyone:
+# outside contributors, collaborators, the owner and the dependency bots. It triages, answers,
+# reviews, declines with a reason, merges, and closes what has stalled on its reporter or author.
+# A pull request merges once its author says it is ready (out of draft / marked ready for review),
+# it has been reviewed and "CI OK" is green. A draft or a "WIP" / "DO NOT MERGE" title is never
+# merged. A human is asked only for what `escalate` names, the platform's hardcoded categories
+# (security, license, CLA), and two holds on outside contributions: GitHub asks a maintainer to
+# approve a first-time contributor's CI run (a repository Actions setting), and changes to CI,
+# release or publish automation stay with the owner (the last `triage.non_goals` line).
+#
+# Each week the `release-due` checkup judges whether a release is needed and opens a release PR when
+# so, and merging it IS the release (.github/workflows/release.yml publishes when
+# lib/better_structure_sql/version.rb changes on main, then tags). Dependency-bot PRs merge through
+# this agent only: there is no second merger (no GitHub auto-merge workflow) that would skip review.
+#
+# The gate is the repository, not this file: CI's aggregate "CI OK" check. Verify the ruleset with
+# `gh api repos/sebyx07/better_structure_sql/rulesets` before trusting any sentence here about it.
+version: 1
+
+# The suite introspects a real database: bin/check needs a reachable PostgreSQL (the repo's own
+# setup starts it; the platform provisions none) and exits 75 when it is unreachable.
+services: [postgres]
+
+tone:
+  voice: friendly
+  language: en
+
+triage:
+  skip_project_members: false
+  ask_for_repro: true
+  # A schema-dump bug is unreproducible without the database and its version.
+  required_fields: [steps, expected, actual, version, environment]
+  qualify_into: [bug, feature, dupe, question, docs]
+  close_unanswered_repro_after_days: 14
+  # Proposals this project will not take (from CLAUDE.md's core problems and principles).
+  non_goals:
+    - "Shelling out to pg_dump, mysqldump or the sqlite3 CLI, or any external binary: introspection is pure Ruby over the ActiveRecord connection"
+    - "Non-deterministic output: every introspected list is sorted, so the same schema dumps byte-identical on every run, machine and server version"
+    - "Server-version, cluster or timestamp noise in the dump (pg_dump-style headers, SET lines that vary by version)"
+    - "Dumping or storing table data, row counts, sequence values or credentials: structure only"
+    - "SQL built by interpolating unquoted identifiers or values into introspection queries"
+    - "Backwards-compatibility shims, deprecated aliases, dead-code comments, or speculative abstractions"
+    - "Hardcoded version lists in docs (CI and the canary own the matrices)"
+    - "Outside changes to CI, release or publish automation (.github/, bin/, the gemspec, VERSION): owner only. Dependency-bot bumps are exempt: merge those on green"
+
+handoff:
+  mode: fleet
+  ask_reporter_first: false
+
+pr:
+  wait_for_other_bots: [copilot]
+  auto_merge: true
+  # Every author: the bot's own PRs, the dependency bots', contributors' and project members'.
+  # "Ready" is the author's call: a PR merges only once it is out of draft, reviewed and green.
+  auto_merge_scope: any
+  require_review: true
+  # The one required check: ci.yml's aggregate job. Every CI job must pass. Ruby head, Rails edge
+  # and the newest PostgreSQL run monthly in canary.yml and are fixed by the `improve` checkup.
+  required_checks:
+    - "CI OK"
+  close_awaiting_author_after_days: 21
+
+review:
+  enabled: true
+  force: true
+  depth: inline
+  profile: chill
+  request_changes: true
+  approval: false
+  high_level_summary: true
+  learnings: false
+  chat_auto_reply: true
+  auto_review:
+    enabled: true
+    incremental: true
+    drafts: false
+    base_branches: [main]
+    ignore_title_keywords: [WIP, "DO NOT MERGE"]
+  anti_noise:
+    severity_floor: minor
+    max_comments: 10
+    dedupe: true
+  path_filters: []
+  path_instructions:
+    - path: "lib/better_structure_sql/adapters/**"
+      instructions: >-
+        Introspection SQL is a security boundary: every identifier or value that reaches a query
+        goes through connection.quote / quote_table_name, never raw interpolation. Every result
+        list needs a deterministic ORDER BY (or a Ruby sort) so dumps are byte-stable. A
+        capability added to one adapter needs the matching supports_*? flag and behaviour on the
+        other two (PostgreSQL, MySQL, SQLite) or an explicit graceful no-op, with specs per adapter.
+    - path: "lib/better_structure_sql/generators/**"
+      instructions: >-
+        Generated SQL must load back: check identifier quoting, reserved words, and that the
+        statement is valid for the adapter that produced the data. Output must be deterministic
+        (no hash-order iteration, no timestamps). Each generator stays one object type.
+    - path: "lib/better_structure_sql/dumper.rb"
+      instructions: >-
+        Section load order is a contract shared by dump_single_file (the *_section methods),
+        generate_sections_for_multi_file and FileWriter::SECTION_DIRECTORIES (extensions,
+        types/domains, functions, sequences, tables, indexes, foreign_keys,
+        views/materialized_views, triggers, comments, migrations). A change to one place needs
+        lib/better_structure_sql/file_writer.rb, schema_loader.rb and schema_versions.rb (they
+        read the numbered directories back in that order) to agree, plus a round-trip load spec.
+        Objects inside a section that depend on each other stay ordered by CreationOrder /
+        DependencyResolver, deterministically.
+    - path: "lib/better_structure_sql/file_writer.rb"
+      instructions: >-
+        Numbered directory prefixes are the multi-file load order and must match the section order
+        in dumper.rb. Chunking must stay deterministic (same schema, same file split).
+    - path: "app/**"
+      instructions: >-
+        The engine renders stored schema content: it must stay escaped (no raw / html_safe on
+        content), raw/download stay text/plain or attachment, and authenticate_access! stays the
+        before_action on every controller. The engine fails closed: 403 outside development and
+        test until the host calls Engine.authenticate_with or
+        Engine.authentication_handled_by_routes!. Flag anything that weakens that.
+    - path: "lib/better_structure_sql/zip_generator.rb"
+      instructions: >-
+        ZIP extraction must keep path-traversal protection and the file-count and size (bomb)
+        limits; any loosening needs a spec with a hostile archive.
+    - path: "lib/better_structure_sql/schema_versions.rb"
+      instructions: >-
+        Deduplication relies on the MD5 content_hash of exactly the stored content; any change to
+        what is hashed, or to retention cleanup (only after an actual store, never on a skip),
+        needs a spec.
+
+release:
+  # No release manager and no agent-published channels: release.yml owns the whole lane (gem
+  # first via RubyGems trusted publishing, then the tag and the GitHub release from CHANGELOG).
+  manager: none
+  channels: []
+
+escalate:
+  # A breaking change asks the owner first: a major version is a maintainer's decision.
+  ask_before_acting: [breaking_change]
+
+# Modes. A `scout` firing (the default) is read-only: it reads the checkout and the platform's
+# signals and files asks, and an ask that names CI config or this policy is refused at ingest.
+# `mode: devops` runs the brief as one task with a shell and delivers a pull request (it needs
+# `handoff.mode: fleet`, set above). The three briefs that run commands and open a pull request
+# are devops; `health` only reports, so it stays a scout.
+schedules:
+  # Weekly and judged, so a merge never cuts a release. One weekday per repo, so the fleet is not
+  # hit at once (ruby2html takes Friday).
+  - name: release-due
+    days: [thu]
+    hours_utc: [3]
+    brief_file: .dz/schedules/release-due.md
+    mode: devops
+  # The one exception, so a confirmed security fix does not wait up to a week for the slot above.
+  - name: security-release
+    days: [mon, tue, wed, fri, sat, sun]
+    hours_utc: [2]
+    brief_file: .dz/schedules/security-release.md
+    mode: devops
+  - name: health
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    hours_utc: [7]
+    brief_file: .dz/schedules/health.md
+  # Monthly: the first Tuesday of the month (UTC days 1-7), after canary.yml's run on the 1st.
+  - name: improve
+    days: [tue]
+    weeks_of_month: [1]
+    hours_utc: [8]
+    brief_file: .dz/schedules/improve.md
+    mode: devops

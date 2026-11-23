@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Boots the integration Rails app (integration/) so you can browse the engine's web UI.
+#
+#   bin/dev            foreground, Ctrl-C to stop
+#   bin/dev --detach   background; returns once the app answers, stop it with bin/stop
+#
+#   UI:   http://127.0.0.1:3000/better_structure_sql/schema_versions
+#   Logs: integration/log/development.log
+#
+# Uses the Postgres that bin/setup provides (bss-pg on 127.0.0.1:55432) and the
+# database better_structure_sql_development, created, migrated and seeded on first run.
+# Env: PORT (3000) · DB_HOST DB_PORT DB_USERNAME DB_PASSWORD DB_NAME (integration/config/database.yml).
+# DATABASE_URL is ignored on purpose: it names the *test* database and Rails would let it
+# override the development one.
+#
+# Exit 75 = environment missing (ruby, gems, Postgres) — run bin/setup.
+set -euo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+
+detach=false
+case "${1:-}" in
+  "") ;;
+  -d | --detach) detach=true ;;
+  -h | --help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  *) echo "usage: bin/dev [--detach]" >&2; exit 2 ;;
+esac
+
+port="${PORT:-3000}"
+url="http://127.0.0.1:${port}"
+
+unset DATABASE_URL
+export RAILS_ENV=development
+export DB_HOST="${DB_HOST:-127.0.0.1}"
+export DB_PORT="${DB_PORT:-$BSS_PG_PORT}"
+export DB_USERNAME="${DB_USERNAME:-postgres}"
+export DB_PASSWORD="${DB_PASSWORD:-postgres}"
+export DB_NAME="${DB_NAME:-better_structure_sql_development}"
+
+# dev_db_has_schema <url> — true once the database exists and holds a loaded schema.
+dev_db_has_schema() {
+  (cd "$ROOT" && bundle exec ruby -rpg -e '
+    begin
+      conn = PG.connect(ARGV[0], connect_timeout: 3)
+    rescue PG::ConnectionBad
+      exit 1
+    end
+    exit(conn.exec("SELECT to_regclass(\x27public.schema_migrations\x27)").getvalue(0, 0) ? 0 : 1)
+  ' "$1")
+}
+
+if [ -f "$DEV_PID_FILE" ] && kill -0 "$(cat "$DEV_PID_FILE")" 2>/dev/null; then
+  echo "bin/dev is already running (pid $(cat "$DEV_PID_FILE")). Stop it with bin/stop."
+  exit 0
+fi
+
+use_ruby
+require_gems
+require_gems "$ROOT/integration"
+pg_probe "postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/postgres" ||
+  env_missing "Postgres is not reachable at ${DB_HOST}:${DB_PORT}" "bin/setup"
+
+cd "$ROOT/integration"
+rm -f "$DEV_PID_FILE"
+
+# Not `db:prepare`: Rails would load the SQL schema through `psql`, which the host need not
+# have. The gem's own loader (db:schema:load_better) reads integration/db/schema in pure Ruby.
+step "Preparing database $DB_NAME"
+dev_db_url="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+if ! dev_db_has_schema "$dev_db_url"; then
+  bin/rails db:create db:schema:load_better db:seed
+  ok "created, schema loaded from integration/db/schema, seeded"
+elif ! bin/rails db:abort_if_pending_migrations >/dev/null 2>&1; then
+  bin/rails db:migrate
+  ok "pending migrations applied"
+else
+  ok "up to date"
+fi
+
+step "Starting the integration app on $url"
+echo "  engine UI: $url/better_structure_sql/schema_versions"
+
+if [ "$detach" = false ]; then
+  exec bin/rails server --binding 127.0.0.1 --port "$port"
+fi
+
+bin/rails server --binding 127.0.0.1 --port "$port" --daemon
+waited=0
+until curl --silent --fail --output /dev/null "$url/up"; do
+  waited=$((waited + 1))
+  if [ "$waited" -ge 30 ]; then
+    echo "The app did not answer on $url/up within 30s. Last log lines:" >&2
+    tail -n 30 log/development.log >&2
+    exit 1
+  fi
+  sleep 1
+done
+ok "up (pid $(cat "$DEV_PID_FILE")) — stop it with bin/stop"

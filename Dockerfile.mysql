@@ -4,6 +4,7 @@ FROM ruby:3.2-alpine
 RUN apk add --no-cache \
     build-base \
     mysql-dev \
+    openssl-dev \
     mysql-client \
     nodejs \
     tzdata \

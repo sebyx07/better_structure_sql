@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# The gate. CI runs this script (bin/repo-guards fails when it stops), so green here is green there.
+#
+#   bin/check                 pre-PR gate: repo guards + rubocop + full rspec (needs Postgres)
+#   bin/check fast            inner loop: repo guards + rubocop on changed files + unit specs (no database)
+#   bin/check files <path>…   only the named files: rubocop on the Ruby ones, rspec on the *_spec.rb ones
+#
+# Database: DATABASE_URL if exported, else the bss-pg container that bin/setup starts
+# (postgresql://postgres:***@127.0.0.1:55432/better_structure_sql_test).
+# BSS_TEST_DB=<name> picks another database on that container and creates it on first
+# use — the suite truncates tables, so agents sharing a checkout each need their own.
+#
+# Exit: 0 green · 75 environment missing (nothing was graded — run bin/setup) · 1 a check failed.
+# Every failure prints the failing command and the command to rerun just that step.
+#
+# `fast` blind spots: specs that load rails_helper and everything in spec/integration
+# are skipped, and rubocop sees only files changed against origin/main.
+set -uo pipefail
+# shellcheck source-path=SCRIPTDIR source=_dx.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_dx.sh"
+cd "$ROOT" || exit 1
+
+RUBY_FILE_PATTERN='(\.rb|\.rake|\.gemspec|/Gemfile|/Rakefile)$|^(Gemfile|Rakefile)$'
+
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
+
+mode="${1:-full}"
+case "$mode" in
+  full | fast) [ "$#" -le 1 ] || { usage >&2; exit 2; } ;;
+  files) shift; [ "$#" -ge 1 ] || { usage >&2; exit 2; } ;;
+  -h | --help) usage; exit 0 ;;
+  *) usage >&2; exit 2 ;;
+esac
+
+failed=()
+
+# run_step <name> <command…> — runs the command, records a failure, keeps going.
+run_step() {
+  local name="$1" status
+  shift
+  step "$name: $*"
+  "$@"
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    ok "$name"
+  else
+    printf '  ✗ %s (exit %s)\n' "$name" "$status"
+    failed+=("$name|$*")
+  fi
+}
+
+# Ruby files changed against origin/main (committed, staged, unstaged, untracked), still on disk.
+changed_ruby_files() {
+  local base
+  base="$(git merge-base HEAD origin/main 2>/dev/null || echo HEAD)"
+  {
+    git diff --name-only --diff-filter=d "$base"
+    git ls-files --others --exclude-standard
+  } | sort -u | grep -E "$RUBY_FILE_PATTERN" || true
+}
+
+# Specs that run without a database: no rails_helper, not under spec/integration.
+unit_spec_files() {
+  grep -rL --include='*_spec.rb' 'rails_helper' spec | grep -v '^spec/integration/' | sort
+}
+
+use_ruby
+require_gems
+export RAILS_ENV=test
+# For the rerun hint: the local default is spelled out, an exported URL is referenced, never echoed.
+if [ -n "${DATABASE_URL:-}" ]; then rerun_env='RAILS_ENV=test'; else rerun_env="RAILS_ENV=test DATABASE_URL=$DEFAULT_DATABASE_URL"; fi
+private_database=false
+if [ -z "${DATABASE_URL:-}" ] && [ -n "${BSS_TEST_DB:-}" ]; then
+  DEFAULT_DATABASE_URL="$BSS_PG_SERVER_URL/$BSS_TEST_DB"
+  rerun_env="BSS_TEST_DB=$BSS_TEST_DB"
+  private_database=true
+fi
+export DATABASE_URL="${DATABASE_URL:-$DEFAULT_DATABASE_URL}"
+
+require_database() {
+  local probe=0
+  pg_probe "$DATABASE_URL" || probe=$?
+  case "$probe" in
+    1) env_missing "Postgres is not reachable at $(redact_url "$DATABASE_URL")" "bin/setup" ;;
+    2)
+      if [ "$private_database" = true ]; then
+        pg_create_database "$DATABASE_URL" || exit 1
+        return
+      fi
+      env_missing "database ${DATABASE_URL##*/} does not exist on $(redact_url "$DATABASE_URL")" "bin/setup" ;;
+  esac
+}
+
+case "$mode" in
+  full)
+    require_database
+    run_step guards bin/repo-guards
+    run_step rubocop bundle exec rubocop
+    run_step rspec bundle exec rspec --format progress --no-profile
+    ;;
+  fast)
+    run_step guards bin/repo-guards
+    mapfile -t ruby_files < <(changed_ruby_files)
+    if [ "${#ruby_files[@]}" -gt 0 ]; then
+      run_step rubocop bundle exec rubocop --force-exclusion "${ruby_files[@]}"
+    else
+      step "rubocop: no Ruby files changed against origin/main — skipped"
+    fi
+    mapfile -t unit_specs < <(unit_spec_files)
+    run_step rspec bundle exec rspec --format progress --no-profile "${unit_specs[@]}"
+    ;;
+  files)
+    ruby_files=()
+    spec_files=()
+    for path in "$@"; do
+      [ -e "$path" ] || { echo "bin/check files: no such file: $path" >&2; exit 2; }
+      if printf '%s\n' "$path" | grep -qE "$RUBY_FILE_PATTERN"; then ruby_files+=("$path"); fi
+      case "$path" in *_spec.rb) spec_files+=("$path") ;; esac
+    done
+    if [ "${#spec_files[@]}" -gt 0 ] && grep -lq 'rails_helper' "${spec_files[@]}"; then require_database; fi
+    [ "${#ruby_files[@]}" -eq 0 ] || run_step rubocop bundle exec rubocop --force-exclusion "${ruby_files[@]}"
+    [ "${#spec_files[@]}" -eq 0 ] || run_step rspec bundle exec rspec --format progress --no-profile "${spec_files[@]}"
+    ;;
+esac
+
+if [ "${#failed[@]}" -eq 0 ]; then
+  printf '\nbin/check %s: GREEN\n' "$mode"
+  exit 0
+fi
+
+printf '\nbin/check %s: FAILED (%s step(s))\n' "$mode" "${#failed[@]}"
+for entry in "${failed[@]}"; do
+  name="${entry%%|*}"
+  command="${entry#*|}"
+  rerun="$command"
+  # spec/examples.txt records the last run, so rspec can rerun just the failures.
+  [ "$name" != rspec ] || rerun='bundle exec rspec --only-failures'
+  printf '  ✗ %s\n      failing command: %s\n      rerun:           %s %s\n' "$name" "$command" "$rerun_env" "$rerun"
+done
+printf '  rubocop: "bundle exec rubocop -a <file>" applies the safe autocorrections.\n'
+exit 1
