@@ -49,6 +49,13 @@ updates:
     cooldown:
       default-days: 14
     open-pull-requests-limit: 10
+    ignore:
+      # ESLint 10: eslint-plugin-jsx-a11y and eslint-plugin-react peer-depend on eslint <=9 (npm ci
+      # fails with ERESOLVE). Drop this once both publish a release that accepts 10.
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@eslint/js'
+        update-types: ['version-update:semver-major']
     groups:
       site-dev-tools:
         dependency-type: development
