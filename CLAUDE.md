@@ -1,21 +1,8 @@
 # CLAUDE.md
 
-Guidance for agents in this repository. **Budget: under 12,000 chars** (the developerz.ai loader keeps only the first 12,000). Move detail down, never raise the cap:
+Every agent run loads this project brain. Keep it under 12,000 characters: the developerz.ai loader truncates at that limit. Move detail into scoped guidance, never raise the cap.
 
-| Touching | Also read (auto-loads there) |
-|---|---|
-| `lib/` | [`lib/CLAUDE.md`](lib/CLAUDE.md): layer ownership, dump contract, adapter rules |
-| `spec/` | [`spec/CLAUDE.md`](spec/CLAUDE.md): database isolation, helpers, round-trip spec |
-| `.github/`, `RELEASE.md`, `lib/better_structure_sql/version.rb` | [`.github/CLAUDE.md`](.github/CLAUDE.md): CI jobs, canary, release lane |
-| `app/`, `config/routes.rb` | [`app/CLAUDE.md`](app/CLAUDE.md): engine access control, escaping |
-
-`AGENTS.md` is a symlink to this file. User-facing reference: `README.md`, `docs/`, `llms.txt`. Intent and direction (draft): `docs/idea/`; index `docs/README.md`.
-
-## better_structure_sql
-
-Ruby gem (`better_structure_sql.gemspec`; version in `lib/better_structure_sql/version.rb`) that writes a clean `db/structure.sql`, or a directory of small numbered SQL files, for a Rails app by reading the database catalog over the ActiveRecord connection. Optional: schema versions stored in the database (MD5 dedup, retention) and a mountable engine to browse them.
-
-Invariants, all must stay true:
+## Non-negotiables
 
 1. **Pure Ruby.** Never shell out to `pg_dump`, `mysqldump`, `sqlite3`, `psql` or any binary.
 2. **Deterministic.** Same schema = byte-identical dump on every run, machine and server version. Every introspected list has an `ORDER BY` or a Ruby sort; no timestamps, no version comments, no hash-order iteration.
@@ -39,14 +26,27 @@ Floors (Ruby, Rails) live in the gemspec; the dev Ruby is `.ruby-version`. Teste
 - Weaken the gate (rubocop config, `skip`, deleting a failing spec) to get green.
 - Merge a breaking change without the owner's decision.
 
+## Stack and guidance
+
+`better_structure_sql` is a Ruby gem for Rails. It reads the database catalog through ActiveRecord and writes `db/structure.sql` or a numbered SQL directory. Optional database-backed schema versions use MD5 deduplication and retention; a mountable engine browses them. Version: `lib/better_structure_sql/version.rb`.
+
+| Touching | Also read (auto-loads there) |
+|---|---|
+| `lib/` | [`lib/CLAUDE.md`](lib/CLAUDE.md): layer ownership, dump contract, adapter rules |
+| `spec/` | [`spec/CLAUDE.md`](spec/CLAUDE.md): database isolation, helpers, round-trip spec |
+| `.github/`, `RELEASE.md`, `lib/better_structure_sql/version.rb` | [`.github/CLAUDE.md`](.github/CLAUDE.md): CI jobs, canary, release lane |
+| `app/`, `config/routes.rb` | [`app/CLAUDE.md`](app/CLAUDE.md): engine access control, escaping |
+
+`AGENTS.md` links here. User reference: `README.md`, `docs/`, `llms.txt`; draft direction: `docs/idea/`, indexed by `docs/README.md`.
+
 ## Commands
 
 | Task | Command |
 |---|---|
 | Install | `bin/setup`: Ruby, both bundles (gem + `integration/`), PostgreSQL, test database. Idempotent. Uses `DATABASE_URL` if exported, else docker container `bss-pg` on `127.0.0.1:55432` |
-| Pre-PR gate | `bin/check`: rubocop + full rspec on PostgreSQL. Same commands CI runs |
-| Inner loop | `bin/check fast`: rubocop on files changed vs `origin/main` + specs that need no database. Skips every spec that loads `rails_helper` and all of `spec/integration/` |
-| Named files | `bin/check files <paths>`: rubocop on the Ruby ones, rspec on the `*_spec.rb` ones. |
+| Pre-PR gate | `bin/check`: repo guards, rubocop and full rspec on PostgreSQL |
+| Inner loop | `bin/check fast`: repo guards, rubocop on files changed vs `origin/main`, and specs that need no database. Skips specs that load `rails_helper` and all of `spec/integration/` |
+| Named files | `bin/check files <paths>`: rubocop on Ruby files, rspec on `*_spec.rb` files; no repo guards or Markdown checks |
 | Private database | `BSS_TEST_DB=<name> bin/check ...`: own database on the `bss-pg` server, created on first use. Required when agents share a checkout: the suite truncates tables and the round-trip spec drops and creates databases |
 | Single spec | `bin/check files spec/path_spec.rb`, or `RAILS_ENV=test DATABASE_URL=postgresql://... bundle exec rspec spec/path_spec.rb:LINE` |
 | Rerun failures, lint fix | `bundle exec rspec --only-failures`, `bundle exec rubocop -a <file>` |
