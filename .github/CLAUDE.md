@@ -10,7 +10,7 @@ Outside contributors do not change `.github/`, `bin/`, the gemspec or `VERSION` 
 | `workflows/canary.yml` | monthly cron, manual | Ruby head, Rails edge, `postgres:latest`. **Not** part of `CI OK`; the monthly `improve` checkup (`.dz/schedules/improve.md`) reads it |
 | `workflows/release.yml` | push to `main` touching `lib/better_structure_sql/version.rb`, manual on `main` | Verify, publish, tag, GitHub Release |
 | `workflows/deploy-docs.yml` | `site/**` or `version.rb` on PR and `main` | `npm ci`, lint, test, build in `site/`; deploys GitHub Pages from `main` only |
-| `dependabot.yml` | weekly | Grouped updates (bundler for the gem and the three integration apps, actions, npm for `site/`, docker) with a cooldown. The maintainer agent is the only merger; there is no auto-merge workflow |
+| `dependabot.yml` | weekly, Monday | bundler (the gem and the three integration apps), actions, npm for `site/`, docker, docker-compose: minor+patch as one PR per ecosystem, security updates batched into one more, majors individually, at most 3 open, 14-day cooldown. The maintainer agent is the only merger; there is no auto-merge workflow |
 | `zizmor.yml` | - | Reviewed exceptions for the workflow security linter |
 | `scripts/changelog-notes.sh <version>` | called by `release.yml` | Prints that version's `CHANGELOG.md` section; fails when missing or empty |
 
