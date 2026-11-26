@@ -1,25 +1,23 @@
 ## Symptom
 
-The scheduled check asks whether an unreleased confirmed security fix needs an off-cycle release or an unfixed open advisory needs filing. No specific vulnerability was reported.
+The weekly check on 2026-11-26 asks whether gem users need a new release. No specific failure was reported.
 
 ## Evidence
 
-`git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD` printed `v0.3.0`. `git log --format='%h %cI %s' v0.3.0..HEAD -- 'lib/**' 'app/**' 'config/**' better_structure_sql.gemspec Gemfile.lock` printed no commits. The local `origin/main` and the GitHub default branch both ended at `e753fe42450b`; the GitHub commit reader says that commit changed only `REPORT.md`. Remote tags could not be refreshed with the granted tools.
+The GitHub latest release endpoint returned `v0.3.0`, published 2026-11-23, with target `385dbb507b7d`. The default branch commit reader returned `86cb476f9d4c` as its newest commit. The GitHub comparison of `v0.3.0...86cb476f9d4c` returned `ahead_by: 7` and `total_commits: 7`. Reading each of those commits showed changes only to maintenance reports, agent documentation, onboarding configuration, Dependabot configuration and Docker Compose. None changed `lib/`, `app/`, `config/` or the gemspec. `CHANGELOG.md` has an empty `Unreleased` section, and `VERSION` is `0.3.0`.
 
-`bundle exec bundle-audit check --update` failed with `can't find executable bundle-audit for gem bundler-audit`. The prescribed fallback, `gem exec bundler-audit check --update`, printed `No vulnerabilities found`, using ruby-advisory-db commit `c87703e7f2c64f8745ce032711308a17d10cda55`. This audits the lockfile, not every version permitted by the gemspec. The fallback installed Bundler 4.1.1 and cloned the advisory database in the run environment outside the repository.
-
-The GitHub reader returned zero open issues. It cannot list Dependabot alerts, and no connected MCP server offered a security tool. No first-tier advisory was identified or confirmed.
+The previous checkup's filings signal was unavailable. The latest recorded main CI run, 45531221351, reported `completed/success`.
 
 ## Root cause
 
-No shipping change exists in the locally available release window, so that window contains no qualifying unreleased security fix. The open advisory assessment remains incomplete: a clean lockfile audit does not establish that every version admitted by the dependency floors is safe, and Dependabot alerts were unavailable.
+There is no unreleased change to the gem's code or runtime dependency requirements since the published release. The Docker Compose dependency update affects development infrastructure, not the installed gem.
 
 ## Fix
 
-No release or advisory filing was made because no qualifying fix or confirmed unfixed advisory was identified. Read-only access to the repository's Dependabot alerts and fresh remote tags is required to complete the assessment. No production system was changed.
+No release bump or release pull request is warranted. No production system was changed. The mandatory report is the only working tree change.
 
 ## Verify
 
-`git log --format='%h %cI %s' v0.3.0..HEAD -- 'lib/**' 'app/**' 'config/**' better_structure_sql.gemspec Gemfile.lock` printed nothing in this checkout. Complete verification requires comparing freshly fetched tags and inspecting open Dependabot alerts against first-tier advisory sources and the gemspec constraints.
+Compare the published release to the inspected main commit at https://github.com/sebyx07/better_structure_sql/compare/v0.3.0...86cb476f9d4c063b381fe2a433a65d26914709bc. The seven commits contain no changes in the gem's shipping code paths. This run used the GitHub commit and compare readers instead of a local git command; no test suite was run because no product change was made.
 
-no release: no qualifying unreleased fix found in the available window; alerts and fresh tags remain unverified.
+no release: no unreleased gem code or dependency change benefits users.
