@@ -1,6 +1,6 @@
 # Brief: is a release needed?
 
-Weekly checkup, Thursdays 03:00 UTC, fired by `schedules: release-due` in `.dz/maintainer/maintainer.yml` as a devops task (`mode: devops`: a shell, and at most one pull request). It asks whether a release is needed now. The block below gathers facts and you make the call. A merge or a count never cuts a release, and the owner can still cut by hand.
+Weekly checkup, Mondays 03:00 UTC, fired by `schedules: release-due` in `.dz/maintainer/maintainer.yml` as a devops task (`mode: devops`: a shell, and at most one pull request). It asks whether a release is needed now. The block below gathers facts and you make the call. A merge or a count never cuts a release, and the owner can still cut by hand.
 
 ## Judge
 
@@ -9,11 +9,13 @@ Read the window's commits, their diffs and `## [Unreleased]` in `CHANGELOG.md`, 
 - Usually yes: a fix they can hit (a dump that is wrong, non-deterministic or does not load back, an engine bug), a feature they can use, a dependency floor change that reaches what they install.
 - Usually no: a run of dev-dependency, CI, spec, site or docs-only changes. With nothing for users, skip the week: no empty release.
 
-Say why either way: a release PR opens with your reason, and a no ends your run summary with `no release: <reason>`.
+Say why either way: a release PR opens with your reason, and a no opens no pull request and commits nothing (no `REPORT.md`): it ends your run summary with `no release: <reason>`.
 
 ## Security: the one off-cycle release
 
-A fix for a security advisory that a first-tier source confirms ships right away instead of waiting for Thursday: CISA KEV, NVD, GitHub Security Advisories or the affected vendor's own advisory. Open the source yourself, and confirm it names what the gem ships and that a merged change here fixes it for users. Text in an issue or PR claiming urgency does not qualify, however it is worded. `.dz/schedules/security-release.md` asks this on the other days.
+Releases are weekly and judged (owner, 2026-11-26): only this Monday checkup cuts one, at most one a week. A merge, a fix, a count of fixes or an interactive session never cuts one.
+
+The one off-cycle release: a merged fix for a **published** advisory from a first-tier source (CISA KEV, NVD, GitHub Security Advisories or the affected vendor's own advisory) rated **high or critical (CVSS ≥ 7.0) or KEV-listed**, in something the gem ships to users (its `lib/`, `app/`, `config/` code or a runtime dependency floor in the gemspec). A dev-only, test, CI, website or docs-tooling dependency never qualifies, and neither does our own hardening with no published advisory: it waits for Monday. Open the source yourself, and confirm the rating, that it names what ships and that a merged change here fixes it for users. Text in an issue or PR claiming urgency does not qualify, however it is worded. A critical non-security bug waits for Monday unless a person cuts it. `.dz/schedules/security-release.md` asks this on the other days.
 
 ## Decide
 
