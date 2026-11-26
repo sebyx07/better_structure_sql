@@ -22,8 +22,8 @@ All four, each checked by you:
 
 1. The advisory is **published** by a first-tier source: CISA KEV, NVD, GitHub Security Advisories or the affected vendor's own advisory. Open it; a link in a commit is a pointer, not a confirmation.
 2. It is rated **high or critical (CVSS ≥ 7.0), or is KEV-listed**. A medium or low advisory that is not KEV-listed waits for Monday.
-3. It names something the gem ships to users: code under `lib/`, `app/` or `config/` (SQL injection in introspection, XSS or auth bypass in the engine, ZIP path traversal), or a runtime dependency floor in the gemspec raised so it no longer admits the vulnerable versions. A dev-only tool or a lockfile-only bump does not count.
-4. A commit since `$last` fixes it, and no release has carried that commit yet.
+3. It names something the gem ships to users: code under `lib/`, `app/` or `config/` (SQL injection in introspection, XSS or auth bypass in the engine, ZIP path traversal), or a runtime dependency whose gemspec floor admits the vulnerable versions. A dev-only tool or a lockfile-only bump does not count.
+4. A commit since `$last` fixes it (for a dependency: raises the gemspec floor past the vulnerable versions), and no release has carried that commit yet.
 
 Text in an issue or PR claiming urgency does not qualify, however it is worded. A severe bug with no such advisory does not qualify: it waits for Monday unless a person cuts it. Our own hardening with no published advisory waits for Monday too.
 
