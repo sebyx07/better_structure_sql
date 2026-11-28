@@ -16,6 +16,14 @@ name: CI
 # - matrix: gemfiles/matrix.gemfile (unlocked; RAILS_VERSION / DB_ADAPTER, see
 #   Gemfile), resolved fresh each run so new upstream releases are tested.
 # Ruby head, Rails edge and postgres:latest run monthly in canary.yml.
+#
+# Cost shape: a change that touches only prose or the docs site (`*.md`,
+# `docs/`, `site/`, which deploy-docs.yml grades) skips every job below
+# `workflows` (the `changes` job decides; "CI OK" still reports). A pull request
+# runs the floor and the newest row of the Ruby/Rails/PostgreSQL matrices and
+# the newest MySQL plus MariaDB (MySQL 8.0, the floor, runs on main); the full
+# matrices run on every push to main that is not docs-only, on a manual run and
+# when release.yml calls this workflow.
 on:
   pull_request:
   push:
@@ -35,6 +43,37 @@ env:
   RAILS_ENV: test
 
 jobs:
+  # Decides whether the change can affect the gated jobs. Anything it cannot
+  # read (API error, a truncated file list, a manual run) counts as code.
+  changes:
+    name: Changes / code or docs only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+    steps:
+      - id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The commits this run tests: the base and the commit that is checked out (for a pull
+          # request that is the merge commit, so a file main moved is seen where it lands).
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          code=true
+          # "<files> <paths outside the docs filter>"; a rename counts under its old and its
+          # new name, and the filter tests whole paths (prefix or suffix, no line anchors). The compare API lists at most 300 files: 300 means "truncated".
+          # shellcheck disable=SC2016  # $paths is a jq variable, not a shell one
+          counts=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE...$HEAD" --jq '
+            [.files[] | .filename, (.previous_filename // empty)] as $paths
+            | "\(.files | length) \($paths | map(select((endswith(".md") or startswith("docs/") or startswith("site/")) | not)) | length)"') || counts=''
+          read -r files other <<<"$counts" || true
+          if [ -n "$files" ] && [ "$files" -gt 0 ] && [ "$files" -lt 300 ] && [ "$other" = 0 ]; then
+            code=false
+          fi
+          echo "files changed: ${files:-unreadable}, outside the docs filter: ${other:-unreadable}"
+          echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+
   workflows:
     name: Lint / workflows (actionlint + zizmor)
     runs-on: ubuntu-24.04
@@ -54,6 +93,8 @@ jobs:
 
   locked:
     name: Test / locked bundle · ${{ matrix.database }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -96,6 +137,8 @@ jobs:
 
   matrix:
     name: Test / Ruby ${{ matrix.ruby }} · Rails ${{ matrix.rails }} · PostgreSQL ${{ matrix.postgres }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -103,12 +146,19 @@ jobs:
       matrix:
         # Each supported Ruby and Rails at least once, each PostgreSQL major once;
         # not the full cross product. Floors: gemspec required_ruby_version and rails.
-        include:
-          - { ruby: '3.3', rails: '7.1', postgres: '14' }
-          - { ruby: '3.3', rails: '7.2', postgres: '15' }
-          - { ruby: '3.4', rails: '8.0', postgres: '16' }
-          - { ruby: '4.0', rails: '8.1', postgres: '17' }
-          - { ruby: '4.0', rails: '8.1', postgres: '18' }
+        # The second list is the supported set; a pull request runs the first
+        # (its floor row and its newest row).
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request' && '[
+            { "ruby": "3.3", "rails": "7.1", "postgres": "14" },
+            { "ruby": "4.0", "rails": "8.1", "postgres": "18" }
+          ]' || '[
+            { "ruby": "3.3", "rails": "7.1", "postgres": "14" },
+            { "ruby": "3.3", "rails": "7.2", "postgres": "15" },
+            { "ruby": "3.4", "rails": "8.0", "postgres": "16" },
+            { "ruby": "4.0", "rails": "8.1", "postgres": "17" },
+            { "ruby": "4.0", "rails": "8.1", "postgres": "18" }
+          ]') }}
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -140,12 +190,15 @@ jobs:
   # path-sourced gem's version, which every release bumps.
   integration-postgresql:
     name: Integration / PostgreSQL ${{ matrix.postgres }} app
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        postgres: ['14', '15', '16', '17', '18']
+        # Supported majors: the second list. A pull request runs the oldest and the newest.
+        postgres: ${{ fromJSON(github.event_name == 'pull_request' && '["14", "18"]' || '["14", "15", "16", "17", "18"]') }}
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -182,12 +235,15 @@ jobs:
 
   integration-mysql:
     name: Integration / ${{ matrix.database }} app (${{ matrix.db_adapter }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        database: ['mysql:8.0', 'mysql:8.4']
+        # Supported MySQL lines: the second list. A pull request runs the newest (and MariaDB below).
+        database: ${{ fromJSON(github.event_name == 'pull_request' && '["mysql:8.4"]' || '["mysql:8.0", "mysql:8.4"]') }}
         db_adapter: [mysql2, trilogy]
         health_cmd: ['mysqladmin ping -h 127.0.0.1 -proot']
         include:
@@ -247,6 +303,8 @@ jobs:
 
   integration-sqlite:
     name: Integration / SQLite app
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -279,6 +337,8 @@ jobs:
 
   package:
     name: Package / build + install + require
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -301,8 +361,10 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    # Every job above must succeed; skipped or cancelled counts as failed.
+    # Every job above must succeed; cancelled counts as failed, and so does
+    # skipped unless the change is docs-only (changes.outputs.code == 'false').
     needs:
+      - changes
       - workflows
       - locked
       - matrix
@@ -316,9 +378,11 @@ jobs:
       - name: All required jobs passed
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          CODE: ${{ needs.changes.outputs.code }}
         run: |
-          echo "Results: $RESULTS"
+          echo "Results: $RESULTS (code change: $CODE)"
           for r in $RESULTS; do
+            if [ "$r" = skipped ] && [ "$CODE" = false ]; then continue; fi
             if [ "$r" != success ]; then
               echo "::error::A required job finished with '$r'. Open the failed job above: its log names the check and the command to reproduce it locally."
               exit 1

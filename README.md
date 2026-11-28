@@ -263,7 +263,7 @@ Details: [docs/schema_versions.md](docs/schema_versions.md), [docs/features/web-
 
 ## AI-maintained
 
-**This project is maintained by [developerz.ai](https://developerz.ai).** Its maintainer agent triages issues, reviews every pull request, merges a pull request once its author marks it ready and CI is green, checks project health daily, and runs a monthly improvement pass. The policy it follows is committed in [`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml). Breaking changes and major releases stay with the owner.
+**This project is maintained by [developerz.ai](https://developerz.ai).** Its maintainer agent triages issues, reviews every pull request, merges a pull request once its author marks it ready and CI is green, and runs a monthly improvement pass. The policy it follows is committed in [`.dz/maintainer/maintainer.yml`](.dz/maintainer/maintainer.yml). Breaking changes and major releases stay with the owner.
 
 - **Using the gem in your app?** Point your agent at [`llms.txt`](llms.txt). Paste this into your app's `CLAUDE.md` / `AGENTS.md`:
   ```markdown

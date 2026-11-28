@@ -115,7 +115,7 @@ As `Dumper` writes it. The numbered directory is `FileWriter::SECTION_DIRECTORIE
 
 ## Pull requests
 
-- **`CI OK` is the required check**: the aggregate job of `ci.yml`; every job must pass, skipped or cancelled counts as failed. Live rules: `gh api repos/sebyx07/better_structure_sql/rulesets`. Never restate the list.
+- **`CI OK` is the required check**: the aggregate job of `ci.yml`; every job must pass, cancelled counts as failed, and so does skipped unless the change is docs-only. Live rules: `gh api repos/sebyx07/better_structure_sql/rulesets`. Never restate the list.
 - **A PR body claims only what the diff does.** Evidence you could not get is stated as missing. Report what you verified, not what you assume.
 - One concern per PR. Keep it a draft (or `WIP` in the title) until ready: a ready, reviewed, green PR is merged by the bot.
 - Fill `.github/PULL_REQUEST_TEMPLATE.md`. `bin/check` green on the tree the PR actually contains.

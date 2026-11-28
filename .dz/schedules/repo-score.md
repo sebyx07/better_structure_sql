@@ -40,8 +40,7 @@ estimate, and is left out of the total.
 10. **Deploy verdict wired.** Two lanes ship here: `.github/workflows/release.yml` publishes the
     gem to RubyGems and creates the tag and GitHub release when `lib/better_structure_sql/version.rb`
     changes on `main`, and `.github/workflows/deploy-docs.yml` publishes `site/` to GitHub Pages.
-    Each must report its outcome (a failed run, and the daily `health` checkup's release, RubyGems,
-    tag and docs rows in `.dz/schedules/health.md`). Fails when a lane ships and nothing reports.
+    Each must report its outcome (a failed workflow run is that report). Fails when a lane ships and nothing reports.
 
 No file holds checks 7, 8 and 9: grade each from its Signals section; a missing one is `not read`.
 Ages count from opening, not last activity. Branches are not listed: check 8 says so.
@@ -71,7 +70,7 @@ One per check; a handoff reports one failing row.
 - Confirm before you claim: read the file that does the thing, not only a file that mentions it.
 - A check that does not apply here passes, and keeps its 10 points.
 - One handoff per failing row: every site of the failure goes in it, worst first.
-- A row the daily `health` checkup already filed (an open issue with its title: a red `main`, a
+- A row that already has an open issue (its title: a red `main`, a
   stuck Dependabot pull request, a failed release or docs deploy) is scored, not filed again.
 
 ## Every finding
