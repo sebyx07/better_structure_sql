@@ -21,7 +21,7 @@ Outside contributors do not change `.github/`, `bin/`, the gemspec or `VERSION` 
 | `changes` | Reads the changed files: `code=false` when every one is `*.md` or under `docs/` or `site/` (graded by `deploy-docs.yml`). Every job below `workflows` then skips; anything unreadable counts as code |
 | `workflows` | actionlint + zizmor on `.github/workflows`; `bin/repo-guards` |
 | `locked` | The committed `Gemfile.lock` and `.ruby-version`, twice: PostgreSQL runs `bin/check` (RuboCop + RSpec, the local gate); SQLite runs `bundle exec rspec` on the in-memory default of `config/database.yml` |
-| `matrix` | rspec on `gemfiles/matrix.gemfile` (unlocked, `RAILS_VERSION`): each supported Ruby, Rails and PostgreSQL major at least once, not the cross product. A pull request runs the floor row and the newest row of this and of the `integration-*` matrices; a push to `main`, a manual run and a release run them all |
+| `matrix` | rspec on `gemfiles/matrix.gemfile` (unlocked, `RAILS_VERSION`): each supported Ruby, Rails and PostgreSQL major at least once, not the cross product. A pull request runs the floor row and the newest row of this and of `integration-postgresql`, and the newest MySQL plus MariaDB in `integration-mysql` (the MySQL floor runs on `main`); a push to `main` that is not docs-only, a manual run and a release run them all |
 | `integration-postgresql`, `integration-mysql` | In the app: migrate from scratch (dumps through the gem), assert `db/schema/_manifest.json`, then `db:drop db:create db:schema:load db:schema:dump` |
 | `integration-sqlite` | Migrate and `db:schema:dump_better`, assert `db/structure/_manifest.json` |
 | `package` | `gem build --strict`, install into an empty `GEM_HOME` without Bundler, `require` it |
@@ -54,5 +54,5 @@ Rules:
 - A published version is never pushed again. Failed before the push: fix on `main`, same version. Failed after the push: run the workflow by hand on `main` before the next bump merges; it skips verify and publish, tags the commit that set `VERSION` (not `main`'s head) and attaches the gem fetched from RubyGems. Broken release: the owner yanks it, then a new patch version.
 - Prerelease: RubyGems form `1.0.0.rc1`, tagged `v1.0.0-rc1`.
 - `deploy-docs.yml` also runs on a `version.rb` change: the site shows the gem version.
-- The weekly `release-due` checkup (`.dz/schedules/release-due.md`) decides when a release PR is opened; `security-release` covers confirmed security fixes on the other days.
+- The weekly `release-due` checkup (`.dz/schedules/release-due.md`) decides when a release PR is opened; a fix for a published high or critical advisory in what ships is the one release the owner may cut off-cycle.
 - A breaking change needs the owner's decision before merge, and an `### Upgrading` entry in the CHANGELOG.
